@@ -1,0 +1,32 @@
+program "Sistema de Pagamento"
+
+vars {
+    status_var: Number
+    status_var2: Number
+    status_conexao: Text = "idle"
+    res: Text
+}
+
+procs {
+    proc verificar_rede() from "Net.check" {
+        codes ONLINE<0>, OFFLINE<1>
+    }
+    
+    proc esperar(segundos: Number) from "Sys.sleep" {
+        codes DONE<0>, ERROR<5>
+    }
+
+    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {
+        codes OK<0>, TIMEOUT<10>
+    }
+}
+
+exec verificar_rede() >> status_var {
+    case OFFLINE : exec esperar(segundos=5) {
+        case DONE : exec enviar(texto="OK", resposta=&res) >> status_var2 {
+            pass OK, TIMEOUT
+        }
+    } while(ERROR)
+    
+    pass ONLINE, OK, TIMEOUT
+}
