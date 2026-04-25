@@ -77,3 +77,9 @@ Os testes usam **pytest** e cobrem os três tipos de delimitadores e composiçã
 ```
 
 Cada teste renderiza um template em `tests/delimiters/templates/` e compara o resultado byte a byte com o arquivo correspondente em `tests/delimiters/expected/`.
+
+## Testes com templates de código Mod Macro
+
+```bash
+python assembler.py code/tests/basic.jinja2 -d code/ | python mkb/indenter.py
+```
