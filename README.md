@@ -4,7 +4,7 @@
 
 ## Visão geral
 
-O GenJin usa o Jinja2 como motor de templates e expõe uma CLI (`compiler.py`) que recebe um arquivo de entrada, um diretório de templates e um arquivo de saída. Os delimitadores padrão do projeto diferem dos padrões do Jinja2:
+O GenJin usa o Jinja2 como motor de templates e expõe uma CLI (`compiler.py`) que recebe um arquivo de entrada e um diretório de templates. A saída é escrita no **stdout**, permitindo redirecionamento e encadeamento com outros scripts. Os delimitadores padrão do projeto diferem dos padrões do Jinja2:
 
 | Função       | Padrão Jinja2 | GenJin      |
 |---|---|---|
@@ -17,8 +17,6 @@ O GenJin usa o Jinja2 como motor de templates e expõe uma CLI (`compiler.py`) q
 ```
 compiler.py              # Ponto de entrada da CLI
 assembler.py             # Lógica central de renderização
-implementation.jinja2    # Template principal do projeto
-example.sh               # Exemplo de uso completo
 requirements.txt
 tests/
   conftest.py            # Fixture compartilhada (make_env)
@@ -39,13 +37,20 @@ pip install -r requirements.txt
 ## Uso
 
 ```bash
-python compiler.py <template> -d <dir-de-templates> -o <saída> [opções]
+python compiler.py <template> -d <dir-de-templates> [opções]
 ```
 
-### Exemplo completo
+A saída é escrita no **stdout**. Use redirecionamento para salvar ou encadear com outros scripts:
 
 ```bash
-python compiler.py examples/implementation.jinja2 -d . -o output/output.js
+# Salvar em arquivo
+python compiler.py code/genjin.jinja2 -d code \
+  --block-start '{*'  --block-end '*}'       \
+  --variable-start '{{' --variable-end '}}'  \
+  --comment-start '{!!' --comment-end '!!}' > output.js
+
+# Encadear com outro script
+python compiler.py code/genjin.jinja2 -d code ... | python outro_script.py
 ```
 
 ### Opções disponíveis
@@ -53,7 +58,6 @@ python compiler.py examples/implementation.jinja2 -d . -o output/output.js
 | Opção | Descrição |
 |---|---|
 | `-d, --templates-dir` | Diretório raiz dos templates para `extends`/`include`/`import` |
-| `-o, --output` | Arquivo de saída **(obrigatório)** |
 | `-v CHAVE=VALOR` | Variável de contexto inline (repetível) |
 | `-f, --vars-file` | Arquivo JSON com variáveis de contexto |
 | `--block-start/end` | Delimitadores de bloco |

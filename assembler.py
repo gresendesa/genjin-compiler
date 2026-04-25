@@ -68,12 +68,6 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "-o", "--output",
-        metavar="ARQUIVO",
-        required=True,
-        help="Caminho do arquivo de saída que receberá o conteúdo renderizado.",
-    )
-    parser.add_argument(
         "-v", "--var",
         metavar="CHAVE=VALOR",
         action="append",
@@ -188,13 +182,7 @@ def main() -> None:
     except Exception as exc:  # noqa: BLE001
         sys.exit(f"Erro durante a renderização: {exc}")
 
-    # Grava a saída
-    output_path = os.path.abspath(args.output)
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as fh:
-        fh.write(rendered)
-
-    print(f"Saída gravada em: {output_path}")
+    sys.stdout.write(rendered)
 
 
 if __name__ == "__main__":
