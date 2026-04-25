@@ -26,9 +26,21 @@ import argparse
 import json
 import os
 import sys
+import random
 
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
 
+
+class Cortex:
+    '''
+    Classe para envelopar funcionalidades 
+    no ambiente Cortex
+    '''
+    counter = random.randint(1000000, 9999999)
+    def get_next_number():
+        Cortex.counter += 1
+        number = Cortex.counter
+        return str(hex(number)).lower()[2:]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -83,12 +95,12 @@ def parse_args() -> argparse.Namespace:
     )
 
     delimiters = parser.add_argument_group("delimitadores customizados")
-    delimiters.add_argument("--block-start",    default="{%", metavar="STR", help="Início de bloco (padrão: '{%%')")
-    delimiters.add_argument("--block-end",      default="%}", metavar="STR", help="Fim de bloco (padrão: '%%}')")
+    delimiters.add_argument("--block-start",    default="{*", metavar="STR", help="Início de bloco (padrão: '{%%')")
+    delimiters.add_argument("--block-end",      default="*}", metavar="STR", help="Fim de bloco (padrão: '%%}')")
     delimiters.add_argument("--variable-start", default="{{", metavar="STR", help="Início de variável (padrão: '{{')")
     delimiters.add_argument("--variable-end",   default="}}", metavar="STR", help="Fim de variável (padrão: '}}')")
-    delimiters.add_argument("--comment-start",  default="{#", metavar="STR", help="Início de comentário (padrão: '{#')")
-    delimiters.add_argument("--comment-end",    default="#}", metavar="STR", help="Fim de comentário (padrão: '#}')")
+    delimiters.add_argument("--comment-start",  default="{!!", metavar="STR", help="Início de comentário (padrão: '{#')")
+    delimiters.add_argument("--comment-end",    default="!!}", metavar="STR", help="Fim de comentário (padrão: '#}')")
 
     return parser.parse_args()
 
@@ -154,6 +166,10 @@ def main() -> None:
         comment_end_string=args.comment_end,
         keep_trailing_newline=True,
     )
+
+    env.globals.update({
+        "nid": Cortex.get_next_number,
+    })
 
     # Carrega o template
     try:

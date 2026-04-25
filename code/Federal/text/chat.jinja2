@@ -1,0 +1,65 @@
+{* macro print(message,type='default',label=None,spacing=False) *}
+	
+	{* set r = nid() *}
+	{* set auxvar = '&msg'~r *}
+	
+	SET({{ auxvar }},"{{ message }}");
+	{* if type == 'info' *}
+		{* set color = '§f§l'*}
+		{* set color_char = '§b'*}
+		{* set color_label = '§b'*}
+		{* set char = 'ⓘ' *}
+	{* elif type == 'warning' *}
+		{* set color = '§e'*}
+		{* set color_char = '§6'*}
+		{* set color_label = '§6'*}
+		{* set char = '⚠' *}
+	{* elif type == 'danger' *}
+		{* set color = '§c'*}
+		{* set color_char = '§c'*}
+		{* set color_label = '§4§l'*}
+		{* set char = '☢' *}
+	{* elif type == 'success' *}
+		{* set color = '§a'*}
+		{* set color_char = '§2'*}
+		{* set color_label = '§2'*}
+		{* set char = '✓' *}
+	{* elif type == 'error' *}
+		{* set color = '§c'*}
+		{* set color_char = '§4'*}
+		{* set color_label = '§4'*}
+		{* set char = '✗' *}
+	{* elif type == 'default' *}
+		{* set color = '§7'*}
+		{* set color_char = '§3'*}
+		{* set color_label = '§3'*}
+		{* set char = '✎' *}
+	{* elif type == 'tip' *}
+		{* set color = '§8§l'*}
+		{* set color_char = '§7'*}
+		{* set color_label = '§7'*}
+		{* set char = '✌' *}
+	{* elif type == 'plane' *}
+		{* set color = '§8'*}
+		{* set color_char = '§7'*}
+		{* set color_label = '§7'*}
+		{* set char = '✈' *}
+	{* endif *}
+	
+	
+	
+	{* if label *}
+		{* set label = '§8['~color_label~label~'§8] ' *}
+	{* else *}
+		{* set label = '' *}
+	{* endif *}
+	
+	REPLACE({{ auxvar }}," "," {{ color }}");
+	{* if spacing *}
+		LOG("");
+	{* endif *}
+	LOG("{{ color_char }}{{ char }} {{ color_label }}{{ label }}{{ color }}%{{ auxvar }}%");
+	{* if spacing *}
+		LOG("");
+	{* endif *}
+{* endmacro *}

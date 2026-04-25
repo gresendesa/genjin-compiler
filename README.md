@@ -45,10 +45,7 @@ python compiler.py <template> -d <dir-de-templates> -o <saída> [opções]
 ### Exemplo completo
 
 ```bash
-python compiler.py examples/implementation.jinja2 -d . -o output/output.js \
-  --block-start '{*'  --block-end '*}'       \
-  --variable-start '{{' --variable-end '}}'  \
-  --comment-start '{!!' --comment-end '!!}'
+python compiler.py examples/implementation.jinja2 -d . -o output/output.js
 ```
 
 ### Opções disponíveis
