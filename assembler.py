@@ -124,15 +124,43 @@ def build_context(var_list: list[str], vars_file: str | None) -> dict:
     return context
 
 
+class DottedLoader(FileSystemLoader):
+    """Loader que resolve nomes com '.' como separadores de diretório.
+
+    Converte 'Federal.text.chat' → 'Federal/text/chat.jinja2'.
+    Se o nome já tiver extensão, apenas converte os separadores.
+    """
+
+    TEMPLATE_EXT = ".jinja2"
+
+    def get_source(self, environment, template):
+        if template.endswith(self.TEMPLATE_EXT):
+            stem = template[: -len(self.TEMPLATE_EXT)]
+        else:
+            stem = template
+        path = stem.replace(".", "/") + self.TEMPLATE_EXT
+        return super().get_source(environment, path)
+
+
 def resolve_template_name(template_path: str, templates_dir: str) -> str:
-    """Retorna o nome do template relativo ao diretório de templates."""
+    """Retorna o nome do template relativo ao diretório de templates.
+
+    Usa '.' como separador de nível e omite a extensão '.jinja2'.
+    Exemplo: 'code/Federal/text/chat.jinja2' → 'Federal.text.chat'
+    """
     abs_template = os.path.abspath(template_path)
     abs_dir = os.path.abspath(templates_dir)
     try:
-        return os.path.relpath(abs_template, abs_dir)
+        rel = os.path.relpath(abs_template, abs_dir)
     except ValueError:
         # No Windows, relpath falha entre drives distintos
-        return os.path.basename(template_path)
+        rel = os.path.basename(template_path)
+    rel = rel.replace(os.sep, "/")
+    stem, ext = os.path.splitext(rel)
+    dotted = stem.replace("/", ".")
+    if ext != DottedLoader.TEMPLATE_EXT:
+        dotted += ext
+    return dotted
 
 
 def main() -> None:
@@ -151,7 +179,7 @@ def main() -> None:
 
     # Cria o ambiente Jinja2
     env = Environment(
-        loader=FileSystemLoader(templates_dir),
+        loader=DottedLoader(templates_dir),
         block_start_string=args.block_start,
         block_end_string=args.block_end,
         variable_start_string=args.variable_start,
