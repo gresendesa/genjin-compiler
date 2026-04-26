@@ -18,8 +18,7 @@ Criação de uma linguagem DSL e compilador para a notação Genjin.
 6. Testes sao obrigatorios no processo de desenvolvimento.
 7. Encerramento de sprint exige rebuild e reinstanciacao Docker para validacao manual em execucao.
 8. Commit de sprint so ocorre apos aceite explicito do PO.
-9. Encerramento tecnico deve seguir um commit por sprint em cada repositorio envolvido.
-
+9. Encerramento tecnico deve seguir um commit por sprint em cada repositorio envolvido.10. O arquivo `code/genjin.jinja2` e INTOCAVEL. Foi criado manualmente pelo owner e representa o motor Genjin. Nenhuma modificacao e permitida sem aprovacao explicita do PO.
 ## 3. Prioridade Estrategica
 
 Ordem de prioridade atual:
@@ -65,6 +64,7 @@ Para marcar qualquer item como concluido, e obrigatorio:
 3. Registro atualizado em arquivos de memoria do projeto em ia/.
 4. Validacao manual executada sobre containers rebuildados/reinstanciados no fechamento da sprint.
 5. Commit final apenas apos aceite explicito do PO com sistema em execucao.
+6. Testes automatizados em `tests/` executados com sucesso (sem falhas).
 
 ## 5.2 Gate de encerramento de sprint (obrigatorio)
 

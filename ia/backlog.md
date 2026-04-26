@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-04-15
+Ultima atualizacao: 2026-04-26
 
 ## Objetivo
 
@@ -19,6 +19,11 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 ## Resumo sintetico dos itens
 
 ### Concluidos
+
+| ID | Titulo | Prioridade PO | Risco | Arquivo |
+|---|---|---|---|---|
+| B-001 | Criar primeira versao de ia/architecture.md | 1 (critica) | baixo | [B-001.md](backlog-items/B-001.md) |
+| B-002 | Criar primeira versao de ia/code.md | 1 (critica) | baixo | [B-002.md](backlog-items/B-002.md) |
 
 ### Em andamento
 
