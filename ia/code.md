@@ -58,11 +58,14 @@ Resumo rapido para entender arquitetura em nivel de codigo e acelerar retomada e
 ---
 
 ### compiler/parser.py
-- **Status:** `vazio-alvo`
-- **Responsabilidade:** Etapa 2 do compilador — análise sintática e semântica.
-- **Entrada:** Lista de tokens (saída do scanner).
-- **Saída:** AST (Abstract Syntax Tree).
-- **Nota:** Arquivo existe com docstring de etapa mas sem implementação.
+- **Status:** `pronto`
+- **Responsabilidade:** Etapa 2 do compilador — análise sintática/semântica.
+- **Entrada:** Lista de `Token` (saída do scanner).
+- **Saída:** AST com nó raiz `ProgramNode`.
+- **Nós AST:** `ProgramNode`, `VarDeclNode`, `ProcDeclNode`, `ParamDeclNode`, `OutputCodeNode`, `ExecBlockNode`, `CaseNode`, `ArgNode`.
+- **Função de conv:** `parse(source: str) -> ProgramNode`.
+- **Nota:** `while(...)` fica após `}` do exec. `pass` aceita códigos borbulhados de procs filhos.
+- **Testes:** `tests/parser/test_parser.py` (51 testes).
 
 ---
 
