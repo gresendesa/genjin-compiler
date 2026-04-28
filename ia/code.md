@@ -48,11 +48,12 @@ Resumo rapido para entender arquitetura em nivel de codigo e acelerar retomada e
 ---
 
 ### compiler/scanner.py
-- **Status:** `vazio-alvo`
+- **Status:** `pronto`
 - **Responsabilidade:** Etapa 1 do compilador — análise lexográfica.
-- **Entrada:** String com código-fonte da DSL Genjin.
-- **Saída:** Lista de tokens.
-- **Nota:** Arquivo existe com docstring de etapa mas sem implementação.
+- **Entrada:** String com código-fonte da DSL Genjin (`.gnj`).
+- **Saída:** Lista de `Token` (dataclass com `type: TokenType`, `value: str`, `line: int`).
+- **Classes principais:** `TokenType` (enum), `Token` (dataclass), `Scanner`, `ScannerError`.
+- **Testes:** `tests/scanner/test_scanner.py` (65 testes).
 
 ---
 
