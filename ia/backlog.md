@@ -33,7 +33,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
-(nenhum)
+| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
+|---|---|---|---|---|---|
+| B-009 | Assembler: leitura de template via stdin (pipe) | 2 (alta) | medio | SPR-2026-04 | [B-009.md](backlog-items/B-009.md) |
 
 ### Pendentes
 

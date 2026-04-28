@@ -8,6 +8,10 @@ Exemplos:
     # Renderizar com diretório de templates e saída
     python assembler.py implementation.jinja2 -d ./templates -o output.js
 
+    # Ler template da entrada padrão (pipe)
+    python compiler.py programa.gnj | python assembler.py - -d ./code -o saida.txt
+    echo '{{ nome }}' | python assembler.py - -v nome=Mundo -o saida.txt
+
     # Passar variáveis inline
     python assembler.py main.j2 -d ./tpl -o result.txt -v nome=Mundo -v versao=2
 
@@ -28,7 +32,7 @@ import os
 import sys
 import random
 
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
+from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
 
 
 class Cortex:
@@ -54,7 +58,8 @@ def parse_args() -> argparse.Namespace:
         "template",
         help=(
             "Caminho para o arquivo de template principal (ponto de entrada). "
-            "Pode ser um caminho absoluto ou relativo ao diretório de templates (-d)."
+            "Pode ser um caminho absoluto ou relativo ao diretório de templates (-d). "
+            "Use '-' para ler o template da entrada padrão (stdin)."
         ),
     )
     parser.add_argument(
@@ -166,49 +171,88 @@ def resolve_template_name(template_path: str, templates_dir: str) -> str:
 def main() -> None:
     args = parse_args()
 
-    # Resolve o diretório de templates
-    if args.templates_dir:
-        templates_dir = os.path.abspath(args.templates_dir)
+    stdin_mode = args.template == '-'
+
+    if stdin_mode:
+        # --- Modo stdin ---
+        # Resolve o diretório de templates (cwd como fallback)
+        if args.templates_dir:
+            templates_dir = os.path.abspath(args.templates_dir)
+            if not os.path.isdir(templates_dir):
+                sys.exit(f"Erro: diretório de templates não encontrado: {templates_dir!r}")
+            file_loader = DottedLoader(templates_dir)
+        else:
+            file_loader = DottedLoader(os.getcwd())
+
+        stdin_content = sys.stdin.read()
+        _STDIN_KEY = '__stdin__'
+
+        env = Environment(
+            loader=ChoiceLoader([DictLoader({_STDIN_KEY: stdin_content}), file_loader]),
+            block_start_string=args.block_start,
+            block_end_string=args.block_end,
+            variable_start_string=args.variable_start,
+            variable_end_string=args.variable_end,
+            comment_start_string=args.comment_start,
+            comment_end_string=args.comment_end,
+            keep_trailing_newline=True,
+        )
+        env.globals.update({"nid": Cortex.get_next_number})
+
+        try:
+            template = env.get_template(_STDIN_KEY)
+        except TemplateSyntaxError as exc:
+            sys.exit(f"Erro de sintaxe no template stdin (linha {exc.lineno}): {exc.message}")
+
+        context = build_context(args.vars, args.vars_file)
+
+        try:
+            rendered = template.render(**context)
+        except TemplateNotFound as exc:
+            msg = f"Erro: template não encontrado: {exc.name!r}."
+            if not args.templates_dir:
+                msg += " Dica: use -d para especificar o diretório de templates."
+            sys.exit(msg)
+        except Exception as exc:  # noqa: BLE001
+            sys.exit(f"Erro durante a renderização: {exc}")
+
     else:
-        templates_dir = os.path.abspath(os.path.dirname(args.template) or ".")
+        # --- Modo arquivo (comportamento original) ---
+        if args.templates_dir:
+            templates_dir = os.path.abspath(args.templates_dir)
+        else:
+            templates_dir = os.path.abspath(os.path.dirname(args.template) or ".")
 
-    if not os.path.isdir(templates_dir):
-        sys.exit(f"Erro: diretório de templates não encontrado: {templates_dir!r}")
+        if not os.path.isdir(templates_dir):
+            sys.exit(f"Erro: diretório de templates não encontrado: {templates_dir!r}")
 
-    template_name = resolve_template_name(args.template, templates_dir)
+        template_name = resolve_template_name(args.template, templates_dir)
 
-    # Cria o ambiente Jinja2
-    env = Environment(
-        loader=DottedLoader(templates_dir),
-        block_start_string=args.block_start,
-        block_end_string=args.block_end,
-        variable_start_string=args.variable_start,
-        variable_end_string=args.variable_end,
-        comment_start_string=args.comment_start,
-        comment_end_string=args.comment_end,
-        keep_trailing_newline=True,
-    )
+        env = Environment(
+            loader=DottedLoader(templates_dir),
+            block_start_string=args.block_start,
+            block_end_string=args.block_end,
+            variable_start_string=args.variable_start,
+            variable_end_string=args.variable_end,
+            comment_start_string=args.comment_start,
+            comment_end_string=args.comment_end,
+            keep_trailing_newline=True,
+        )
+        env.globals.update({"nid": Cortex.get_next_number})
 
-    env.globals.update({
-        "nid": Cortex.get_next_number,
-    })
+        try:
+            template = env.get_template(template_name)
+        except TemplateNotFound:
+            sys.exit(f"Erro: template não encontrado: {template_name!r} em {templates_dir!r}")
+        except TemplateSyntaxError as exc:
+            sys.exit(f"Erro de sintaxe no template {template_name!r} (linha {exc.lineno}): {exc.message}")
 
-    # Carrega o template
-    try:
-        template = env.get_template(template_name)
-    except TemplateNotFound:
-        sys.exit(f"Erro: template não encontrado: {template_name!r} em {templates_dir!r}")
-    except TemplateSyntaxError as exc:
-        sys.exit(f"Erro de sintaxe no template {template_name!r} (linha {exc.lineno}): {exc.message}")
+        context = build_context(args.vars, args.vars_file)
 
-    # Monta o contexto de variáveis
-    context = build_context(args.vars, args.vars_file)
-
-    # Renderiza
-    try:
-        rendered = template.render(**context)
-    except Exception as exc:  # noqa: BLE001
-        sys.exit(f"Erro durante a renderização: {exc}")
+        try:
+            rendered = template.render(**context)
+        except Exception as exc:  # noqa: BLE001
+            sys.exit(f"Erro durante a renderização: {exc}")
 
     sys.stdout.write(rendered)
 
