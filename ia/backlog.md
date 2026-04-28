@@ -25,15 +25,17 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-001 | Criar primeira versao de ia/architecture.md | 1 (critica) | baixo | [B-001.md](backlog-items/B-001.md) |
 | B-002 | Criar primeira versao de ia/code.md | 1 (critica) | baixo | [B-002.md](backlog-items/B-002.md) |
 | B-003 | Criar documentacao da linguagem DSL Genjin (.gnj) | 1 (critica) | baixo | [B-003.md](backlog-items/B-003.md) |
+| B-004 | Implementar scanner (compiler/scanner.py) | 1 (critica) | medio | [B-004.md](backlog-items/B-004.md) |
+| B-005 | Implementar parser (compiler/parser.py) | 2 (alta) | alto | [B-005.md](backlog-items/B-005.md) |
+| B-006 | Implementar transpiler (compiler/transpiler.py) | 3 (media) | medio | [B-006.md](backlog-items/B-006.md) |
 
 ### Em andamento
 
-| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
-|---|---|---|---|---|---|
-| B-004 | Implementar scanner (compiler/scanner.py) | 1 (critica) | medio | SPR-2026-02 | [B-004.md](backlog-items/B-004.md) |
-| B-005 | Implementar parser (compiler/parser.py) | 2 (alta) | alto | SPR-2026-02 | [B-005.md](backlog-items/B-005.md) |
-| B-006 | Implementar transpiler (compiler/transpiler.py) | 3 (media) | medio | SPR-2026-02 | [B-006.md](backlog-items/B-006.md) |
-
 ### Pendentes
+
+| ID | Titulo | Prioridade PO | Risco | Arquivo |
+|---|---|---|---|---|
+| B-007 | CLI standalone para cada etapa do compilador | 2 (alta) | medio | [B-007.md](backlog-items/B-007.md) |
+| B-008 | Criar script compiler.py (pipeline completo) | 3 (media) | baixo | [B-008.md](backlog-items/B-008.md) |
 
 ## Template sintetico para novos itens
