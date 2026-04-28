@@ -70,11 +70,13 @@ Resumo rapido para entender arquitetura em nivel de codigo e acelerar retomada e
 ---
 
 ### compiler/transpiler.py
-- **Status:** `vazio-alvo`
-- **Responsabilidade:** Etapa 3 do compilador — transpilação da AST para notação Genjin.
-- **Entrada:** AST (saída do parser).
-- **Saída:** Template Jinja2 conforme a notação Genjin, pronto para execução pelo `assembler.py`.
-- **Nota:** Arquivo existe com docstring de etapa mas sem implementação.
+- **Status:** `pronto`
+- **Responsabilidade:** Etapa 3 do compilador — geração de template Jinja2 a partir da AST.
+- **Entrada:** `ProgramNode` (saída do parser).
+- **Saída:** String com template Jinja2 válido para execução pelo `assembler.py`.
+- **Função de conv:** `transpile(source: str) -> str`.
+- **Nota:** `ATTRIBUTE.VARIABLE` omitido em blocos sem `>>` (runtime resolve herança via breadcrumb). `ATTRIBUTE.MACRO` gerado como lista `['library', 'macro']`.
+- **Testes:** `tests/transpiler/test_transpiler.py` (42 testes).
 
 ---
 

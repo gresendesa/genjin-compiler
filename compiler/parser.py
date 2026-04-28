@@ -56,7 +56,8 @@ class VarDeclNode:
 class ExecBlockNode:
     proc_name: str
     kwargs: dict[str, ArgNode]
-    variable: str | None     # None = herda do pai
+    variable: str | None     # variável resolvida (incluindo herança)
+    variable_explicit: bool  # True se >> foi declarado no fonte
     block_name: str | None   # None = usa nome do proc
     cases: list[CaseNode]
     loop_while: list[str]
@@ -301,9 +302,10 @@ class Parser:
 
         # >> variavel (opcional — herança)
         variable: str | None = None
+        variable_explicit = False
         if self._check(TokenType.ARROW):
             self._advance()
-            var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '>>'")
+            var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '>'")
             # Validação semântica: variável deve estar declarada
             if var_tok.value not in declared_vars:
                 raise ParseError(
@@ -311,6 +313,7 @@ class Parser:
                     var_tok.line,
                 )
             variable = var_tok.value
+            variable_explicit = True
         else:
             variable = inherited_var
 
@@ -349,6 +352,7 @@ class Parser:
             proc_name=proc_name,
             kwargs=kwargs,
             variable=variable,
+            variable_explicit=variable_explicit,
             block_name=block_name,
             cases=cases,
             loop_while=loop_while,
