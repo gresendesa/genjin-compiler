@@ -29,10 +29,11 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-02
 
-- Status: ativa
+- Status: concluida
+- Data de encerramento: 2026-04-28
 - Foco: Implementacao completa do compilador (scanner, parser, transpiler)
 - Itens: B-004, B-005, B-006
-- Prioridade PO dos itens: 1, 2, 3
+- Testes entregues: 167 (0 falhas)
 - Risco da sprint: medio (2.33)
 - Arquivo detalhado: [ia/sprints/SPR-2026-02.md](sprints/SPR-2026-02.md)
 
