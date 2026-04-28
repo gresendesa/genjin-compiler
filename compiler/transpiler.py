@@ -236,3 +236,36 @@ def transpile(source: str) -> str:
     """Tokeniza, parseia e transpila um programa .gnj para Jinja2."""
     ast = parse(source)
     return Transpiler(ast).transpile()
+
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    from compiler.ast_io import ast_from_json
+    from compiler.scanner import ScannerError
+    from compiler.parser import ParseError
+
+    ap = argparse.ArgumentParser(prog='python -m compiler.transpiler')
+    ap.add_argument('ast_file', nargs='?', help='arquivo JSON da AST (padrão: stdin)')
+    ap.add_argument('--source', metavar='ARQUIVO', help='arquivo .gnj (executa pipeline completo diretamente)')
+    args = ap.parse_args()
+
+    if args.source and args.ast_file:
+        ap.error('use --source OU arquivo de AST, não os dois')
+
+    try:
+        if args.source:
+            source = open(args.source, encoding='utf-8').read()
+            result = transpile(source)
+        else:
+            raw = open(args.ast_file, encoding='utf-8').read() if args.ast_file else sys.stdin.read()
+            ast = ast_from_json(raw)
+            result = Transpiler(ast).transpile()
+    except OSError as exc:
+        print(f'Erro ao ler arquivo: {exc}', file=sys.stderr)
+        sys.exit(2)
+    except (ScannerError, ParseError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+
+    print(result, end='')

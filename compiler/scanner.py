@@ -225,3 +225,29 @@ class Scanner:
                 return Token(tok_type, value, line)
 
             raise ScannerError(f"Caractere não reconhecido: {ch!r}", line)
+
+
+if __name__ == '__main__':
+    import sys
+    from compiler.ast_io import tokens_to_json
+
+    if len(sys.argv) > 2:
+        print('Uso: python -m compiler.scanner [arquivo]', file=sys.stderr)
+        sys.exit(2)
+
+    if len(sys.argv) == 2:
+        try:
+            source = open(sys.argv[1], encoding='utf-8').read()
+        except OSError as exc:
+            print(f'Erro ao ler arquivo: {exc}', file=sys.stderr)
+            sys.exit(2)
+    else:
+        source = sys.stdin.read()
+
+    try:
+        tokens = Scanner(source).tokenize()
+    except ScannerError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+
+    print(tokens_to_json(tokens))

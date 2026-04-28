@@ -38,6 +38,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-02.md](sprints/SPR-2026-02.md)
 
 
+### SPR-2026-03
+
+- Status: ativa
+- Data de início: 2026-04-28
+- Foco: CLI standalone por etapa + script compiler.py
+- Itens: B-007, B-008
+- Prioridade PO dos itens: 1 (critica), 2 (alta)
+- Risco da sprint: baixo/medio (1.5)
+- Arquivo detalhado: [ia/sprints/SPR-2026-03.md](sprints/SPR-2026-03.md)
+
+
 ## Template sintetico para novas sprints
 
 ### SPR-YYYY-NN

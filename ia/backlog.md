@@ -31,11 +31,16 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
+| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
+|---|---|---|---|---|---|
+| B-007 | CLI standalone para cada etapa do compilador | 1 (critica) | medio | SPR-2026-03 | [B-007.md](backlog-items/B-007.md) |
+| B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | SPR-2026-03 | [B-008.md](backlog-items/B-008.md) |
+
 ### Pendentes
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-007 | CLI standalone para cada etapa do compilador | 2 (alta) | medio | [B-007.md](backlog-items/B-007.md) |
-| B-008 | Criar script compiler.py (pipeline completo) | 3 (media) | baixo | [B-008.md](backlog-items/B-008.md) |
+| B-007 | CLI standalone para cada etapa do compilador | 1 (critica) | medio | [B-007.md](backlog-items/B-007.md) |
+| B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | [B-008.md](backlog-items/B-008.md) |
 
 ## Template sintetico para novos itens

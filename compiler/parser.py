@@ -495,3 +495,43 @@ def parse(source: str) -> ProgramNode:
     """Tokeniza e parseia um programa .gnj, retornando a AST raiz."""
     tokens = Scanner(source).tokenize()
     return Parser(tokens).parse()
+
+
+def _parse_from_tokens(tokens: list) -> ProgramNode:
+    """Parseia a partir de uma lista de tokens já produzida pelo scanner."""
+    return Parser(tokens).parse()
+
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    from compiler.ast_io import tokens_from_json, ast_to_json
+    from compiler.scanner import ScannerError
+
+    ap = argparse.ArgumentParser(prog='python -m compiler.parser')
+    ap.add_argument('tokens_file', nargs='?', help='arquivo JSON de tokens (padrão: stdin)')
+    ap.add_argument('--source', metavar='ARQUIVO', help='arquivo .gnj (executa scanner+parser diretamente)')
+    args = ap.parse_args()
+
+    if args.source and args.tokens_file:
+        ap.error('use --source OU arquivo de tokens, não os dois')
+
+    try:
+        if args.source:
+            source = open(args.source, encoding='utf-8').read()
+            ast = parse(source)
+        else:
+            raw = open(args.tokens_file, encoding='utf-8').read() if args.tokens_file else sys.stdin.read()
+            tokens = tokens_from_json(raw)
+            ast = _parse_from_tokens(tokens)
+    except OSError as exc:
+        print(f'Erro ao ler arquivo: {exc}', file=sys.stderr)
+        sys.exit(2)
+    except ScannerError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+    except ParseError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+
+    print(ast_to_json(ast))
