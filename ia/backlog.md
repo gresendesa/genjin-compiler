@@ -28,6 +28,12 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
+| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
+|---|---|---|---|---|---|
+| B-004 | Implementar scanner (compiler/scanner.py) | 1 (critica) | medio | SPR-2026-02 | [B-004.md](backlog-items/B-004.md) |
+| B-005 | Implementar parser (compiler/parser.py) | 2 (alta) | alto | SPR-2026-02 | [B-005.md](backlog-items/B-005.md) |
+| B-006 | Implementar transpiler (compiler/transpiler.py) | 3 (media) | medio | SPR-2026-02 | [B-006.md](backlog-items/B-006.md) |
+
 ### Pendentes
 
 ## Template sintetico para novos itens

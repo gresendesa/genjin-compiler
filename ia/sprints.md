@@ -27,6 +27,15 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: baixo (1.1)
 - Arquivo detalhado: [ia/sprints/SPR-2026-01.md](sprints/SPR-2026-01.md)
 
+### SPR-2026-02
+
+- Status: ativa
+- Foco: Implementacao completa do compilador (scanner, parser, transpiler)
+- Itens: B-004, B-005, B-006
+- Prioridade PO dos itens: 1, 2, 3
+- Risco da sprint: medio (2.33)
+- Arquivo detalhado: [ia/sprints/SPR-2026-02.md](sprints/SPR-2026-02.md)
+
 
 ## Template sintetico para novas sprints
 
