@@ -27,10 +27,10 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
-### Pendentes
+| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
+|---|---|---|---|---|---|
+| B-003 | Criar documentacao da linguagem DSL Genjin (.gnj) | 1 (critica) | baixo | SPR-2026-01 | [B-003.md](backlog-items/B-003.md) |
 
-| ID | Titulo | Prioridade PO | Risco | Arquivo |
-|---|---|---|---|---|
-| B-003 | Criar documentacao da linguagem DSL Genjin (.gnj) | 1 (critica) | baixo | [B-003.md](backlog-items/B-003.md) |
+### Pendentes
 
 ## Template sintetico para novos itens

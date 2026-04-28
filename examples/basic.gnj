@@ -23,7 +23,7 @@ procs {
 }
 
 exec verificar_rede() >> status_var {
-    case OFFLINE : exec esperar(segundos=5) {
+    case OFFLINE : exec esperar(segundos=5) as "wait" {
         case DONE : exec enviar(texto="OK", resposta=&res) >> status_var2 {
             pass OK, TIMEOUT
         }
