@@ -40,7 +40,7 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-03
 
-- Status: ativa
+- Status: concluída
 - Data de início: 2026-04-28
 - Foco: CLI standalone por etapa + script compiler.py
 - Itens: B-007, B-008

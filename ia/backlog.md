@@ -28,19 +28,15 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-004 | Implementar scanner (compiler/scanner.py) | 1 (critica) | medio | [B-004.md](backlog-items/B-004.md) |
 | B-005 | Implementar parser (compiler/parser.py) | 2 (alta) | alto | [B-005.md](backlog-items/B-005.md) |
 | B-006 | Implementar transpiler (compiler/transpiler.py) | 3 (media) | medio | [B-006.md](backlog-items/B-006.md) |
+| B-007 | CLI standalone para cada etapa do compilador | 1 (critica) | medio | [B-007.md](backlog-items/B-007.md) |
+| B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | [B-008.md](backlog-items/B-008.md) |
 
 ### Em andamento
 
-| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
-|---|---|---|---|---|---|
-| B-007 | CLI standalone para cada etapa do compilador | 1 (critica) | medio | SPR-2026-03 | [B-007.md](backlog-items/B-007.md) |
-| B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | SPR-2026-03 | [B-008.md](backlog-items/B-008.md) |
+(nenhum)
 
 ### Pendentes
 
-| ID | Titulo | Prioridade PO | Risco | Arquivo |
-|---|---|---|---|---|
-| B-007 | CLI standalone para cada etapa do compilador | 1 (critica) | medio | [B-007.md](backlog-items/B-007.md) |
-| B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | [B-008.md](backlog-items/B-008.md) |
+(nenhum)
 
 ## Template sintetico para novos itens
