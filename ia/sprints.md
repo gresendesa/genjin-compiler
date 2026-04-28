@@ -51,9 +51,7 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-04
 
-- Status: ativa
-- Data de início: 2026-04-28
-- Foco: Assembler — suporte a leitura de template via stdin para pipeline com compiler.py
+- Status: concluída
 - Itens: B-009
 - Prioridade PO dos itens: 2 (alta)
 - Risco da sprint: baixo/médio (1.33)
