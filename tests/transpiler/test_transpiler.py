@@ -43,7 +43,7 @@ exec foo() >> s {
 class TestMinimalTemplate:
     def test_has_import_line(self):
         out = gen(MINIMAL)
-        assert '{* from "code/genjin.jinja2" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}' in out
+        assert '{* from "genjin" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}' in out
 
     def test_has_set_program(self):
         out = gen(MINIMAL)

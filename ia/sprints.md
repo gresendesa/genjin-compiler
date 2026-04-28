@@ -58,6 +58,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-04.md](sprints/SPR-2026-04.md)
 
 
+### SPR-2026-05
+
+- Status: concluída
+- Data de início: 2026-04-28
+- Foco: Transpiler — corrigir import de genjin para notação DottedLoader (`"genjin"`)
+- Itens: B-010
+- Prioridade PO dos itens: 1 (critica)
+- Risco da sprint: baixo (1.0)
+- Arquivo detalhado: [ia/sprints/SPR-2026-05.md](sprints/SPR-2026-05.md)
+
+
 ## Template sintetico para novas sprints
 
 ### SPR-YYYY-NN

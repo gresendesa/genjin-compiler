@@ -199,7 +199,7 @@ class TestTranspilerCLI:
 
     def test_stdin_saida_comeca_com_import(self):
         result = _run(['compiler.transpiler'], input_text=self._ast_json())
-        assert result.stdout.startswith('{* from "code/genjin.jinja2"')
+        assert result.stdout.startswith('{* from "genjin"')
 
     def test_stdin_saida_contem_build(self):
         result = _run(['compiler.transpiler'], input_text=self._ast_json())
@@ -253,7 +253,7 @@ class TestPipelineCLI:
         assert parse.returncode == 0
         transp = _run(['compiler.transpiler'], input_text=parse.stdout)
         assert transp.returncode == 0
-        assert '{* from "code/genjin.jinja2"' in transp.stdout
+        assert '{* from "genjin"' in transp.stdout
 
     def test_pipeline_nome_programa_na_saida(self, gnj_file):
         scan = _run(['compiler.scanner', str(gnj_file)])

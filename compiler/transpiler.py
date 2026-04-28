@@ -85,7 +85,7 @@ class Transpiler:
 
     def transpile(self) -> str:
         w = _Writer()
-        w.line('{* from "code/genjin.jinja2" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}')
+        w.line('{* from "genjin" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}')
         w.line()
         w.line('{*')
         w.indent()

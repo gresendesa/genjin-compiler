@@ -31,6 +31,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-007 | CLI standalone para cada etapa do compilador | 1 (critica) | medio | [B-007.md](backlog-items/B-007.md) |
 | B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | [B-008.md](backlog-items/B-008.md) |
 | B-009 | Assembler: leitura de template via stdin (pipe) | 2 (alta) | medio | [B-009.md](backlog-items/B-009.md) |
+| B-010 | Transpiler: ajustar import de genjin.jinja2 para notação DottedLoader | 1 (critica) | baixo | [B-010.md](backlog-items/B-010.md) |
 
 ### Em andamento
 

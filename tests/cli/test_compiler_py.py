@@ -63,7 +63,7 @@ class TestCompilerArquivo:
 
     def test_saida_comeca_com_import(self, gnj_file):
         result = _run([str(gnj_file)])
-        assert result.stdout.startswith('{* from "code/genjin.jinja2"')
+        assert result.stdout.startswith('{* from "genjin"')
 
     def test_saida_contem_build(self, gnj_file):
         result = _run([str(gnj_file)])
@@ -102,7 +102,7 @@ class TestCompilerStdin:
 
     def test_saida_comeca_com_import(self):
         result = _run([], input_text=BASIC_GNJ)
-        assert result.stdout.startswith('{* from "code/genjin.jinja2"')
+        assert result.stdout.startswith('{* from "genjin"')
 
 
 # ---------------------------------------------------------------------------
