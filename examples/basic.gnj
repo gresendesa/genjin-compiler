@@ -5,6 +5,7 @@ vars {
     status_var2: Number
     status_conexao: Text = "idle"
     res: Text
+    minha_lista: Text[]
 }
 
 procs {

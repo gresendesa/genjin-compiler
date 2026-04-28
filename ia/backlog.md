@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-04-26
+Ultima atualizacao: 2026-04-27
 
 ## Objetivo
 
@@ -28,5 +28,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 ### Em andamento
 
 ### Pendentes
+
+| ID | Titulo | Prioridade PO | Risco | Arquivo |
+|---|---|---|---|---|
+| B-003 | Criar documentacao da linguagem DSL Genjin (.gnj) | 1 (critica) | baixo | [B-003.md](backlog-items/B-003.md) |
 
 ## Template sintetico para novos itens
