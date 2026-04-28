@@ -1,5 +1,5 @@
 '''
-Etapa 1:
-Análise lexográfica
-Saída: lista de tokens
+Etapa 2:
+Análise sintática/semântica
+Saída: AST (Abstract Syntax Tree)
 '''
