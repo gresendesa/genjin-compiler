@@ -24,12 +24,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 |---|---|---|---|---|
 | B-001 | Criar primeira versao de ia/architecture.md | 1 (critica) | baixo | [B-001.md](backlog-items/B-001.md) |
 | B-002 | Criar primeira versao de ia/code.md | 1 (critica) | baixo | [B-002.md](backlog-items/B-002.md) |
+| B-003 | Criar documentacao da linguagem DSL Genjin (.gnj) | 1 (critica) | baixo | [B-003.md](backlog-items/B-003.md) |
 
 ### Em andamento
-
-| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
-|---|---|---|---|---|---|
-| B-003 | Criar documentacao da linguagem DSL Genjin (.gnj) | 1 (critica) | baixo | SPR-2026-01 | [B-003.md](backlog-items/B-003.md) |
 
 ### Pendentes
 

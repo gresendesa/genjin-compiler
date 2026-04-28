@@ -20,7 +20,7 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-01
 
-- Status: ativa
+- Status: concluida
 - Foco: Documentacao da linguagem DSL Genjin (.gnj)
 - Itens: B-003
 - Prioridade PO dos itens: 1 (critica)
