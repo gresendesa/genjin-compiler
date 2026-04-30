@@ -125,7 +125,7 @@ class Minifier:
       ((?<!https:)(?<!http:)//[^\n]*(?:\n|$))    # Everything between // and the end of the line/file
       |                     # or
       (/\*.*?\*/)           # Everything between /* and */
-    ''', re.VERBOSE)
+    ''', re.VERBOSE | re.DOTALL)
     return COMMENTS.sub('\n', content)
 
   def inject_collons(self, content):

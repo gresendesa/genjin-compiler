@@ -1,0 +1,18 @@
+program "Fluxo Genérico de Testes"
+
+vars {
+    status_var: Number
+}
+
+procs {
+    proc inicia_processo() from "tests.default.xpto" {
+        codes OK<0>, ERROR<1>
+    }
+}
+
+exec inicia_processo() >> status_var {
+    case OK: exec inicia_processo() {
+        pass ERROR, OK
+    }
+    pass ERROR
+} while(ERROR, OK)

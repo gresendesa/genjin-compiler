@@ -1,0 +1,13 @@
+{* set 
+    codes = {
+        'OK': 0,
+        'ERROR': 1
+    } 
+*}
+
+{* macro xpto(outvar) *}
+    SET({{ outvar }},{{ codes.OK }});
+    IF(HITID!="NONE");
+        SET({{ outvar }},{{ codes.ERROR }});
+    ENDIF;
+{* endmacro *}
