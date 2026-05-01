@@ -10,11 +10,23 @@ procs {
     }
 }
 
+
 exec inicia_processo() >> status_var {
-    case OK: exec inicia_processo() {
-        pass ERROR, OK
-    }
+    case OK: @inicia_processo()::OK 
+             @inicia_processo()::ERROR while (ERROR)
+             @inicia_processo()
     pass ERROR, OK
 } while(ERROR)
 
+
+exec inicia_processo() >> status_var {
+    case OK: exec inicia_processo() {
+        case OK: exec inicia_processo() {
+            case ERROR: exec inicia_processo(){
+                pass ERROR, OK
+            } 
+        } while(ERROR)
+    }
+    pass ERROR, OK
+} while(ERROR)
 
