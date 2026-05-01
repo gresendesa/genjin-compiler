@@ -32,6 +32,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-008 | Criar script compiler.py (pipeline completo) | 2 (alta) | baixo | [B-008.md](backlog-items/B-008.md) |
 | B-009 | Assembler: leitura de template via stdin (pipe) | 2 (alta) | medio | [B-009.md](backlog-items/B-009.md) |
 | B-010 | Transpiler: ajustar import de genjin.jinja2 para notação DottedLoader | 1 (critica) | baixo | [B-010.md](backlog-items/B-010.md) |
+| B-011 | Extensão VS Code para suporte à linguagem Genjin | (a definir) | baixo | [B-011.md](backlog-items/B-011.md) |
 
 ### Em andamento
 
@@ -41,6 +42,8 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-011 | Extensão VS Code para suporte à linguagem Genjin | (a definir) | baixo | [B-011.md](backlog-items/B-011.md) |
+| B-012 | Parser: enforçar ordem `as` antes de `>>` no bloco exec | (a definir) | baixo | [B-012.md](backlog-items/B-012.md) |
+| B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | (a definir) | baixo | [B-013.md](backlog-items/B-013.md) |
+| B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | (a definir) | médio | [B-014.md](backlog-items/B-014.md) |
 
 ## Template sintetico para novos itens
