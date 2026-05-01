@@ -46,6 +46,9 @@ class Cortex:
         number = Cortex.counter
         return str(hex(number)).lower()[2:]
 
+    def throw(msg):
+        raise Exception(msg)
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="assembler",
@@ -197,7 +200,10 @@ def main() -> None:
             comment_end_string=args.comment_end,
             keep_trailing_newline=True,
         )
-        env.globals.update({"nid": Cortex.get_next_number})
+        env.globals.update({
+            "nid": Cortex.get_next_number,
+            "raise":Cortex.throw
+        })
 
         try:
             template = env.get_template(_STDIN_KEY)

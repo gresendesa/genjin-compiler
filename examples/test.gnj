@@ -14,5 +14,5 @@ exec inicia_processo() >> status_var {
     case OK: exec inicia_processo() {
         pass ERROR, OK
     }
-    pass ERROR
-} while(ERROR, OK)
+    pass ERROR, OK
+} while(ERROR)
