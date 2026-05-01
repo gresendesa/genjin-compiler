@@ -39,6 +39,8 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Pendentes
 
-(nenhum)
+| ID | Titulo | Prioridade PO | Risco | Arquivo |
+|---|---|---|---|---|
+| B-011 | Extensão VS Code para suporte à linguagem Genjin | (a definir) | baixo | [B-011.md](backlog-items/B-011.md) |
 
 ## Template sintetico para novos itens

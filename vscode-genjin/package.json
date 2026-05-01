@@ -1,0 +1,40 @@
+{
+  "name": "genjin-lang",
+  "displayName": "Genjin Language Support",
+  "description": "Syntax highlighting e suporte básico para a linguagem Genjin (.gnj / .genjin)",
+  "version": "0.1.0",
+  "publisher": "macrosoft-dev",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/macrosoft-dev/genjin-compiler"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "genjin",
+        "aliases": [
+          "Genjin",
+          "genjin"
+        ],
+        "extensions": [
+          ".gnj",
+          ".genjin"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "genjin",
+        "scopeName": "source.genjin",
+        "path": "./syntaxes/genjin.tmLanguage.json"
+      }
+    ]
+  }
+}
