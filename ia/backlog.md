@@ -42,9 +42,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-012 | Parser: enforçar ordem `as` antes de `>>` no bloco exec | (a definir) | baixo | [B-012.md](backlog-items/B-012.md) |
-| B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | (a definir) | baixo | [B-013.md](backlog-items/B-013.md) |
-| B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | (a definir) | médio | [B-014.md](backlog-items/B-014.md) |
-| B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | mais baixa entre pendentes (sprint separada) | alto | [B-015.md](backlog-items/B-015.md) |
+| B-012 | Parser: enforçar ordem `as` antes de `>>` no bloco exec | 1 (crítica) | baixo | [B-012.md](backlog-items/B-012.md) |
+| B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | 1 (crítica) | baixo | [B-013.md](backlog-items/B-013.md) |
+| B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | 1 (crítica) | médio | [B-014.md](backlog-items/B-014.md) |
+| B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | 4 (baixa) | alto | [B-015.md](backlog-items/B-015.md) |
 
 ## Template sintetico para novos itens

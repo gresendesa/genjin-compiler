@@ -69,6 +69,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-05.md](sprints/SPR-2026-05.md)
 
 
+### SPR-2026-06
+
+- Status: em andamento
+- Data de início: 2026-05-01
+- Foco: Correções de gramática do parser (ordem `as`/`>>`, remoção de `proc`, ordem flexível de blocos)
+- Itens: B-013, B-012, B-014
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: baixo/médio (1.33)
+- Arquivo detalhado: [ia/sprints/SPR-2026-06.md](sprints/SPR-2026-06.md)
+
+
 ## Template sintetico para novas sprints
 
 ### SPR-YYYY-NN
