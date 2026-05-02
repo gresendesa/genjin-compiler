@@ -30,7 +30,7 @@ vars {
     s: Number
 }
 procs {
-    proc foo() from "Lib.bar" {
+    foo() from "Lib.bar" {
         codes OK<0>
     }
 }
@@ -91,7 +91,7 @@ class TestVarMapping:
         src = '''\
 program "T"
 vars { lista: Text[] }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> lista { pass OK }
 '''
         assert 'CARDINALITY.PLURAL' in gen(src)
@@ -100,7 +100,7 @@ exec f() >> lista { pass OK }
         src = '''\
 program "T"
 vars { s: Text = "oi" }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> s { pass OK }
 '''
         assert 'TYPE.TEXT' in gen(src)
@@ -109,7 +109,7 @@ exec f() >> s { pass OK }
         src = '''\
 program "T"
 vars { flag: Logic }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> flag { pass OK }
 '''
         assert 'TYPE.LOGIC' in gen(src)
@@ -118,7 +118,7 @@ exec f() >> flag { pass OK }
         src = '''\
 program "T"
 vars { s: Text = "idle" }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> s { pass OK }
 '''
         out = gen(src)
@@ -129,7 +129,7 @@ exec f() >> s { pass OK }
         src = '''\
 program "T"
 vars { n: Number = 42 }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> n { pass OK }
 '''
         out = gen(src)
@@ -158,7 +158,7 @@ class TestProcMapping:
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "Federal.@.GenJin" { codes OK<0> } }
+procs { f() from "Federal.@.GenJin" { codes OK<0> } }
 exec f() >> s { pass OK }
 '''
         out = gen(src)
@@ -169,7 +169,7 @@ exec f() >> s { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0>, ERR<5> } }
+procs { f() from "A.b" { codes OK<0>, ERR<5> } }
 exec f() >> s { pass OK, ERR }
 '''
         out = gen(src)
@@ -182,7 +182,7 @@ exec f() >> s { pass OK, ERR }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(n: Number) from "A.b" { codes OK<0> } }
+procs { f(n: Number) from "A.b" { codes OK<0> } }
 exec f(n=1) >> s { pass OK }
 '''
         out = gen(src)
@@ -194,7 +194,7 @@ exec f(n=1) >> s { pass OK }
 program "T"
 vars { s: Number
        r: Text }
-procs { proc f(resp: &Text) from "A.b" { codes OK<0> } }
+procs { f(resp: &Text) from "A.b" { codes OK<0> } }
 exec f(resp=&r) >> s { pass OK }
 '''
         out = gen(src)
@@ -216,8 +216,8 @@ class TestBlockMapping:
 program "T"
 vars { s: Number }
 procs {
-    proc outer() from "A.b" { codes X<0> }
-    proc inner() from "A.c" { codes Y<0> }
+    outer() from "A.b" { codes X<0> }
+    inner() from "A.c" { codes Y<0> }
 }
 exec outer() >> s {
     case X : exec inner() {
@@ -237,8 +237,8 @@ program "T"
 vars { s: Number
        t: Number }
 procs {
-    proc outer() from "A.b" { codes X<0> }
-    proc inner() from "A.c" { codes Y<0> }
+    outer() from "A.b" { codes X<0> }
+    inner() from "A.c" { codes Y<0> }
 }
 exec outer() >> s {
     case X : exec inner() >> t {
@@ -268,7 +268,7 @@ exec outer() >> s {
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0>, ERR<1> } }
+procs { f() from "A.b" { codes OK<0>, ERR<1> } }
 exec f() >> s {
     pass OK
 } while(ERR)
@@ -281,8 +281,8 @@ exec f() >> s {
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
-exec f() >> s as "meu_bloco" { pass OK }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() as "meu_bloco" >> s { pass OK }
 '''
         out = gen(src)
         assert "'meu_bloco'" in out
@@ -296,7 +296,7 @@ exec f() >> s as "meu_bloco" { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(n: Number) from "A.b" { codes OK<0> } }
+procs { f(n: Number) from "A.b" { codes OK<0> } }
 exec f(n=7) >> s { pass OK }
 '''
         out = gen(src)
@@ -310,7 +310,7 @@ exec f(n=7) >> s { pass OK }
 program "T"
 vars { s: Number
        r: Text }
-procs { proc f(resp: &Text) from "A.b" { codes OK<0> } }
+procs { f(resp: &Text) from "A.b" { codes OK<0> } }
 exec f(resp=&r) >> s { pass OK }
 '''
         out = gen(src)
@@ -336,15 +336,15 @@ vars {
 }
 
 procs {
-    proc verificar_rede() from "Net.check" {
+    verificar_rede() from "Net.check" {
         codes ONLINE<0>, OFFLINE<1>
     }
 
-    proc esperar(segundos: Number) from "Sys.sleep" {
+    esperar(segundos: Number) from "Sys.sleep" {
         codes DONE<0>, ERROR<5>
     }
 
-    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {
+    enviar(texto: Text, resposta: &Text) from "Sys.send" {
         codes OK<0>, TIMEOUT<10>
     }
 }

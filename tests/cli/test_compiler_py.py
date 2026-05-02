@@ -23,7 +23,7 @@ program "Pagamento"
 vars { s: Number }
 
 procs {
-    proc pagar(val: Number) from "Pay.do" {
+    pagar(val: Number) from "Pay.do" {
         codes OK<0>, FALHA<1>
     }
 }

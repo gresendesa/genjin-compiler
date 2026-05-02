@@ -5,27 +5,15 @@ vars {
 }
 
 procs {
-    proc inicia_processo() from "tests.default.xpto" {
+    inicia_processo() from "tests.default.xpto" {
         codes OK<0>, ERROR<1>
     }
 }
 
 
 exec inicia_processo() >> status_var {
-    case OK: @inicia_processo()::OK 
-             @inicia_processo()::ERROR while (ERROR)
-             @inicia_processo()
-    pass ERROR, OK
-} while(ERROR)
-
-
-exec inicia_processo() >> status_var {
     case OK: exec inicia_processo() {
-        case OK: exec inicia_processo() {
-            case ERROR: exec inicia_processo(){
-                pass ERROR, OK
-            } 
-        } while(ERROR)
+        pass ERROR, OK
     }
     pass ERROR, OK
 } while(ERROR)

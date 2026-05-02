@@ -13,7 +13,7 @@ class TokenType(Enum):
     KW_PROGRAM  = auto()
     KW_VARS     = auto()
     KW_PROCS    = auto()
-    KW_PROC     = auto()
+    KW_PROC     = auto()   # deprecado: 'proc' não é mais keyword ativa
     KW_FROM     = auto()
     KW_EXEC     = auto()
     KW_CASE     = auto()
@@ -51,7 +51,7 @@ _KEYWORDS: dict[str, TokenType] = {
     'program': TokenType.KW_PROGRAM,
     'vars':    TokenType.KW_VARS,
     'procs':   TokenType.KW_PROCS,
-    'proc':    TokenType.KW_PROC,
+    # 'proc' foi removido das keywords; agora é reconhecido como IDENT
     'from':    TokenType.KW_FROM,
     'exec':    TokenType.KW_EXEC,
     'case':    TokenType.KW_CASE,

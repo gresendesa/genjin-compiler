@@ -145,15 +145,80 @@ class Parser:
     def _parse_program(self) -> ProgramNode:
         self._expect(TokenType.KW_PROGRAM, "esperado 'program'")
         name_tok = self._expect(TokenType.STRING, "esperado nome do programa como string")
-        variables = self._parse_vars()
-        procedures = self._parse_procs()
-        block = self._parse_exec(declared_vars={v.name for v in variables},
-                                 declared_procs={p.name: p for p in procedures},
-                                 inherited_var=None)
+
+        _BLOCK_TOKENS = {TokenType.KW_VARS, TokenType.KW_PROCS, TokenType.KW_EXEC}
+
+        variables: list[VarDeclNode] | None = None
+        procedures: list[ProcDeclNode] | None = None
+        exec_pos: int | None = None  # posição do token 'exec' na lista de tokens
+
+        # Primeiro passo: coletar vars e procs em qualquer ordem; memorizar posição do exec
+        while self._check(*_BLOCK_TOKENS):
+            tok = self._peek()
+            if tok.type == TokenType.KW_VARS:
+                if variables is not None:
+                    raise ParseError("bloco 'vars' declarado mais de uma vez", tok.line)
+                variables = self._parse_vars()
+            elif tok.type == TokenType.KW_PROCS:
+                if procedures is not None:
+                    raise ParseError("bloco 'procs' declarado mais de uma vez", tok.line)
+                procedures = self._parse_procs()
+            elif tok.type == TokenType.KW_EXEC:
+                if exec_pos is not None:
+                    raise ParseError("bloco 'exec' raiz declarado mais de uma vez", tok.line)
+                exec_pos = self._pos
+                self._skip_exec_block()  # pula sem parsear — será parseado no segundo passo
+
+        if variables is None:
+            raise ParseError("bloco 'vars' ausente", self._peek().line)
+        if procedures is None:
+            raise ParseError("bloco 'procs' ausente", self._peek().line)
+        if exec_pos is None:
+            raise ParseError("bloco 'exec' raiz ausente", self._peek().line)
+
+        # Segundo passo: parsear exec com vars e procs completos
+        end_pos = self._pos
+        self._pos = exec_pos
+        block = self._parse_exec(
+            declared_vars={v.name for v in variables},
+            declared_procs={p.name: p for p in procedures},
+            inherited_var=None,
+        )
+        self._pos = end_pos
+
         return ProgramNode(name=name_tok.value,
                            variables=variables,
                            procedures=procedures,
                            block=block)
+
+    def _skip_exec_block(self) -> None:
+        """Avança o cursor por um bloco exec (e while opcional) sem parsear semanticamente."""
+        # Pula até encontrar '{' de abertura (ignorando '()' dos args)
+        paren_depth = 0
+        while not self._check(TokenType.EOF):
+            tok = self._advance()
+            if tok.type == TokenType.LPAREN:
+                paren_depth += 1
+            elif tok.type == TokenType.RPAREN:
+                paren_depth -= 1
+            elif tok.type == TokenType.LBRACE and paren_depth == 0:
+                break
+        # Conta chaves até fechar o bloco raiz
+        brace_depth = 1
+        while brace_depth > 0 and not self._check(TokenType.EOF):
+            tok = self._advance()
+            if tok.type == TokenType.LBRACE:
+                brace_depth += 1
+            elif tok.type == TokenType.RBRACE:
+                brace_depth -= 1
+        # Pula while(...) opcional
+        if self._check(TokenType.KW_WHILE):
+            self._advance()  # while
+            self._advance()  # (
+            while not self._check(TokenType.RPAREN, TokenType.EOF):
+                self._advance()
+            if self._check(TokenType.RPAREN):
+                self._advance()  # )
 
     # ------------------------------------------------------------------
     # vars
@@ -215,7 +280,12 @@ class Parser:
         return procedures
 
     def _parse_proc_decl(self) -> ProcDeclNode:
-        self._expect(TokenType.KW_PROC, "esperado 'proc'")
+        tok = self._peek()
+        if tok.type == TokenType.IDENT and tok.value == 'proc':
+            raise ParseError(
+                "keyword 'proc' não é mais necessária; escreva diretamente o nome do procedimento",
+                tok.line,
+            )
         name_tok = self._expect(TokenType.IDENT, "esperado nome do proc")
         self._expect(TokenType.LPAREN, "esperado '(' após nome do proc")
         params = self._parse_param_list()
@@ -300,12 +370,19 @@ class Parser:
         kwargs = self._parse_kwargs(proc_decl, declared_vars, exec_tok.line)
         self._expect(TokenType.RPAREN, "esperado ')' após argumentos")
 
+        # as "nome" (opcional — deve vir ANTES de >>)
+        block_name: str | None = None
+        if self._check(TokenType.KW_AS):
+            self._advance()
+            name_tok = self._expect(TokenType.STRING, "esperado string após 'as'")
+            block_name = name_tok.value
+
         # >> variavel (opcional — herança)
         variable: str | None = None
         variable_explicit = False
         if self._check(TokenType.ARROW):
             self._advance()
-            var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '>'")
+            var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '>>'")
             # Validação semântica: variável deve estar declarada
             if var_tok.value not in declared_vars:
                 raise ParseError(
@@ -314,15 +391,20 @@ class Parser:
                 )
             variable = var_tok.value
             variable_explicit = True
+            # Verificar se 'as' aparece DEPOIS de '>>' — ordem inválida
+            if self._check(TokenType.KW_AS):
+                raise ParseError(
+                    "'as' deve vir antes de '>>': use exec proc() as \"nome\" >> var { }",
+                    self._peek().line,
+                )
+        elif self._check(TokenType.KW_AS):
+            # 'as' depois de '>>' — ordem inválida
+            raise ParseError(
+                "'as' deve vir antes de '>>': use exec proc() as \"nome\" >> var { }",
+                self._peek().line,
+            )
         else:
             variable = inherited_var
-
-        # as "nome" (opcional)
-        block_name: str | None = None
-        if self._check(TokenType.KW_AS):
-            self._advance()
-            name_tok = self._expect(TokenType.STRING, "esperado string após 'as'")
-            block_name = name_tok.value
 
         self._expect(TokenType.LBRACE, "esperado '{' no corpo do exec")
         cases, pass_codes = self._parse_exec_body(

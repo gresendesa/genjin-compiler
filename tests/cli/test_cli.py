@@ -29,7 +29,7 @@ vars {
 }
 
 procs {
-    proc f(n: Number, res: &Text) from "A.b" {
+    f(n: Number, res: &Text) from "A.b" {
         codes OK<0>, ERR<1>
     }
 }

@@ -221,7 +221,7 @@ program "Teste"
 vars { s: Number }
 
 procs {
-    proc f(n: Number) from "Lib.fn" {
+    f(n: Number) from "Lib.fn" {
         codes OK<0>
     }
 }

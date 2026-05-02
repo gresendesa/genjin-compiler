@@ -41,7 +41,7 @@ class TestKeywords:
         assert types('procs') == [TokenType.KW_PROCS]
 
     def test_proc(self):
-        assert types('proc') == [TokenType.KW_PROC]
+        assert types('proc') == [TokenType.IDENT]
 
     def test_from(self):
         assert types('from') == [TokenType.KW_FROM]
@@ -65,10 +65,10 @@ class TestKeywords:
         assert types('codes') == [TokenType.KW_CODES]
 
     def test_all_keywords_sequence(self):
-        src = 'program vars procs proc from exec case pass while as codes'
+        src = 'program vars procs from exec case pass while as codes'
         expected = [
             TokenType.KW_PROGRAM, TokenType.KW_VARS, TokenType.KW_PROCS,
-            TokenType.KW_PROC, TokenType.KW_FROM, TokenType.KW_EXEC,
+            TokenType.KW_FROM, TokenType.KW_EXEC,
             TokenType.KW_CASE, TokenType.KW_PASS, TokenType.KW_WHILE,
             TokenType.KW_AS, TokenType.KW_CODES,
         ]
@@ -322,15 +322,15 @@ vars {
 }
 
 procs {
-    proc verificar_rede() from "Net.check" {
+    verificar_rede() from "Net.check" {
         codes ONLINE<0>, OFFLINE<1>
     }
 
-    proc esperar(segundos: Number) from "Sys.sleep" {
+    esperar(segundos: Number) from "Sys.sleep" {
         codes DONE<0>, ERROR<5>
     }
 
-    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {
+    enviar(texto: Text, resposta: &Text) from "Sys.send" {
         codes OK<0>, TIMEOUT<10>
     }
 }
@@ -371,7 +371,7 @@ exec verificar_rede() >> status_var {
         result = types(self.BASIC_GNJ)
         for kw in [
             TokenType.KW_PROGRAM, TokenType.KW_VARS, TokenType.KW_PROCS,
-            TokenType.KW_PROC, TokenType.KW_FROM, TokenType.KW_EXEC,
+            TokenType.KW_FROM, TokenType.KW_EXEC,
             TokenType.KW_CASE, TokenType.KW_PASS, TokenType.KW_WHILE,
             TokenType.KW_CODES,
         ]:

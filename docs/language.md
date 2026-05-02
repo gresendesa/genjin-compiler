@@ -20,7 +20,7 @@ Um arquivo `.gnj` é compilado pelo compilador (`compiler/`) e produz um templat
 
 ## Estrutura geral de um programa
 
-Todo programa `.gnj` é composto por três seções obrigatórias, nesta ordem:
+Todo programa `.gnj` é composto por três seções obrigatórias. A única restrição posicional é que `program` deve ser a **primeira** palavra-chave do arquivo. Os blocos `vars`, `procs` e `exec` podem aparecer em **qualquer ordem**:
 
 ```gnj
 program "nome do programa"
@@ -40,10 +40,10 @@ exec nome_do_proc(...) >> variavel_raiz {
 
 | Seção | Obrigatória | Descrição |
 |---|:---:|---|
-| `program` | sim | Declara o nome do programa |
-| `vars` | sim | Declara as variáveis de estado |
-| `procs` | sim | Declara os procedimentos disponíveis |
-| `exec` (raiz) | sim | Define o fluxo de execução. Exatamente um bloco raiz por programa. |
+| `program` | sim | Declara o nome do programa. **Deve ser a primeira linha.** |
+| `vars` | sim | Declara as variáveis de estado. Pode vir em qualquer ordem após `program`. |
+| `procs` | sim | Declara os procedimentos disponíveis. Pode vir em qualquer ordem após `program`. |
+| `exec` (raiz) | sim | Define o fluxo de execução. Exatamente um bloco raiz por programa. Pode vir em qualquer ordem após `program`. |
 
 ---
 
@@ -133,11 +133,13 @@ Declara todos os procedimentos disponíveis para uso nos blocos `exec`.
 
 ```gnj
 procs {
-    proc nome(parametros) from "caminho.macro" {
+    nome(parametros) from "caminho.macro" {
         codes NOME<codigo>, ...
     }
 }
 ```
+
+> **Nota:** a keyword `proc` foi removida. Dentro de `procs { }`, os procedimentos são declarados diretamente pelo nome, sem prefixo.
 
 ### Resolução do `from`
 
@@ -156,7 +158,7 @@ Um procedimento pode ter zero ou mais parâmetros. Cada parâmetro tem nome e ti
 #### Parâmetro por valor (literal)
 
 ```gnj
-proc esperar(segundos: Number) from "Sys.sleep" { ... }
+esperar(segundos: Number) from "Sys.sleep" { ... }
 ```
 
 O argumento será passado como um valor literal. Corresponde a `EVALUATION.LITERAL`.
@@ -164,7 +166,7 @@ O argumento será passado como um valor literal. Corresponde a `EVALUATION.LITER
 #### Parâmetro por referência
 
 ```gnj
-proc enviar(texto: Text, resposta: &Text) from "Sys.send" { ... }
+enviar(texto: Text, resposta: &Text) from "Sys.send" { ... }
 ```
 
 O `&` antes do tipo indica que o argumento deve ser passado por referência a uma variável. Corresponde a `EVALUATION.REFERENCE`. Só aceita uma variável como argumento — nunca um literal.
@@ -184,7 +186,7 @@ codes NOME<numero>, NOME<numero>, ...
 
 **Exemplo:**
 ```gnj
-proc verificar_rede() from "Net.check" {
+verificar_rede() from "Net.check" {
     codes ONLINE<0>, OFFLINE<1>
 }
 ```
@@ -193,15 +195,15 @@ proc verificar_rede() from "Net.check" {
 
 ```gnj
 procs {
-    proc verificar_rede() from "Net.check" {
+    verificar_rede() from "Net.check" {
         codes ONLINE<0>, OFFLINE<1>
     }
 
-    proc esperar(segundos: Number) from "Sys.sleep" {
+    esperar(segundos: Number) from "Sys.sleep" {
         codes DONE<0>, ERROR<5>
     }
 
-    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {
+    enviar(texto: Text, resposta: &Text) from "Sys.send" {
         codes OK<0>, TIMEOUT<10>
     }
 }
@@ -246,10 +248,11 @@ exec verificar_rede() >> status_var {
 
 ### Nome do bloco (`as`)
 
-Por padrão, o nome do bloco é o nome do procedimento invocado. Para dar um nome explícito, use `as`:
+Por padrão, o nome do bloco é o nome do procedimento invocado. Para dar um nome explícito, use `as`. O `as` deve vir **antes** de `>>`:
 
 ```gnj
 exec esperar(segundos=5) as "aguardar_rede" { ... }
+exec esperar(segundos=5) as "aguardar_rede" >> status_var { ... }
 ```
 
 Corresponde a `ATTRIBUTE.NAME` no motor.
@@ -370,7 +373,7 @@ exec verificar_rede() >> status_var {
 | `Text` | Tipo texto | `TYPE.TEXT` |
 | `Logic` | Tipo lógico | `TYPE.LOGIC` |
 | `procs { ... }` | Lista de procedimentos | `ATTRIBUTE.PROCEDURES` |
-| `proc nome(...) from "a.b"` | Procedimento com macro | `ATTRIBUTE.NAME`, `ATTRIBUTE.MACRO: ('a', 'b')` |
+| `nome(...) from "a.b"` | Procedimento com macro | `ATTRIBUTE.NAME`, `ATTRIBUTE.MACRO: ('a', 'b')` |
 | `param: Tipo` | Parâmetro por valor | `ATTRIBUTE.EVALUATION` → `EVALUATION.LITERAL` |
 | `param: &Tipo` | Parâmetro por referência | `ATTRIBUTE.EVALUATION` → `EVALUATION.REFERENCE` |
 | `codes NOME<n>` | Código de saída | `ATTRIBUTE.OUTPUT_CODES`: `{NAME, CODE}` |
@@ -399,15 +402,15 @@ vars {
 }
 
 procs {
-    proc verificar_rede() from "Net.check" {    // MACRO: ('Net', 'check')
+    verificar_rede() from "Net.check" {    // MACRO: ('Net', 'check')
         codes ONLINE<0>, OFFLINE<1>             // OUTPUT_CODES
     }
 
-    proc esperar(segundos: Number) from "Sys.sleep" {   // param literal
+    esperar(segundos: Number) from "Sys.sleep" {   // param literal
         codes DONE<0>, ERROR<5>
     }
 
-    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {  // resposta: ref
+    enviar(texto: Text, resposta: &Text) from "Sys.send" {  // resposta: ref
         codes OK<0>, TIMEOUT<10>
     }
 }

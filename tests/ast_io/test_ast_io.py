@@ -36,15 +36,15 @@ vars {
 }
 
 procs {
-    proc verificar_rede() from "Net.check" {
+    verificar_rede() from "Net.check" {
         codes ONLINE<0>, OFFLINE<1>
     }
 
-    proc esperar(segundos: Number) from "Sys.sleep" {
+    esperar(segundos: Number) from "Sys.sleep" {
         codes DONE<0>, ERROR<5>
     }
 
-    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {
+    enviar(texto: Text, resposta: &Text) from "Sys.send" {
         codes OK<0>, TIMEOUT<10>
     }
 }
@@ -224,7 +224,7 @@ class TestAstRoundTrip:
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(n: Number) from "A.b" { codes OK<0> } }
+procs { f(n: Number) from "A.b" { codes OK<0> } }
 exec f(n=7) >> s { pass OK }
 '''
         ast = parse(src)

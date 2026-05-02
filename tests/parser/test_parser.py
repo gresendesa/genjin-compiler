@@ -34,7 +34,7 @@ vars {
     s: Number
 }
 procs {
-    proc foo() from "Lib.bar" {
+    foo() from "Lib.bar" {
         codes OK<0>
     }
 }
@@ -82,7 +82,7 @@ class TestVarDecl:
         src = '''\
 program "T"
 vars { n: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> n { pass OK }
 '''
         ast = make_ast(src)
@@ -96,7 +96,7 @@ exec f() >> n { pass OK }
         src = '''\
 program "T"
 vars { s: Text = "oi" }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> s { pass OK }
 '''
         ast = make_ast(src)
@@ -108,7 +108,7 @@ exec f() >> s { pass OK }
         src = '''\
 program "T"
 vars { lista: Text[] }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> lista { pass OK }
 '''
         ast = make_ast(src)
@@ -118,7 +118,7 @@ exec f() >> lista { pass OK }
         src = '''\
 program "T"
 vars { flag: Logic }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> flag { pass OK }
 '''
         assert make_ast(src).variables[0].type == 'logic'
@@ -127,7 +127,7 @@ exec f() >> flag { pass OK }
         src = '''\
 program "T"
 vars { n: Number = 42 }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> n { pass OK }
 '''
         assert make_ast(src).variables[0].value == 42
@@ -152,7 +152,7 @@ class TestProcDecl:
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "Federal.@.GenJin" { codes OK<0> } }
+procs { f() from "Federal.@.GenJin" { codes OK<0> } }
 exec f() >> s { pass OK }
 '''
         p = make_ast(src).procedures[0]
@@ -163,7 +163,7 @@ exec f() >> s { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0>, ERR<5> } }
+procs { f() from "A.b" { codes OK<0>, ERR<5> } }
 exec f() >> s { pass OK, ERR }
 '''
         codes = make_ast(src).procedures[0].output_codes
@@ -175,7 +175,7 @@ exec f() >> s { pass OK, ERR }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(n: Number) from "A.b" { codes OK<0> } }
+procs { f(n: Number) from "A.b" { codes OK<0> } }
 exec f(n=1) >> s { pass OK }
 '''
         p = make_ast(src).procedures[0]
@@ -192,7 +192,7 @@ vars {
     s: Number
     r: Text
 }
-procs { proc f(resp: &Text) from "A.b" { codes OK<0> } }
+procs { f(resp: &Text) from "A.b" { codes OK<0> } }
 exec f(resp=&r) >> s { pass OK }
 '''
         p = make_ast(src).procedures[0]
@@ -209,7 +209,7 @@ class TestExecBlock:
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(n: Number) from "A.b" { codes OK<0> } }
+procs { f(n: Number) from "A.b" { codes OK<0> } }
 exec f(n=5) >> s { pass OK }
 '''
         block = make_ast(src).block
@@ -219,7 +219,7 @@ exec f(n=5) >> s { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(msg: Text) from "A.b" { codes OK<0> } }
+procs { f(msg: Text) from "A.b" { codes OK<0> } }
 exec f(msg="hello") >> s { pass OK }
 '''
         block = make_ast(src).block
@@ -232,7 +232,7 @@ vars {
     s: Number
     r: Text
 }
-procs { proc f(resp: &Text) from "A.b" { codes OK<0> } }
+procs { f(resp: &Text) from "A.b" { codes OK<0> } }
 exec f(resp=&r) >> s { pass OK }
 '''
         block = make_ast(src).block
@@ -243,7 +243,7 @@ exec f(resp=&r) >> s { pass OK }
         src = '''\
 program "T"
 vars { }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() { pass OK }
 '''
         assert make_ast(src).block.variable is None
@@ -252,8 +252,8 @@ exec f() { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
-exec f() >> s as "meu_bloco" { pass OK }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() as "meu_bloco" >> s { pass OK }
 '''
         assert make_ast(src).block.block_name == 'meu_bloco'
 
@@ -264,7 +264,7 @@ exec f() >> s as "meu_bloco" { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0>, ERR<1> } }
+procs { f() from "A.b" { codes OK<0>, ERR<1> } }
 exec f() >> s {
     pass OK
 } while(ERR)
@@ -283,8 +283,8 @@ class TestVariableInheritance:
 program "T"
 vars { s: Number }
 procs {
-    proc outer() from "A.b" { codes X<0> }
-    proc inner() from "A.c" { codes Y<0> }
+    outer() from "A.b" { codes X<0> }
+    inner() from "A.c" { codes Y<0> }
 }
 exec outer() >> s {
     case X : exec inner() {
@@ -306,8 +306,8 @@ vars {
     t: Number
 }
 procs {
-    proc outer() from "A.b" { codes X<0> }
-    proc inner() from "A.c" { codes Y<0> }
+    outer() from "A.b" { codes X<0> }
+    inner() from "A.c" { codes Y<0> }
 }
 exec outer() >> s {
     case X : exec inner() >> t {
@@ -331,7 +331,7 @@ class TestSemanticValidation:
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec nao_existe() >> s { pass OK }
 '''
         with pytest.raises(ParseError, match="nao_existe"):
@@ -342,7 +342,7 @@ exec nao_existe() >> s { pass OK }
         src = '''\
 program "T"
 vars { }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> nao_declarada { pass OK }
 '''
         with pytest.raises(ParseError, match="nao_declarada"):
@@ -353,7 +353,7 @@ exec f() >> nao_declarada { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(r: &Text) from "A.b" { codes OK<0> } }
+procs { f(r: &Text) from "A.b" { codes OK<0> } }
 exec f(r=&nao_declarada) >> s { pass OK }
 '''
         with pytest.raises(ParseError, match="nao_declarada"):
@@ -365,8 +365,8 @@ exec f(r=&nao_declarada) >> s { pass OK }
 program "T"
 vars { s: Number }
 procs {
-    proc outer() from "A.b" { codes OK<0> }
-    proc inner() from "A.c" { codes Y<0> }
+    outer() from "A.b" { codes OK<0> }
+    inner() from "A.c" { codes Y<0> }
 }
 exec outer() >> s {
     case INEXISTENTE : exec inner() { pass Y }
@@ -380,7 +380,7 @@ exec outer() >> s {
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f() >> s {
     pass OK
 } while(INEXISTENTE)
@@ -393,7 +393,7 @@ exec f() >> s {
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0>, ERR<1> } }
+procs { f() from "A.b" { codes OK<0>, ERR<1> } }
 exec f() >> s {
     pass OK
 }
@@ -406,7 +406,7 @@ exec f() >> s {
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f(r: &Text) from "A.b" { codes OK<0> } }
+procs { f(r: &Text) from "A.b" { codes OK<0> } }
 exec f(r="literal") >> s { pass OK }
 '''
         with pytest.raises(ParseError, match="referência"):
@@ -417,7 +417,7 @@ exec f(r="literal") >> s { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec f(inexistente=1) >> s { pass OK }
 '''
         with pytest.raises(ParseError, match="inexistente"):
@@ -428,7 +428,7 @@ exec f(inexistente=1) >> s { pass OK }
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "semponto" { codes OK<0> } }
+procs { f() from "semponto" { codes OK<0> } }
 exec f() >> s { pass OK }
 '''
         with pytest.raises(ParseError, match="ponto"):
@@ -444,7 +444,7 @@ class TestParseErrorLine:
         src = '''\
 program "T"
 vars { s: Number }
-procs { proc f() from "A.b" { codes OK<0> } }
+procs { f() from "A.b" { codes OK<0> } }
 exec nao_existe() >> s { pass OK }
 '''
         with pytest.raises(ParseError) as exc_info:
@@ -473,15 +473,15 @@ vars {
 }
 
 procs {
-    proc verificar_rede() from "Net.check" {
+    verificar_rede() from "Net.check" {
         codes ONLINE<0>, OFFLINE<1>
     }
 
-    proc esperar(segundos: Number) from "Sys.sleep" {
+    esperar(segundos: Number) from "Sys.sleep" {
         codes DONE<0>, ERROR<5>
     }
 
-    proc enviar(texto: Text, resposta: &Text) from "Sys.send" {
+    enviar(texto: Text, resposta: &Text) from "Sys.send" {
         codes OK<0>, TIMEOUT<10>
     }
 }
@@ -559,3 +559,132 @@ class TestBasicGnj:
         esperar_block = block.cases[0].block
         # esperar não tem >>, herda status_var do pai
         assert esperar_block.variable == 'status_var'
+
+
+# ---------------------------------------------------------------------------
+# B-013: keyword 'proc' não é mais aceita dentro de procs { }
+# ---------------------------------------------------------------------------
+
+class TestProcKeywordRemoved:
+    def test_proc_keyword_raises(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs { proc f() from "A.b" { codes OK<0> } }
+exec f() >> s { pass OK }
+'''
+        with pytest.raises(ParseError, match="proc"):
+            make_ast(src)
+
+    def test_without_proc_keyword_ok(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() >> s { pass OK }
+'''
+        assert make_ast(src).procedures[0].name == 'f'
+
+
+# ---------------------------------------------------------------------------
+# B-012: ordem `as` deve vir antes de `>>`
+# ---------------------------------------------------------------------------
+
+class TestAsBeforeArrow:
+    def test_as_before_arrow_ok(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() as "nome" >> s { pass OK }
+'''
+        ast = make_ast(src)
+        assert ast.block.block_name == 'nome'
+        assert ast.block.variable == 's'
+
+    def test_arrow_before_as_raises(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() >> s as "nome" { pass OK }
+'''
+        with pytest.raises(ParseError, match="as"):
+            make_ast(src)
+
+    def test_only_as_no_arrow_ok(self):
+        src = '''\
+program "T"
+vars { }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() as "nome" { pass OK }
+'''
+        assert make_ast(src).block.block_name == 'nome'
+
+    def test_only_arrow_no_as_ok(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0> } }
+exec f() >> s { pass OK }
+'''
+        assert make_ast(src).block.variable == 's'
+
+
+# ---------------------------------------------------------------------------
+# B-014: ordem flexível dos blocos vars / procs / exec
+# ---------------------------------------------------------------------------
+
+class TestFlexibleBlockOrder:
+    BASE = '''\
+program "T"
+{vars}
+{procs}
+{exec}
+'''
+    VARS = 'vars { s: Number }'
+    PROCS = 'procs { f() from "A.b" { codes OK<0> } }'
+    EXEC = 'exec f() >> s { pass OK }'
+
+    def _src(self, order):
+        blocks = {'vars': self.VARS, 'procs': self.PROCS, 'exec': self.EXEC}
+        return 'program "T"\n' + '\n'.join(blocks[k] for k in order) + '\n'
+
+    def test_vars_procs_exec(self):
+        assert make_ast(self._src(['vars', 'procs', 'exec'])).name == 'T'
+
+    def test_procs_vars_exec(self):
+        assert make_ast(self._src(['procs', 'vars', 'exec'])).name == 'T'
+
+    def test_vars_exec_procs(self):
+        assert make_ast(self._src(['vars', 'exec', 'procs'])).name == 'T'
+
+    def test_procs_exec_vars(self):
+        assert make_ast(self._src(['procs', 'exec', 'vars'])).name == 'T'
+
+    def test_exec_vars_procs(self):
+        assert make_ast(self._src(['exec', 'vars', 'procs'])).name == 'T'
+
+    def test_exec_procs_vars(self):
+        assert make_ast(self._src(['exec', 'procs', 'vars'])).name == 'T'
+
+    def test_duplicate_vars_raises(self):
+        src = 'program "T"\nvars { s: Number }\nvars { t: Number }\nprocs { f() from "A.b" { codes OK<0> } }\nexec f() >> s { pass OK }\n'
+        with pytest.raises(ParseError, match="vars"):
+            make_ast(src)
+
+    def test_duplicate_procs_raises(self):
+        src = 'program "T"\nvars { s: Number }\nprocs { f() from "A.b" { codes OK<0> } }\nprocs { f() from "A.b" { codes OK<0> } }\nexec f() >> s { pass OK }\n'
+        with pytest.raises(ParseError, match="procs"):
+            make_ast(src)
+
+    def test_missing_vars_raises(self):
+        src = 'program "T"\nprocs { f() from "A.b" { codes OK<0> } }\nexec f() { pass OK }\n'
+        with pytest.raises(ParseError, match="vars"):
+            make_ast(src)
+
+    def test_missing_procs_raises(self):
+        src = 'program "T"\nvars { s: Number }\nexec f() >> s { pass OK }\n'
+        with pytest.raises(ParseError):
+            make_ast(src)
+

@@ -33,6 +33,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-009 | Assembler: leitura de template via stdin (pipe) | 2 (alta) | medio | [B-009.md](backlog-items/B-009.md) |
 | B-010 | Transpiler: ajustar import de genjin.jinja2 para notação DottedLoader | 1 (critica) | baixo | [B-010.md](backlog-items/B-010.md) |
 | B-011 | Extensão VS Code para suporte à linguagem Genjin | (a definir) | baixo | [B-011.md](backlog-items/B-011.md) |
+| B-012 | Parser: enforçar ordem `as` antes de `>>` no bloco exec | 1 (crítica) | baixo | [B-012.md](backlog-items/B-012.md) |
+| B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | 1 (crítica) | baixo | [B-013.md](backlog-items/B-013.md) |
+| B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | 1 (crítica) | médio | [B-014.md](backlog-items/B-014.md) |
 
 ### Em andamento
 
@@ -42,9 +45,6 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-012 | Parser: enforçar ordem `as` antes de `>>` no bloco exec | 1 (crítica) | baixo | [B-012.md](backlog-items/B-012.md) |
-| B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | 1 (crítica) | baixo | [B-013.md](backlog-items/B-013.md) |
-| B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | 1 (crítica) | médio | [B-014.md](backlog-items/B-014.md) |
 | B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | 4 (baixa) | alto | [B-015.md](backlog-items/B-015.md) |
 
 ## Template sintetico para novos itens
