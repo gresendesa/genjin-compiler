@@ -82,6 +82,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-06.md](sprints/SPR-2026-06.md)
 
 
+### SPR-2026-07
+
+- Status: em andamento
+- Data de início: 2026-05-01
+- Foco: B-015 Fase 1 — análise técnica da notação inline `@proc()` (açúcar sintático)
+- Itens: B-015 (Fase 1)
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: alto
+- Arquivo detalhado: [ia/sprints/SPR-2026-07.md](sprints/SPR-2026-07.md)
+
+
 ## Template sintetico para novas sprints
 
 ### SPR-YYYY-NN

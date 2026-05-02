@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-04-27
+Ultima atualizacao: 2026-05-01
 
 ## Objetivo
 
@@ -39,12 +39,12 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
-(nenhum)
+| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
+|---|---|---|---|---|---|
+| B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) — Fase 1: análise técnica | 1 (crítica) | alto | SPR-2026-07 | [B-015.md](backlog-items/B-015.md) |
 
 ### Pendentes
 
-| ID | Titulo | Prioridade PO | Risco | Arquivo |
-|---|---|---|---|---|
-| B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | 4 (baixa) | alto | [B-015.md](backlog-items/B-015.md) |
+(nenhum)
 
 ## Template sintetico para novos itens
