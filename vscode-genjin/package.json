@@ -2,7 +2,7 @@
   "name": "genjin-lang",
   "displayName": "Genjin Language Support",
   "description": "Syntax highlighting e suporte básico para a linguagem Genjin (.gnj / .genjin)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "macrosoft-dev",
   "engines": {
     "vscode": "^1.85.0"

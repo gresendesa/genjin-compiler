@@ -108,6 +108,19 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-08.md](sprints/SPR-2026-08.md)
 
 
+### SPR-2026-09
+
+- Status: concluída
+- Data de início: 2026-05-02
+- Data de encerramento: 2026-05-02
+- Foco: B-016 — Extensão VS Code: suporte à sintaxe inline `@proc()` e keyword `when`
+- Itens: B-016
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: baixo (1.0)
+- Resultado: +1 keyword (`when`), +1 regra highlight (`inline-call`), bump patch 0.1.1
+- Arquivo detalhado: [ia/sprints/SPR-2026-09.md](sprints/SPR-2026-09.md)
+
+
 ## Template sintetico para novas sprints
 
 ### SPR-YYYY-NN

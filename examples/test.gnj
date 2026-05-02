@@ -2,7 +2,6 @@ program "Fluxo Genérico de Testes"
 
 vars {
     status_var: Number
-    ok: Number
 }
 
 procs {

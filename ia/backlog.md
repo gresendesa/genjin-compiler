@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-01
+Ultima atualizacao: 2026-05-02
 
 ## Objetivo
 
@@ -37,6 +37,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | 1 (crítica) | baixo | [B-013.md](backlog-items/B-013.md) |
 | B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | 1 (crítica) | médio | [B-014.md](backlog-items/B-014.md) |
 | B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | 1 (crítica) | alto | [B-015.md](backlog-items/B-015.md) |
+| B-016 | Extensão VS Code: suporte à sintaxe inline `@proc()` e keyword `when` | 1 (crítica) | baixo | [B-016.md](backlog-items/B-016.md) |
 
 ### Em andamento
 
