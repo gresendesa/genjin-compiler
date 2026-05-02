@@ -2,6 +2,7 @@ program "Fluxo Genérico de Testes"
 
 vars {
     status_var: Number
+    ok: Number
 }
 
 procs {
@@ -12,9 +13,10 @@ procs {
 
 
 exec inicia_processo() >> status_var {
-    case OK: exec inicia_processo() {
-        pass ERROR, OK
-    }
-    pass ERROR, OK
+    case OK: 
+        @inicia_processo() while (OK)
+        when(ERROR) @inicia_processo()
+        when(OK) @inicia_processo()
+    pass OK
 } while(ERROR)
 
