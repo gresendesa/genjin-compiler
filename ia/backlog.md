@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-02 (B-017 adicionado)
+Ultima atualizacao: 2026-05-02 (B-017 em andamento — SPR-2026-10)
 
 ## Objetivo
 
@@ -43,11 +43,13 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-017 | Proposta: blocos reutilizáveis como procedimentos na linguagem Genjin | (a definir) | médio-alto | [B-017.md](backlog-items/B-017.md) |
+| B-017 | Proc-blocos: blocos reutilizáveis com parâmetros de transpilação | 1 (crítica) | médio-alto | [B-017.md](backlog-items/B-017.md) |
 
 ### Em andamento
 
-(nenhum)
+| ID | Titulo | Prioridade PO | Risco | Arquivo |
+|---|---|---|---|---|
+| B-017 | Proc-blocos: blocos reutilizáveis com parâmetros de transpilação | 1 (crítica) | médio-alto | [B-017.md](backlog-items/B-017.md) |
 
 ### Pendentes
 

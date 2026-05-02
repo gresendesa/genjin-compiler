@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-04-27
+Ultima atualizacao: 2026-05-02
 
 ## Objetivo
 
@@ -119,6 +119,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: baixo (1.0)
 - Resultado: +1 keyword (`when`), +1 regra highlight (`inline-call`), bump patch 0.1.1
 - Arquivo detalhado: [ia/sprints/SPR-2026-09.md](sprints/SPR-2026-09.md)
+
+
+### SPR-2026-10
+
+- Status: em andamento
+- Data de início: 2026-05-02
+- Foco: B-017 — Proc-blocos: blocos reutilizáveis com parâmetros de transpilação (pesquisa e proposta)
+- Itens: B-017
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (2.0)
+- Arquivo detalhado: [ia/sprints/SPR-2026-10.md](sprints/SPR-2026-10.md)
 
 
 ## Template sintetico para novas sprints
