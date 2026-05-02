@@ -123,11 +123,15 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-10
 
-- Status: em andamento
+- Status: concluída
 - Data de início: 2026-05-02
+- Data de encerramento: 2026-05-02
 - Foco: B-017 — Proc-blocos: blocos reutilizáveis com parâmetros de transpilação (pesquisa e proposta)
 - Itens: B-017
 - Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (2.0)
+- Resultado: B-017 concluído — spec completa em `docs/proc-blocos.md`, 7 pontos de design avaliados, DEC-003 registrada, impacto estimado (~330 linhas). Spinoff B-018 identificado.
+- Arquivo detalhado: [ia/sprints/SPR-2026-10.md](sprints/SPR-2026-10.md)
 - Risco da sprint: médio (2.0)
 - Arquivo detalhado: [ia/sprints/SPR-2026-10.md](sprints/SPR-2026-10.md)
 
