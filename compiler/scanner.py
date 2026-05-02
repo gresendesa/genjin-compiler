@@ -21,6 +21,7 @@ class TokenType(Enum):
     KW_WHILE    = auto()
     KW_AS       = auto()
     KW_CODES    = auto()
+    KW_WHEN     = auto()
     # Tipos primitivos
     TYPE_NUMBER = auto()
     TYPE_TEXT   = auto()
@@ -39,6 +40,7 @@ class TokenType(Enum):
     AMPERSAND   = auto()   # &
     ASSIGN      = auto()   # =
     ARROW       = auto()   # >>
+    AT          = auto()   # @
     # Literais e identificadores
     STRING      = auto()   # "valor"
     NUMBER      = auto()   # inteiro
@@ -59,6 +61,7 @@ _KEYWORDS: dict[str, TokenType] = {
     'while':   TokenType.KW_WHILE,
     'as':      TokenType.KW_AS,
     'codes':   TokenType.KW_CODES,
+    'when':    TokenType.KW_WHEN,
     'Number':  TokenType.TYPE_NUMBER,
     'Text':    TokenType.TYPE_TEXT,
     'Logic':   TokenType.TYPE_LOGIC,
@@ -204,6 +207,7 @@ class Scanner:
                 ',': TokenType.COMMA,
                 '&': TokenType.AMPERSAND,
                 '=': TokenType.ASSIGN,
+                '@': TokenType.AT,
             }
             if ch in _SINGLE:
                 return Token(_SINGLE[ch], ch, line)

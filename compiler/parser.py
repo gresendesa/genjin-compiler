@@ -67,7 +67,29 @@ class ExecBlockNode:
 @dataclass
 class CaseNode:
     output_code: str
-    block: ExecBlockNode
+    block: ExecBlockNode | InlineSeqNode  # InlineSeqNode possível antes do desugar
+
+
+@dataclass
+class InlineAtomNode:
+    """Átomo da notação inline @proc() [>> var] [while(W)] [when(CODE)]."""
+    proc_name: str
+    kwargs: dict[str, ArgNode]
+    variable: str | None        # de >>
+    variable_explicit: bool
+    while_code: str | None      # de while(CODE)
+    when_code: str | None       # de when(CODE) — None no átomo terminal
+
+
+@dataclass
+class InlineSeqNode:
+    """Sequência inline: átomos encadeados + terminal.
+
+    chained: todos os átomos que têm when_code (não-terminais)
+    terminal: último átomo (sem when) ou ExecBlockNode canônico
+    """
+    chained: list[InlineAtomNode]
+    terminal: InlineAtomNode | ExecBlockNode
 
 
 @dataclass
@@ -75,7 +97,7 @@ class ProgramNode:
     name: str
     variables: list[VarDeclNode]
     procedures: list[ProcDeclNode]
-    block: ExecBlockNode
+    block: ExecBlockNode | InlineSeqNode  # InlineSeqNode possível antes do desugar
 
 
 # ---------------------------------------------------------------------------
@@ -146,13 +168,14 @@ class Parser:
         self._expect(TokenType.KW_PROGRAM, "esperado 'program'")
         name_tok = self._expect(TokenType.STRING, "esperado nome do programa como string")
 
-        _BLOCK_TOKENS = {TokenType.KW_VARS, TokenType.KW_PROCS, TokenType.KW_EXEC}
+        _BLOCK_TOKENS = {TokenType.KW_VARS, TokenType.KW_PROCS,
+                         TokenType.KW_EXEC, TokenType.AT}
 
         variables: list[VarDeclNode] | None = None
         procedures: list[ProcDeclNode] | None = None
-        exec_pos: int | None = None  # posição do token 'exec' na lista de tokens
+        exec_pos: int | None = None  # posição do token 'exec' ou '@' na lista de tokens
 
-        # Primeiro passo: coletar vars e procs em qualquer ordem; memorizar posição do exec
+        # Primeiro passo: coletar vars e procs em qualquer ordem; memorizar posição do exec/inline
         while self._check(*_BLOCK_TOKENS):
             tok = self._peek()
             if tok.type == TokenType.KW_VARS:
@@ -163,11 +186,14 @@ class Parser:
                 if procedures is not None:
                     raise ParseError("bloco 'procs' declarado mais de uma vez", tok.line)
                 procedures = self._parse_procs()
-            elif tok.type == TokenType.KW_EXEC:
+            elif tok.type in (TokenType.KW_EXEC, TokenType.AT):
                 if exec_pos is not None:
                     raise ParseError("bloco 'exec' raiz declarado mais de uma vez", tok.line)
                 exec_pos = self._pos
-                self._skip_exec_block()  # pula sem parsear — será parseado no segundo passo
+                if tok.type == TokenType.KW_EXEC:
+                    self._skip_exec_block()
+                else:
+                    self._skip_inline_seq()
 
         if variables is None:
             raise ParseError("bloco 'vars' ausente", self._peek().line)
@@ -176,10 +202,10 @@ class Parser:
         if exec_pos is None:
             raise ParseError("bloco 'exec' raiz ausente", self._peek().line)
 
-        # Segundo passo: parsear exec com vars e procs completos
+        # Segundo passo: parsear exec/inline com vars e procs completos
         end_pos = self._pos
         self._pos = exec_pos
-        block = self._parse_exec(
+        block = self._parse_exec_or_inline(
             declared_vars={v.name for v in variables},
             declared_procs={p.name: p for p in procedures},
             inherited_var=None,
@@ -219,6 +245,156 @@ class Parser:
                 self._advance()
             if self._check(TokenType.RPAREN):
                 self._advance()  # )
+
+    def _skip_inline_seq(self) -> None:
+        """Avança o cursor por uma sequência de átomos inline (@proc()...) sem parsear."""
+        while self._check(TokenType.AT):
+            self._advance()  # @
+            self._advance()  # IDENT (proc name)
+            self._advance()  # (
+            paren_depth = 1
+            while paren_depth > 0 and not self._check(TokenType.EOF):
+                tok = self._advance()
+                if tok.type == TokenType.LPAREN:
+                    paren_depth += 1
+                elif tok.type == TokenType.RPAREN:
+                    paren_depth -= 1
+            # Opcional: >> IDENT
+            if self._check(TokenType.ARROW):
+                self._advance()  # >>
+                self._advance()  # IDENT
+            # Opcional: while(IDENT)
+            if self._check(TokenType.KW_WHILE):
+                self._advance()  # while
+                self._advance()  # (
+                self._advance()  # IDENT
+                self._advance()  # )
+            # Opcional: when(IDENT)
+            if self._check(TokenType.KW_WHEN):
+                self._advance()  # when
+                self._advance()  # (
+                self._advance()  # IDENT
+                self._advance()  # )
+        # Terminal canônico exec { } (opcional)
+        if self._check(TokenType.KW_EXEC):
+            self._skip_exec_block()
+
+    # ------------------------------------------------------------------
+    # exec ou inline (dispatcher)
+    # ------------------------------------------------------------------
+
+    def _parse_exec_or_inline(self,
+                               declared_vars: set[str],
+                               declared_procs: dict[str, ProcDeclNode],
+                               inherited_var: str | None) -> ExecBlockNode | InlineSeqNode:
+        if self._check(TokenType.AT):
+            return self._parse_inline_seq(declared_vars, declared_procs, inherited_var)
+        return self._parse_exec(declared_vars, declared_procs, inherited_var)
+
+    def _parse_inline_seq(self,
+                          declared_vars: set[str],
+                          declared_procs: dict[str, ProcDeclNode],
+                          inherited_var: str | None) -> InlineSeqNode:
+        """Parseia uma sequência inline: (átomo with when)* átomo-terminal|exec."""
+        chained: list[InlineAtomNode] = []
+
+        while self._check(TokenType.AT):
+            atom = self._parse_inline_atom(declared_vars, declared_procs)
+            if atom.when_code is not None:
+                chained.append(atom)
+            else:
+                # Átomo terminal (sem when)
+                if len(chained) == 0 and atom.when_code is None:
+                    # Tipo 1 — sequência de um único átomo simples
+                    return InlineSeqNode(chained=[], terminal=atom)
+                return InlineSeqNode(chained=chained, terminal=atom)
+
+        # Nenhum @ encontrado: verificar se há exec canônico como terminal
+        if self._check(TokenType.KW_EXEC):
+            if not chained:
+                raise ParseError(
+                    "sequência inline vazia: esperado '@' ou 'exec'",
+                    self._peek().line,
+                )
+            terminal = self._parse_exec(declared_vars, declared_procs, inherited_var)
+            return InlineSeqNode(chained=chained, terminal=terminal)
+
+        tok = self._peek()
+        raise ParseError(
+            f"sequência inline incompleta: esperado '@' ou 'exec', encontrado '{tok.value}'",
+            tok.line,
+        )
+
+    def _parse_inline_atom(self,
+                           declared_vars: set[str],
+                           declared_procs: dict[str, ProcDeclNode]) -> InlineAtomNode:
+        """Parseia um átomo inline: @proc(args) [>> var] [while(CODE)] [when(CODE)]."""
+        at_tok = self._expect(TokenType.AT, "esperado '@'")
+        proc_name_tok = self._expect(TokenType.IDENT, "esperado nome do proc após '@'")
+        proc_name = proc_name_tok.value
+
+        if proc_name not in declared_procs:
+            raise ParseError(
+                f"proc '{proc_name}' não declarado em 'procs'",
+                proc_name_tok.line,
+            )
+        proc_decl = declared_procs[proc_name]
+        valid_codes = {oc.name for oc in proc_decl.output_codes}
+
+        self._expect(TokenType.LPAREN, "esperado '(' após nome do proc")
+        kwargs = self._parse_kwargs(proc_decl, declared_vars, at_tok.line)
+        self._expect(TokenType.RPAREN, "esperado ')' após argumentos")
+
+        # Opcional: >> var
+        variable: str | None = None
+        variable_explicit = False
+        if self._check(TokenType.ARROW):
+            self._advance()
+            var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '>>'")
+            if var_tok.value not in declared_vars:
+                raise ParseError(
+                    f"variável '{var_tok.value}' não declarada em 'vars'",
+                    var_tok.line,
+                )
+            variable = var_tok.value
+            variable_explicit = True
+
+        # Opcional: while(CODE)
+        while_code: str | None = None
+        if self._check(TokenType.KW_WHILE):
+            self._advance()  # while
+            self._expect(TokenType.LPAREN, "esperado '(' após 'while'")
+            code_tok = self._expect(TokenType.IDENT, "esperado código no while")
+            if code_tok.value not in valid_codes:
+                raise ParseError(
+                    f"código '{code_tok.value}' em 'while' não declarado no proc '{proc_name}'",
+                    code_tok.line,
+                )
+            self._expect(TokenType.RPAREN, "esperado ')' após código do while")
+            while_code = code_tok.value
+
+        # Opcional: when(CODE) — indica átomo encadeado
+        when_code: str | None = None
+        if self._check(TokenType.KW_WHEN):
+            self._advance()  # when
+            self._expect(TokenType.LPAREN, "esperado '(' após 'when'")
+            code_tok = self._expect(TokenType.IDENT, "esperado código no when")
+            if code_tok.value not in valid_codes:
+                raise ParseError(
+                    f"código '{code_tok.value}' em 'when' não declarado no proc '{proc_name}'",
+                    code_tok.line,
+                )
+            self._expect(TokenType.RPAREN, "esperado ')' após código do when")
+            when_code = code_tok.value
+
+        return InlineAtomNode(
+            proc_name=proc_name,
+            kwargs=kwargs,
+            variable=variable,
+            variable_explicit=variable_explicit,
+            while_code=while_code,
+            when_code=when_code,
+        )
 
     # ------------------------------------------------------------------
     # vars
@@ -536,7 +712,7 @@ class Parser:
                 code_tok.line,
             )
         self._expect(TokenType.COLON, "esperado ':' após código do case")
-        child_block = self._parse_exec(declared_vars, declared_procs, inherited_var)
+        child_block = self._parse_exec_or_inline(declared_vars, declared_procs, inherited_var)
         return CaseNode(output_code=code_tok.value, block=child_block)
 
     def _parse_while(self, valid_codes: set[str]) -> list[str]:

@@ -17,6 +17,7 @@ import sys
 
 from compiler.scanner import Scanner, ScannerError
 from compiler.parser import parse, ParseError
+from compiler.desugar import desugar, DesugarError
 from compiler.transpiler import Transpiler
 
 
@@ -51,11 +52,15 @@ def main() -> int:
     # Compilação
     try:
         ast = parse(source)
+        ast = desugar(ast)
         result = Transpiler(ast).transpile()
     except ScannerError as exc:
         print(str(exc), file=sys.stderr)
         return 1
     except ParseError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except DesugarError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 

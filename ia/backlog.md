@@ -36,12 +36,11 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-012 | Parser: enforçar ordem `as` antes de `>>` no bloco exec | 1 (crítica) | baixo | [B-012.md](backlog-items/B-012.md) |
 | B-013 | Parser: remover keyword `proc` das declarações dentro de `procs { }` | 1 (crítica) | baixo | [B-013.md](backlog-items/B-013.md) |
 | B-014 | Parser: tornar a ordem dos blocos `vars`, `procs`, `exec` flexível | 1 (crítica) | médio | [B-014.md](backlog-items/B-014.md) |
+| B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | 1 (crítica) | alto | [B-015.md](backlog-items/B-015.md) |
 
 ### Em andamento
 
-| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
-|---|---|---|---|---|---|
-| B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) — Fase 1: análise técnica | 1 (crítica) | alto | SPR-2026-07 | [B-015.md](backlog-items/B-015.md) |
+(nenhum)
 
 ### Pendentes
 

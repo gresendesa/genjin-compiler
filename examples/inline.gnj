@@ -1,0 +1,44 @@
+// Exemplo de notação inline (@proc())
+// Demonstra Tipo 1 e Tipo 2 do açúcar sintático.
+
+program "Fluxo Inline"
+
+vars {
+    conexao: Number
+    resposta: Text
+}
+
+procs {
+    verificar_rede() from "Net.check" {
+        codes ONLINE<0>, OFFLINE<1>
+    }
+
+    autenticar() from "Auth.login" {
+        codes OK<0>, FALHA<1>, TIMEOUT<2>
+    }
+
+    carregar_dados(resposta: &Text) from "Data.load" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+}
+
+// --- Tipo 1: átomo simples ---
+// Equivale a: exec verificar_rede() >> conexao { pass ONLINE, OFFLINE }
+@verificar_rede() >> conexao
+
+// --- Tipo 1 com while ---
+// Equivale a: exec autenticar() { pass OK, FALHA } while(TIMEOUT)
+// @autenticar() while(TIMEOUT)
+
+// --- Tipo 2: encadeamento ---
+// Equivale a:
+//   exec verificar_rede() >> conexao {
+//       case ONLINE: exec autenticar() {
+//           case OK: exec carregar_dados(resposta=&resposta) { pass SUCESSO, ERRO }
+//           pass FALHA, TIMEOUT
+//       }
+//       pass OFFLINE
+//   }
+@verificar_rede() >> conexao when(ONLINE)
+@autenticar() when(OK)
+@carregar_dados(resposta=&resposta)

@@ -388,6 +388,113 @@ exec verificar_rede() >> status_var {
 
 ---
 
+## Notação inline (`@proc()`)
+
+A notação inline é um **açúcar sintático** que permite expressar um bloco `exec` simples de forma compacta, sem chaves e sem `case` explícito. É expandida pelo compilador na fase **desugar** antes da transpilação.
+
+### Gramática
+
+```
+inline_seq ::= inline_atom+ terminal
+inline_atom ::= '@' IDENT '(' [arg_list] ')' ['>>' IDENT] ['while' '(' IDENT ')'] 'when' '(' IDENT ')'
+terminal    ::= '@' IDENT '(' [arg_list] ')' ['>>' IDENT] ['while' '(' IDENT ')']
+             |  exec_block
+```
+
+**Regra de ordem:** dentro de cada átomo, os modificadores devem aparecer na seguinte sequência fixa:
+
+```
+@proc([args]) [>> var] [while(CODE)] [when(CODE)]
+```
+
+### Tipo 1 — átomo simples (sem `when`)
+
+Um único átomo sem `when` é expandido para um `exec` canônico sem cases:
+
+```gnj
+@proc() >> var
+@proc() >> var while(ERR)
+```
+
+Equivalências:
+
+| Notação inline | Equivalente canônico |
+|---|---|
+| `@proc() >> var` | `exec proc() >> var { pass <todos os códigos> }` |
+| `@proc() >> var while(ERR)` | `exec proc() >> var { pass <todos exceto ERR> } while(ERR)` |
+
+### Tipo 2 — encadeamento com `when`
+
+Dois ou mais átomos, onde todos exceto o último possuem `when(CODE)`:
+
+```gnj
+@proc() when(OK)
+@proc() >> var
+```
+
+O átomo com `when(CODE)` vira o bloco externo. O code indicado em `when` é colocado como `case` para o próximo átomo, e o `pass` do externo recebe os demais códigos.
+
+**Exemplo: dois átomos**
+
+```gnj
+@autenticar() when(OK)
+@carregar_dados() >> res
+```
+
+Expande para:
+
+```gnj
+exec autenticar() {
+    case OK: exec carregar_dados() >> res {
+        pass <todos os códigos de carregar_dados>
+    }
+    pass ERR   /* demais códigos de autenticar */
+}
+```
+
+**Exemplo: três átomos**
+
+```gnj
+@verificar_rede() when(ONLINE)
+@autenticar()     when(OK)
+@carregar_dados() >> res
+```
+
+Expande para:
+
+```gnj
+exec verificar_rede() {
+    case ONLINE: exec autenticar() {
+        case OK: exec carregar_dados() >> res {
+            pass <todos os códigos de carregar_dados>
+        }
+        pass ERR
+    }
+    pass OFFLINE
+}
+```
+
+### Uso em `case` body
+
+A notação inline também pode ser usada como corpo de um `case` dentro de um `exec` canônico:
+
+```gnj
+exec verificar_rede() >> s {
+    case ONLINE: @autenticar() when(OK)
+                 @carregar_dados() >> res
+    pass OFFLINE
+}
+```
+
+### Restrições
+
+- `when` só é permitido em átomos não-terminais (todos exceto o último).
+- O átomo terminal não pode ter `when`.
+- A ordem dos modificadores é obrigatória: `[>>] [while] [when]`.
+- O `CODE` em `when(CODE)` deve ser um código de saída válido do proc daquele átomo.
+
+---
+
 ## Exemplo completo anotado
 
 ```gnj

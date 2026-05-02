@@ -84,13 +84,28 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-07
 
-- Status: em andamento
+- Status: concluída
 - Data de início: 2026-05-01
+- Data de encerramento: 2026-05-01
 - Foco: B-015 Fase 1 — análise técnica da notação inline `@proc()` (açúcar sintático)
 - Itens: B-015 (Fase 1)
 - Prioridade PO dos itens: 1 (crítica)
 - Risco da sprint: alto
+- Decisões: DEC-001 (desugar separado), DEC-002 (sintaxe `when(CODE)`)
 - Arquivo detalhado: [ia/sprints/SPR-2026-07.md](sprints/SPR-2026-07.md)
+
+
+### SPR-2026-08
+
+- Status: concluída
+- Data de início: 2026-05-01
+- Data de encerramento: 2026-05-01
+- Foco: B-015 Fase 2 — implementação completa (`desugar.py`, scanner, parser, testes, docs)
+- Itens: B-015 (Fase 2)
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: alto
+- Resultado: 341 testes, 0 falhas (+54 novos testes). B-015 concluído.
+- Arquivo detalhado: [ia/sprints/SPR-2026-08.md](sprints/SPR-2026-08.md)
 
 
 ## Template sintetico para novas sprints

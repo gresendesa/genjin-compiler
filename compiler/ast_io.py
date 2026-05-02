@@ -21,6 +21,7 @@ from compiler.scanner import Token, TokenType
 from compiler.parser import (
     ArgNode, OutputCodeNode, ParamDeclNode, ProcDeclNode,
     VarDeclNode, ExecBlockNode, CaseNode, ProgramNode,
+    InlineAtomNode, InlineSeqNode,
 )
 
 

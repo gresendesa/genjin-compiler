@@ -64,13 +64,16 @@ class TestKeywords:
     def test_codes(self):
         assert types('codes') == [TokenType.KW_CODES]
 
+    def test_when(self):
+        assert types('when') == [TokenType.KW_WHEN]
+
     def test_all_keywords_sequence(self):
-        src = 'program vars procs from exec case pass while as codes'
+        src = 'program vars procs from exec case pass while as codes when'
         expected = [
             TokenType.KW_PROGRAM, TokenType.KW_VARS, TokenType.KW_PROCS,
             TokenType.KW_FROM, TokenType.KW_EXEC,
             TokenType.KW_CASE, TokenType.KW_PASS, TokenType.KW_WHILE,
-            TokenType.KW_AS, TokenType.KW_CODES,
+            TokenType.KW_AS, TokenType.KW_CODES, TokenType.KW_WHEN,
         ]
         assert types(src) == expected
 
@@ -140,6 +143,57 @@ class TestSymbols:
         toks = types('exec foo() >> status_var')
         assert TokenType.ARROW in toks
         assert toks.count(TokenType.RANGLE) == 0
+
+
+# ---------------------------------------------------------------------------
+# Notação inline — AT e KW_WHEN (B-015)
+# ---------------------------------------------------------------------------
+
+class TestInlineNotation:
+    def test_at_token(self):
+        assert types('@') == [TokenType.AT]
+
+    def test_at_value(self):
+        toks = [t for t in scan('@') if t.type != TokenType.EOF]
+        assert toks[0].value == '@'
+
+    def test_when_keyword(self):
+        assert types('when') == [TokenType.KW_WHEN]
+
+    def test_when_not_ident(self):
+        """'when' deve ser KW_WHEN, não IDENT."""
+        assert types('when') != [TokenType.IDENT]
+
+    def test_inline_atom_tipo1(self):
+        """@proc() >> var while(CODE) — sequência de tokens esperada."""
+        src = '@inicia_processo() >> status_var while(ERROR)'
+        expected = [
+            TokenType.AT, TokenType.IDENT, TokenType.LPAREN, TokenType.RPAREN,
+            TokenType.ARROW, TokenType.IDENT,
+            TokenType.KW_WHILE, TokenType.LPAREN, TokenType.IDENT, TokenType.RPAREN,
+        ]
+        assert types(src) == expected
+
+    def test_inline_atom_tipo2(self):
+        """@proc() while(W) when(CODE) — tokens incluindo KW_WHEN."""
+        src = '@inicia_processo() while(ERROR) when(OK)'
+        expected = [
+            TokenType.AT, TokenType.IDENT, TokenType.LPAREN, TokenType.RPAREN,
+            TokenType.KW_WHILE, TokenType.LPAREN, TokenType.IDENT, TokenType.RPAREN,
+            TokenType.KW_WHEN, TokenType.LPAREN, TokenType.IDENT, TokenType.RPAREN,
+        ]
+        assert types(src) == expected
+
+    def test_at_followed_by_ident(self):
+        """@ seguido de identificador."""
+        toks = [t for t in scan('@proc') if t.type != TokenType.EOF]
+        assert toks[0].type == TokenType.AT
+        assert toks[1].type == TokenType.IDENT
+        assert toks[1].value == 'proc'
+
+    def test_when_as_ident_in_code(self):
+        """'when' como código de saída não seria válido — é reservado como KW_WHEN."""
+        assert types('when') == [TokenType.KW_WHEN]
 
 
 # ---------------------------------------------------------------------------
@@ -285,7 +339,7 @@ class TestEOF:
 class TestErrors:
     def test_invalid_char(self):
         with pytest.raises(ScannerError):
-            scan('@')
+            scan('#')
 
     def test_unclosed_string(self):
         with pytest.raises(ScannerError):
@@ -301,7 +355,7 @@ class TestErrors:
 
     def test_error_contains_line_number(self):
         with pytest.raises(ScannerError) as exc_info:
-            scan('\n\n@')
+            scan('\n\n#')
         assert exc_info.value.line == 3
 
 

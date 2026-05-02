@@ -16,6 +16,7 @@ from compiler.parser import (
     parse, Parser, ParseError,
     ProgramNode, VarDeclNode, ProcDeclNode, ParamDeclNode,
     OutputCodeNode, ExecBlockNode, CaseNode, ArgNode,
+    InlineAtomNode, InlineSeqNode,
 )
 from compiler.scanner import Scanner
 
@@ -686,5 +687,177 @@ program "T"
     def test_missing_procs_raises(self):
         src = 'program "T"\nvars { s: Number }\nexec f() >> s { pass OK }\n'
         with pytest.raises(ParseError):
+            make_ast(src)
+
+
+# ---------------------------------------------------------------------------
+# B-015: notação inline @proc() e @proc() when(CODE)
+# ---------------------------------------------------------------------------
+
+_INLINE_BASE = '''\
+program "T"
+vars {{ s: Number }}
+procs {{ f() from "A.b" {{ codes OK<0>, ERR<1> }} }}
+{exec}
+'''
+
+
+def _inline_src(exec_block: str) -> str:
+    return _INLINE_BASE.format(exec=exec_block)
+
+
+class TestInlineParsing:
+    """Testes de parsing da notação inline — B-015."""
+
+    # --- Tipo 1: átomo simples @proc() ---
+
+    def test_tipo1_root_returns_inline_seq(self):
+        """@proc() na raiz produz InlineSeqNode com terminal InlineAtomNode."""
+        src = _inline_src('@f() >> s')
+        ast = make_ast(src)
+        assert isinstance(ast.block, InlineSeqNode)
+
+    def test_tipo1_root_no_chained(self):
+        src = _inline_src('@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.chained == []
+
+    def test_tipo1_root_terminal_proc(self):
+        src = _inline_src('@f() >> s')
+        ast = make_ast(src)
+        assert isinstance(ast.block.terminal, InlineAtomNode)
+        assert ast.block.terminal.proc_name == 'f'
+
+    def test_tipo1_root_terminal_variable(self):
+        src = _inline_src('@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.terminal.variable == 's'
+        assert ast.block.terminal.variable_explicit is True
+
+    def test_tipo1_root_no_when(self):
+        src = _inline_src('@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.terminal.when_code is None
+
+    def test_tipo1_root_with_while(self):
+        src = _inline_src('@f() >> s while(ERR)')
+        ast = make_ast(src)
+        assert ast.block.terminal.while_code == 'ERR'
+
+    def test_tipo1_root_no_while(self):
+        src = _inline_src('@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.terminal.while_code is None
+
+    # --- Tipo 2: átomo encadeado @proc() when(CODE) ---
+
+    def test_tipo2_two_atoms_returns_inline_seq(self):
+        """@f() when(OK) + @f() — dois átomos produz InlineSeqNode com 1 chained."""
+        src = _inline_src('@f() when(OK)\n@f() >> s')
+        ast = make_ast(src)
+        assert isinstance(ast.block, InlineSeqNode)
+        assert len(ast.block.chained) == 1
+
+    def test_tipo2_chained_atom_when_code(self):
+        src = _inline_src('@f() when(OK)\n@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.chained[0].when_code == 'OK'
+
+    def test_tipo2_terminal_is_inline_atom(self):
+        src = _inline_src('@f() when(OK)\n@f() >> s')
+        ast = make_ast(src)
+        assert isinstance(ast.block.terminal, InlineAtomNode)
+        assert ast.block.terminal.when_code is None
+
+    def test_tipo2_three_atoms(self):
+        """Três átomos: dois chained + terminal."""
+        src = _inline_src('@f() when(OK)\n@f() when(ERR)\n@f() >> s')
+        ast = make_ast(src)
+        assert len(ast.block.chained) == 2
+        assert ast.block.chained[0].when_code == 'OK'
+        assert ast.block.chained[1].when_code == 'ERR'
+        assert ast.block.terminal.when_code is None
+
+    def test_tipo2_chained_with_while(self):
+        """Átomo encadeado pode ter while antes de when."""
+        src = _inline_src('@f() while(ERR) when(OK)\n@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.chained[0].while_code == 'ERR'
+        assert ast.block.chained[0].when_code == 'OK'
+
+    # --- Inline dentro de case ---
+
+    def test_inline_in_case_body(self):
+        """Inline aceito como body de case."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0>, ERR<1> } }
+exec f() >> s {
+    case OK: @f()
+    pass ERR
+}
+'''
+        ast = make_ast(src)
+        assert isinstance(ast.block.cases[0].block, InlineSeqNode)
+
+    def test_inline_chain_in_case_body(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0>, ERR<1> } }
+exec f() >> s {
+    case OK: @f() when(OK)
+             @f()
+    pass ERR
+}
+'''
+        ast = make_ast(src)
+        assert isinstance(ast.block.cases[0].block, InlineSeqNode)
+        assert len(ast.block.cases[0].block.chained) == 1
+
+    # --- Terminal canônico exec como terminal da inline_seq ---
+
+    def test_canonical_exec_terminal(self):
+        """Inline seq pode terminar com exec canônico."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs { f() from "A.b" { codes OK<0>, ERR<1> } }
+exec f() >> s {
+    case OK: @f() when(OK)
+             exec f() { pass OK, ERR }
+    pass ERR
+}
+'''
+        ast = make_ast(src)
+        seq = ast.block.cases[0].block
+        assert isinstance(seq, InlineSeqNode)
+        assert isinstance(seq.terminal, ExecBlockNode)
+
+    # --- Erros de semântica ---
+
+    def test_unknown_proc_raises(self):
+        """Proc não declarado em inline atom deve levantar ParseError."""
+        src = _inline_src('@unknown() >> s')
+        with pytest.raises(ParseError, match="'unknown' não declarado"):
+            make_ast(src)
+
+    def test_unknown_variable_raises(self):
+        """Variável não declarada em >> deve levantar ParseError."""
+        src = _inline_src('@f() >> x')
+        with pytest.raises(ParseError, match="'x' não declarada"):
+            make_ast(src)
+
+    def test_unknown_when_code_raises(self):
+        """Código desconhecido em when deve levantar ParseError."""
+        src = _inline_src('@f() when(BOGUS)\n@f() >> s')
+        with pytest.raises(ParseError, match="'BOGUS'"):
+            make_ast(src)
+
+    def test_unknown_while_code_raises(self):
+        """Código desconhecido em while do inline atom deve levantar ParseError."""
+        src = _inline_src('@f() while(BOGUS) when(OK)\n@f() >> s')
+        with pytest.raises(ParseError, match="'BOGUS'"):
             make_ast(src)
 

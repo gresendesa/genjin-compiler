@@ -109,11 +109,11 @@ class TestScannerCLI:
         assert result.stderr.strip() != ''
 
     def test_syntax_error_exit_1(self):
-        result = _run(['compiler.scanner'], input_text='program @@@')
+        result = _run(['compiler.scanner'], input_text='program ###')
         assert result.returncode == 1
 
     def test_syntax_error_stderr_mensagem(self):
-        result = _run(['compiler.scanner'], input_text='program @@@')
+        result = _run(['compiler.scanner'], input_text='program ###')
         assert result.stderr.strip() != ''
 
     def test_muitos_args_exit_2(self, gnj_file):
