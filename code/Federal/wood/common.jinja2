@@ -1,0 +1,207 @@
+
+{* import "Federal.text.chat" as CHAT *}
+{* import 'Macrosoft.cortex.common' as CORTEX *}
+{* import 'Federal.INTEL.block' as BLOCK *}
+{* set rand = range(1,999999)|random *}
+
+
+{* set regex_assoalho='^1$|^stone$|^2$|^grass$|^3$|^dirt$|^12$|^sand$|^78$|^snow_layer$' *}
+{* set regex_passável = '^0$|^air$|^31$|^tallgrass$|^18$|^leaves$|^8$|^flowing_water$|^9$|^water$' *}
+{* set regex_passável_rápido = '^0$|^air$|^31$|^tallgrass$|^8$|^flowing_water$|^9$|^water$' *}
+
+
+
+{* set axes = [
+	'271','wooden_axe',
+	'275','stone_axe',
+	'286','golden_axe',
+	'258','iron_axe',
+	'279','diamond_axe'
+]
+*}
+
+{* set shears = [
+	'359','shears'
+]
+*}
+
+{* set air = [
+	'0','air'
+]
+*}
+
+{* set bones = [
+	'352','bone'
+]
+*}
+
+{* set bone_meal = [
+	'351','dye'
+]
+*}
+
+{* set leaves = [
+	'18','leaves'
+]
+*}
+
+{* set sapling = [
+	'6','sapling'
+]
+*}
+
+{* set wood_list = [
+	'17','log',
+	'49','obsidian'
+]
+*}
+
+{* set axes = ['279','diamond_axe','286','golden_axe','275','stone_axe','271','wooden_axe','258','iron_axe'] *}
+
+
+{* macro fix_position() *}
+	DO;
+		{{ CORTEX.loop() }}
+		SET(floor_ok{{ rand }});
+		SET(#current_x{{ rand }},%XPOS%);
+		SET(#current_y{{ rand }},%YPOS%);
+		SET(#current_z{{ rand }},%ZPOS%);
+		DEC(#current_y{{ rand }});
+		GETID(%#current_x{{ rand }}%,%#current_y{{ rand }}%,%#current_z{{ rand }}%,&id{{ rand }});
+		IFMATCHES("%&id{{ rand }}%","{{ regex_passável }}");
+			{{ CHAT.print('não tenho suporte para andar (%&id'~rand~'%)','warning','tentando centralizar') }}
+			UNSET(floor_ok{{ rand }});
+			CENTEROVERBLOCK();
+			WAIT(5t);
+		ENDIF;
+	UNTIL(floor_ok{{ rand }});
+{* endmacro *}
+
+{* macro has_obstruction_constants(adjacentx, adjacenty, adjacentz) *}
+	
+	SET(#cx{{ rand }},%XPOS%);//Current X
+	SET(#cy{{ rand }},%YPOS%);//Current Y
+	DEC(#cy{{ rand }});//Increments Y for getting floor reference
+	SET(#cz{{ rand }},%ZPOS%);//Current Z
+	
+	SET(#ax{{ rand }},{{ adjacentx }});//Adjacent X
+	SET(#ay{{ rand }},{{ adjacenty }});//Adjacent Y
+	SET(#az{{ rand }},{{ adjacentz }});//Adjacent Z
+	
+{* endmacro *}
+
+{* macro has_obstruction_ahead(adjacentx, adjacenty, adjacentz, outvar='obstruction', obstruction_ids=[]) *}
+	
+	{{ has_obstruction_constants(adjacentx, adjacenty, adjacentz) }}
+	
+	UNSET({{ outvar }});
+	
+	UNSET(diagonal{{ rand }});
+	IF((#cx{{ rand }}!=#ax{{ rand }})&&(#cz{{ rand }}!=#az{{ rand }}));
+		//{!! CHAT.print('Diagonal!','tip') !!}
+		SET(diagonal{{ rand }});
+	ENDIF;
+	
+	FOR(#yup{{ rand }},1,3);
+		{{ CORTEX.loop() }}
+		IF((#yup{{ rand }}<3)||(#cy{{ rand }}>#ay{{ rand }}));//Se o loop estiver entre 1 e 2 ou aceita 3, caso Y do bloco corrente seja mais alto
+			#yrelative{{ rand }}=#ay{{ rand }}+#yup{{ rand }};
+			GETID(%#ax{{ rand }}%,%#yrelative{{ rand }}%,%#az{{ rand }}%,&idblock{{ rand }});
+			UNSET(&idblocklat1{{ rand }});
+			UNSET(&idblocklat2{{ rand }});
+			IF(diagonal{{ rand }});
+				GETID(%#ax{{ rand }}%,%#yrelative{{ rand }}%,%#cz{{ rand }}%,&idblocklat1{{ rand }});
+				GETID(%#cx{{ rand }}%,%#yrelative{{ rand }}%,%#az{{ rand }}%,&idblocklat2{{ rand }});
+			ENDIF;
+			IFMATCHES("{{ '{%&idblock'~rand~'%}{%&idblocklat1'~rand~'%}{%&idblocklat2'~rand~'%}' }}","{{ '\{'~obstruction_ids|join('|')~'\}' }}");
+				{!! CHAT.print('Obstáculo de folhas à frente!','warning') !!}
+				SET({{ outvar }});
+				BREAK;
+			ENDIF;
+		ELSE;
+			BREAK;
+		ENDIF;
+	NEXT;
+{* endmacro *}
+
+{* macro has_obstruction_upward(adjacentx, adjacenty, adjacentz, outvar='obstruction', obstruction_ids=[]) *}
+	
+	{{ has_obstruction_constants(adjacentx, adjacenty, adjacentz) }}
+	
+	UNSET({{ outvar }});
+	
+	#diffy{{ rand }}=#ay{{ rand }}-#cy{{ rand }};//Se a diferença for maior que 0, então bloco adjacente está acima
+	
+	IF(#diffy{{ rand }}!=0);
+		UNSET(&idblocktop{{ rand }});
+		IF(#diffy{{ rand }}>0);
+			#top{{ rand }}=#cy{{ rand }}+3;
+			GETID(%#cx{{ rand }}%,%#top{{ rand }}%,%#cz{{ rand }}%,&idblocktop{{ rand }});
+		ELSEIF(#diffy{{ rand }}<0);
+			#top{{ rand }}=#ay{{ rand }}+3;
+			GETID(%#ax{{ rand }}%,%#top{{ rand }}%,%#az{{ rand }}%,&idblocktop{{ rand }});
+		ENDIF;
+		IFMATCHES("{{ '{%&idblocktop'~rand~'%}' }}","{{ '\{'~obstruction_ids|join('|')~'\}' }}");
+			{!! CHAT.print('Obstáculo de folhas acima!','warning') !!}
+			SET({{ outvar }});
+		ENDIF;
+	ENDIF;
+	
+{* endmacro *}
+
+{* macro trap_config_abstract() *}
+	WAIT(500ms);
+	SET(&get_items_escaped,%&get_items%);
+	REPLACE(&get_items_escaped,"$","\$");
+	SET(#column,"%%&var_trap_column%%");
+	SET(#chest,"%%&var_trap_chest%%");
+{* endmacro *}
+
+
+{* macro hook_acessar_baú_verificação_vazio(success_outvar, baú) *}
+	
+	{* import 'Macrosoft.TAXON.gui' as GUI *}
+	{* import 'Macrosoft.TAXON.mkb' as MKB *}
+	
+	{* set r = nid() *}
+	
+	{{ MKB.hook_acessar_baú(success_outvar=success_outvar, baú=baú) }}
+	
+	IF({{ success_outvar }});
+		UNSET(#counter_item_was_not_found{{ r }});
+		DO(30);//Isso espera um instante até desistir de um baú vazio 40 * 1t = 100t (20t = 1s)
+			INC(#counter_item_was_not_found{{ r }});
+			UNSET(#air_count{{ r }});
+			{{ GUI.itera(operação=GUI.op_contar,slot_inicio=0, slot_fim=53, regex_id='^0$|^air$', outvar='#air_count'~r ) }}
+			IF(#counter_item_was_not_found{{ r }}==16);
+				UNSET(#counter_item_was_not_found{{ r }});
+				{{ CHAT.print('Aguardando os itens serem carregados no baú. Pode ser lag do servidor','warning','Trap de baús') }}
+			ENDIF;
+			IF(#air_count{{ r }}>=54);
+				{{ CORTEX.loop() }}
+				WAIT(1t);// 1/4 de segundo
+			ENDIF;
+		UNTIL(#air_count{{ r }}<54);
+		
+		IF(#air_count{{ r }}>=54);
+			{{ CHAT.print('O baú anterior pareceu que realmente estava vazio','info','Trap de baús') }}
+		ENDIF;
+	ENDIF;
+	
+{* endmacro *}
+
+{* macro look_straight(delay=0, center=False) *}
+	
+	{{ BLOCK.center() }}
+	
+	IF(DIRECTION=="N");
+		SMOOTHLOOK(0,%PITCH%,{{ delay }});
+	ELSEIF(DIRECTION=="S");
+		SMOOTHLOOK(180,%PITCH%,{{ delay }});
+	ELSEIF(DIRECTION=="E");
+		SMOOTHLOOK(90,%PITCH%,{{ delay }});
+	ELSE;
+		SMOOTHLOOK(270,%PITCH%,{{ delay }});
+	ENDIF;
+	
+{* endmacro *}

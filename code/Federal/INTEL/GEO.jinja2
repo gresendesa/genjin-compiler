@@ -1,0 +1,204 @@
+
+{* import 'Federal.text.chat' as CHAT *}
+{* import 'Federal.data_structures.dict' as DICT *}
+{* import 'Federal.sense.sensor' as SENSOR *}
+{* import 'Federal.INTEL.block' as BLOCK *}
+{* import 'Federal.ids.tools' as TOOLS *}
+
+{* macro find_material(regex, radius, array_outvar, not_sort=False) *}
+	
+	{* if not_sort *}
+		FINDMATERIAL("{{ regex }}",{{ radius }},{{ array_outvar }},"not_sort");
+	{* else *}
+		FINDMATERIAL("{{ regex }}",{{ radius }},{{ array_outvar }});
+	{* endif *}
+
+{* endmacro *}
+
+{*
+	macro find_block(
+		id,
+		radius=10,
+		regex_passável='^0$|^air$',
+		regex_assoalho='^1$|^stone$|^2$|^grass$|^3$|^dirt$',
+		outvar_array='&coordenadas[]',
+		max_quantity=0
+	)
+*}
+
+IF(HASINTEL);
+	FINDBLOCK("{{ id }}",{{ radius }},"{{ regex_passável }}","{{ regex_assoalho }}",{{ outvar_array }},{{ max_quantity }});
+ELSE;
+	{{ CHAT.print('intel unavailable','error','unable to findblock') }}
+ENDIF;
+{* endmacro *}
+
+{*
+	macro find_path(
+		x,
+		y,
+		z,
+		radius=10,
+		regex_passável='^0$|^air$|^31$|^tallgrass$',
+		regex_assoalho='^1$|^stone$|^2$|^grass$|^3$|^dirt$',
+		outvar_array='&coordenadas[]',
+		estimated='false'
+	)
+*}
+IF(HASINTEL);
+	FINDPATH({{ x }},{{ y }},{{ z }},{{ radius }},"{{ regex_passável }}","{{ regex_assoalho }}",{{ outvar_array }},{{ estimated }});
+ELSE;
+	{{ CHAT.print('intel unavailable','error','unable to findpath') }}
+ENDIF;
+{* endmacro *}
+
+{* macro basic_follow_path(arrayname, success_outvar, sprint=True) *}
+	
+	{* set r = nid() *}
+	SET({{ success_outvar }});
+	
+	{{ CHAT.print('seguindo o caminho','info') }}
+	
+	UNSET(#current_position{{ r }});
+	
+	DO;
+		
+		&next_coordinate{{ r }}=%{{ arrayname }}[%#current_position{{ r }}%]%;
+		
+		IF(&next_coordinate{{ r }});
+			
+			{{ DICT.write_to(source='node'~r, content='%&next_coordinate'~r~'%') }}
+			{{ DICT.get(source='node'~r, key='X', outvar='#nextx'~r) }}
+			{{ DICT.get(source='node'~r, key='Y', outvar='#nexty'~r) }}
+			{{ DICT.get(source='node'~r, key='Z', outvar='#nextz'~r) }}
+			
+			{!! CHAT.print('§cX %#nextx'~r~'% §cY %#nexty'~r~'% §cZ %#nextz'~r~'%','tip') !!}
+			
+			SET(#xrecord{{ r }},%XPOS%);
+			SET(#yrecord{{ r }},%YPOS%);
+			SET(#zrecord{{ r }},%ZPOS%);
+			UNSET(block_reached);
+			
+			DO;
+				
+				//Diferença instantânea entre a altura do chão e a algura Y do próximo alvo
+				#instant_diffto_nexty_up{{ r }}=#nexty{{ r }}-(YPOS-1);
+				SET(#mynexty{{ r }},%#nexty{{ r }}%);
+				INC(#mynexty{{ r }},1);
+				
+				UNSET(#yaw{{ r }});
+				CALCYAWTO(%#nextx{{ r }}%,%#nextz{{ r }}%,#yaw{{ r }},#distance{{ r }});
+				INC(#yaw{{ r }},180);
+				IF(#yaw{{ r }}>=360);
+					DEC(#yaw{{ r }},360);
+				ENDIF;
+				//LOOK(%#yaw{{ r }}%,0);
+				SMOOTHLOOK(%#yaw{{ r }}%,0,0.1);
+				
+				#xdiff_from_to_next{{ r }}=XPOS-#nextx{{ r }};
+				#zdiff_from_to_next{{ r }}=ZPOS-#nextz{{ r }};
+				MATCH("%#xdiff_from_to_next{{ r }}%","-?([0-9]+)",#xdiff_from_to_next_abs{{ r }},1);
+				MATCH("%#zdiff_from_to_next{{ r }}%","-?([0-9]+)",#zdiff_from_to_next_abs{{ r }},1);
+				//LOG("diffx:%#xdiff_from_to_next_abs{{ r }}% diffz:%#zdiff_from_to_next_abs{{ r }}%");
+				
+				IF((XPOS==#nextx{{ r }})&&(ZPOS==#nextz{{ r }}));
+					SET(block_reached);
+					BREAK;
+					//ELSEIF((#xrecord{{ r }}!=XPOS)||(#zrecord{{ r }}!=ZPOS));
+				ELSEIF((#xdiff_from_to_next_abs{{ r }}>2)||(#zdiff_from_to_next_abs{{ r }}>2));
+					BREAK;
+				ENDIF;
+				
+				UNSET(liquid{{ r }});
+				GETID(%XPOS%,%YPOS%,%ZPOS%,&id{{ r }});
+				IFMATCHES("{%&id{{ r }}%}","\{8|flowing_water|9|water\}");
+					SET(liquid{{ r }});
+				ENDIF;
+				
+				IF((#instant_diffto_nexty_up{{ r }}>2)||((!liquid{{ r }})&&(#instant_diffto_nexty_up{{ r }}>1)));
+					BREAK;
+				ENDIF;
+				
+				UNSET(diagonal{{ r }});
+				IF((XPOS!=#nextx{{ r }})&&(ZPOS!=#nextz{{ r }}));
+					SET(diagonal{{ r }});
+				ENDIF;
+				
+				UNSET(obstacle{{ r }});
+				IF(YPOS<=#nexty{{ r }});
+					GETID(%#nextx{{ r }}%,%#nexty{{ r }}%,%#nextz{{ r }}%,&id0{{ r }});
+					SET(obstacle{{ r }});
+					IFMATCHES("{%&id0{{ r }}%}","{{ SENSOR.regexp_has_ids(ids=['0','air','8','flowing_water','9','water'],only=True) }}");
+						UNSET(obstacle{{ r }});
+					ENDIF;
+				ELSEIF(diagonal{{ r }});
+					GETID(%XPOS%,%YPOS%,%#nextz{{ r }}%,&id1{{ r }});
+					GETID(%#nextx{{ r }}%,%YPOS%,%ZPOS%,&id2{{ r }});
+					SET(obstacle{{ r }});
+					IFMATCHES("{%&id1{{ r }}%}{%&id2{{ r }}%}","{{ SENSOR.regexp_has_ids(ids=['0','air','31','tallgrass','8','flowing_water','9','water'],only=True) }}");
+						UNSET(obstacle{{ r }});
+					ENDIF;
+				ENDIF;
+				
+				//GETID(%#nextx{{ r }}%,%#nexty{{ r }}%,%#nextz{{ r }}%,&next_block_id{{ r }});
+				//GETIDREL(0,-1,0,&idchao{{ r }});
+				//GETIDREL(0,0,0,&idpes{{ r }});
+				
+				//LOG("§7chão:§b%&idchao{{ r }}% §7pés:§b%&idpes{{ r }}% §7obst:§b%obstacle{{ r }}% §7dist acima Y:§b%#instant_diffto_nexty_up{{ r }}% §7id bloco alvo:§b%&next_block_id{{ r }}%");
+				
+				IF((obstacle{{ r }})||(liquid{{ r }}));
+					KEYDOWN(JUMP);
+					IF((obstacle{{ r }})&&(liquid{{ r }})&&(#nexty{{ r }}>YPOS));
+						KEYUP(FORWARD);//Para para poder remover a obstrução
+						//LOG("§eremovendo obstrução");
+						UNSET(#attack_counter{{ r }})
+						DO(1000);
+							INC(#attack_counter{{ r }},1);
+							{* set times = ['100','200','300','400','500','600','700','800','900'] *}
+							IFMATCHES("%#attack_counter{{ r }}%","^{{ times|join('$|^') }}$");
+								LOG("§7§o%#attack_counter{{ r }}% §8§l/ §e§o1000");
+							ENDIF;
+							{{ BLOCK.center() }}
+							//LOOK(%#yaw{{ r }}%,37);
+							SMOOTHLOOK(%#yaw{{ r }}%,37,0.1);
+							PICK("{{ TOOLS.shovels|join('","') }}");
+							KEY(ATTACK);
+							GETID(%#nextx{{ r }}%,%#nexty{{ r }}%,%#nextz{{ r }}%,&id0{{ r }});
+						UNTIL((&id0{{ r }}=="0")||(&id0{{ r }}=="air"));
+						IF((&id0{{ r }}!="0")||(&id0{{ r }}!="air"));
+							{{ CHAT.print('desisti da tentativa de quebrar','error') }}
+							BREAK;
+						ENDIF;
+						//LOG("§aremovi");
+					ENDIF;
+				ELSE;
+					KEYUP(JUMP);
+				ENDIF;
+				
+				KEYDOWN(FORWARD);
+				{* if sprint *}
+					SPRINT();
+				{* endif *}
+				
+			LOOP;
+			
+			IF(!block_reached);//Lança um sinal dizendo que saiu da rota e é necessário provavelmente recalcular a rota
+				KEYUP(FORWARD);
+				UNSET({{ success_outvar }});
+				BREAK;
+			ENDIF;
+			
+			{!! CHAT.print('ok','info') !!}
+			INC(#current_position{{ r }});
+			
+		ELSE;
+			{{ CHAT.print('terminamos','success') }}
+			BREAK;
+		ENDIF;
+		
+	UNTIL(!{{ success_outvar }});
+	
+	//KEYUP(JUMP);
+	KEYUP(FORWARD);
+	
+{* endmacro *}

@@ -1,0 +1,301 @@
+{* set RAND = nid() *}
+
+{* macro update_direction(direction=1) *} {!! DEVE SER UTILIZADO PARA ATUALIZAR A DIREÇÃO DOS SENSORES !!}
+  
+  //IF(%DIRECTION%=="N");
+  //    #x{{ RAND }}=0;
+  //    #z{{ RAND }}=-1;       
+  //ELSEIF(%DIRECTION%=="S");
+  //    #x{{ RAND }}=0;
+  //    #z{{ RAND }}=1;
+  //ELSEIF(%DIRECTION%=="E");
+  //    #x{{ RAND }}=1;
+  //    #z{{ RAND }}=0;
+  //ELSEIF(%DIRECTION%=="W");
+  //    #x{{ RAND }}=-1;
+  //    #z{{ RAND }}=0;
+  //ENDIF;
+  
+  #x{{ RAND }}=(DIRECTION=="E")+((DIRECTION=="W")*-1);
+  #z{{ RAND }}=(DIRECTION=="S")+((DIRECTION=="N")*-1);
+  
+  #dir{{ RAND }}={{ direction }};
+  #leftx{{ RAND }}=#z{{ RAND }}*1;
+  #rightx{{ RAND }}=#z{{ RAND }}*-1;
+  #leftz{{ RAND }}=#x{{ RAND }}*-1;
+  #rightz{{ RAND }}=#x{{ RAND }}*1;
+  
+{* endmacro *}
+
+{* macro set_range(range=0) *} {!! DEVE-SE USAR TODA VEZ QUE O RANGE (ALCANCE) MUDAR !!}
+  
+  //SENSORES 0 A FRENTE
+  //#nx{{ RAND }}=%#x{{ RAND }}%*%#dir{{ RAND }}%*{{ range }};
+  //#nz{{ RAND }}=%#z{{ RAND }}%*%#dir{{ RAND }}%*{{ range }};
+  //#nleftx{{ RAND }}=%#nx{{ RAND }}%+%#leftx{{ RAND }}%;
+  //#nleftz{{ RAND }}=%#nz{{ RAND }}%+%#leftz{{ RAND }}%;
+  
+  //#nwleftx{{ RAND }}=%#nx{{ RAND }}%+%#leftx{{ RAND }}%*2; //West-left
+  //#nwleftz{{ RAND }}=%#nz{{ RAND }}%+%#leftz{{ RAND }}%*2; //West-left
+  
+  //#nrightx{{ RAND }}=%#nx{{ RAND }}%+%#rightx{{ RAND }}%;
+  //#nrightz{{ RAND }}=%#nz{{ RAND }}%+%#rightz{{ RAND }}%;
+  
+  //#nerightx{{ RAND }}=%#nx{{ RAND }}%+%#rightx{{ RAND }}%*2; //East-right
+  //#nerightz{{ RAND }}=%#nz{{ RAND }}%+%#rightz{{ RAND }}%*2; //East-right
+  
+  //--
+  
+  #nx{{ RAND }}=#x{{ RAND }}*#dir{{ RAND }}*{{ range }};
+  #nz{{ RAND }}=#z{{ RAND }}*#dir{{ RAND }}*{{ range }};
+  
+  #nleftx{{ RAND }}=#nx{{ RAND }}+#leftx{{ RAND }};
+  #nleftz{{ RAND }}=#nz{{ RAND }}+#leftz{{ RAND }};
+  
+  #nwleftx{{ RAND }}=#nx{{ RAND }}+#leftx{{ RAND }}*2; //West-left
+  #nwleftz{{ RAND }}=#nz{{ RAND }}+#leftz{{ RAND }}*2; //West-left
+  
+  #nrightx{{ RAND }}=#nx{{ RAND }}+#rightx{{ RAND }};
+  #nrightz{{ RAND }}=#nz{{ RAND }}+#rightz{{ RAND }};
+  
+  #nerightx{{ RAND }}=#nx{{ RAND }}+#rightx{{ RAND }}*2; //East-right
+  #nerightz{{ RAND }}=#nz{{ RAND }}+#rightz{{ RAND }}*2; //East-right
+  
+{* endmacro *}
+
+{!! DEVE SER USADO PARA JOGAR O ID EM UMA VARIÁVEL. line='west-left|left|center|right|east-right' layer='underground|floor|surface|head|roof|top'!!}
+{* macro get(line='center',layer='surface',outvar='&sensor') *} 
+
+  {!!
+  {* if line=='left' *}
+    #nleftx{{ RAND }}=#nx{{ RAND }}+#leftx{{ RAND }};
+    #nleftz{{ RAND }}=#nz{{ RAND }}+#leftz{{ RAND }};
+  {* elif line=='west-left' *}
+    #nwleftx{{ RAND }}=#nx{{ RAND }}+#leftx{{ RAND }}*2; //West-left
+    #nwleftz{{ RAND }}=#nz{{ RAND }}+#leftz{{ RAND }}*2; //West-left
+  {* elif line=='right' *}
+    #nrightx{{ RAND }}=#nx{{ RAND }}+#rightx{{ RAND }};
+    #nrightz{{ RAND }}=#nz{{ RAND }}+#rightz{{ RAND }};
+  {* elif line=='east-right' *}
+    #nerightx{{ RAND }}=#nx{{ RAND }}+#rightx{{ RAND }}*2; //East-right
+    #nerightz{{ RAND }}=#nz{{ RAND }}+#rightz{{ RAND }}*2; //East-right
+  {* endif *}
+  !!}
+
+  {* if line=='center' and layer=='floor' *} {!! ====== CENTER ====== !!}
+    GETIDREL(%#nx{{ RAND }}%,-1,%#nz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='center' and layer=='surface' *}
+    GETIDREL(%#nx{{ RAND }}%,0,%#nz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='center' and layer=='head' *}
+    GETIDREL(%#nx{{ RAND }}%,1,%#nz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='center' and layer=='roof' *}
+    GETIDREL(%#nx{{ RAND }}%,2,%#nz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='center' and layer=='underground' *}
+    GETIDREL(%#nx{{ RAND }}%,-2,%#nz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='center' and layer=='top' *}
+    GETIDREL(%#nx{{ RAND }}%,3,%#nz{{ RAND }}%,"{{ outvar }}");
+  
+  
+  {* elif line=='left' and layer=='floor' *} {!! ====== LEFT ====== !!}
+    GETIDREL(%#nleftx{{ RAND }}%,-1,%#nleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='left' and layer=='surface' *}
+    GETIDREL(%#nleftx{{ RAND }}%,0,%#nleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='left' and layer=='head' *}
+    GETIDREL(%#nleftx{{ RAND }}%,1,%#nleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='left' and layer=='roof' *}
+    GETIDREL(%#nleftx{{ RAND }}%,2,%#nleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='left' and layer=='underground' *}
+    GETIDREL(%#nleftx{{ RAND }}%,-2,%#nleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='left' and layer=='top' *}
+    GETIDREL(%#nleftx{{ RAND }}%,3,%#nleftz{{ RAND }}%,"{{ outvar }}");
+    
+    
+  {* elif line=='west-left' and layer=='floor' *} {!! ====== WEST-LEFT ====== !!}
+    GETIDREL(%#nwleftx{{ RAND }}%,-1,%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='west-left' and layer=='surface' *}
+    GETIDREL(%#nwleftx{{ RAND }}%,0,%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='west-left' and layer=='head' *}
+    GETIDREL(%#nwleftx{{ RAND }}%,1,%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='west-left' and layer=='roof' *}
+    GETIDREL(%#nwleftx{{ RAND }}%,2,%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='west-left' and layer=='underground' *}
+    GETIDREL(%#nwleftx{{ RAND }}%,-2,%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='west-left' and layer=='top' *}
+    GETIDREL(%#nwleftx{{ RAND }}%,3,%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  
+    
+  {* elif line=='right' and layer=='floor' *} {!! ====== RIGHT ====== !!}
+    GETIDREL(%#nrightx{{ RAND }}%,-1,%#nrightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='right' and layer=='surface' *}
+    GETIDREL(%#nrightx{{ RAND }}%,0,%#nrightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='right' and layer=='head' *}
+    GETIDREL(%#nrightx{{ RAND }}%,1,%#nrightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='right' and layer=='roof' *}
+    GETIDREL(%#nrightx{{ RAND }}%,2,%#nrightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='right' and layer=='underground' *}
+    GETIDREL(%#nrightx{{ RAND }}%,-2,%#nrightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='right' and layer=='top' *}
+    GETIDREL(%#nrightx{{ RAND }}%,3,%#nrightz{{ RAND }}%,"{{ outvar }}");  
+    
+  
+  {* elif line=='east-right' and layer=='floor' *} {!! ======  EAST-RIGHT ====== !!}
+    GETIDREL(%#nerightx{{ RAND }}%,-1,%#nerightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='east-right' and layer=='surface' *}
+    GETIDREL(%#nerightx{{ RAND }}%,0,%#nerightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='east-right' and layer=='head' *}
+    GETIDREL(%#nerightx{{ RAND }}%,1,%#nerightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='east-right' and layer=='roof' *}
+    GETIDREL(%#nerightx{{ RAND }}%,2,%#nerightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='east-right' and layer=='underground' *}
+    GETIDREL(%#nerightx{{ RAND }}%,-2,%#nerightz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='east-right' and layer=='top' *}
+    GETIDREL(%#nerightx{{ RAND }}%,3,%#nerightz{{ RAND }}%,"{{ outvar }}");
+  
+    
+  {* elif line=='center' and layer is number *} {!! ====== CENTER COM NÚMERO EM LAYER ====== !!}
+    GETIDREL(%#nx{{ RAND }}%,{{ layer }},%#nz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='left' and layer is number *} {!! ====== LEFT COM NÚMERO EM LAYER ====== !!}
+    GETIDREL(%#nleftx{{ RAND }}%,{{ layer }},%#nleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='west-left' and layer is number *} {!! ====== WEST-LEFT COM NÚMERO EM LAYER ====== !!}
+    GETIDREL(%#nwleftx{{ RAND }}%,{{ layer }},%#nwleftz{{ RAND }}%,"{{ outvar }}");
+  {* elif line=='right' and layer is number *} {!! ====== RIGHT COM NÚMERO EM LAYER ====== !!}
+    GETIDREL(%#nrightx{{ RAND }}%,{{ layer }},%#nrightz{{ RAND }}%,"{{ outvar }}");  
+  {* elif line=='east-right' and layer is number *} {!! ====== EAST-RIGHT COM NÚMERO EM LAYER ====== !!}
+    GETIDREL(%#nerightx{{ RAND }}%,{{ layer }},%#nerightz{{ RAND }}%,"{{ outvar }}"); 
+  {* endif *}
+    
+{* endmacro *}
+
+{!! ESTA MACRO GERA UMA SÉRIE DE SENSORES BASEADO NOS PARÂMETROS !!}
+{* macro cover(reach=0, lines='west-left|left|center|right|east-right', layers='underground|floor|surface|head|roof|top', prefix='') *} 
+  
+  {* for i in range(reach|abs+1) *}
+    {{ set_range(range=loop.index0) }}
+  
+    {* if 'left' in lines *}
+    
+      {* if 'underground' in layers *}
+        {{ get(line='left',layer='underground',outvar='&'~prefix~'lu'~loop.index0) }}
+      {* endif *}
+      {* if 'floor' in layers *}
+        {{ get(line='left',layer='floor',outvar='&'~prefix~'lf'~loop.index0) }}
+      {* endif *}
+      {* if 'surface' in layers *}
+        {{ get(line='left',layer='surface',outvar='&'~prefix~'ls'~loop.index0) }}
+      {* endif *}
+      {* if 'head' in layers *}
+        {{ get(line='left',layer='head',outvar='&'~prefix~'lh'~loop.index0) }}
+      {* endif *}
+      {* if 'roof' in layers *}
+        {{ get(line='left',layer='roof',outvar='&'~prefix~'lr'~loop.index0) }}
+      {* endif *}
+      {* if 'top' in layers *}
+        {{ get(line='left',layer='top',outvar='&'~prefix~'lt'~loop.index0) }}
+      {* endif *}
+    
+    {* endif *}
+  
+    {* if 'west-left' in lines *}
+    
+      {* if 'underground' in layers *}
+        {{ get(line='west-left',layer='underground',outvar='&'~prefix~'wu'~loop.index0) }}
+      {* endif *}
+      {* if 'floor' in layers *}
+        {{ get(line='west-left',layer='floor',outvar='&'~prefix~'wf'~loop.index0) }}
+      {* endif *}
+      {* if 'surface' in layers *}
+        {{ get(line='west-left',layer='surface',outvar='&'~prefix~'ws'~loop.index0) }}
+      {* endif *}
+      {* if 'head' in layers *}
+        {{ get(line='west-left',layer='head',outvar='&'~prefix~'wh'~loop.index0) }}
+      {* endif *}
+      {* if 'roof' in layers *}
+        {{ get(line='west-left',layer='roof',outvar='&'~prefix~'wr'~loop.index0) }}
+      {* endif *}
+      {* if 'top' in layers *}
+        {{ get(line='west-left',layer='top',outvar='&'~prefix~'wt'~loop.index0) }}
+      {* endif *}
+    
+    {* endif *}
+  
+    {* if 'center' in lines *}
+    
+      {* if 'underground' in layers *}
+        {{ get(line='center',layer='underground',outvar='&'~prefix~'cu'~loop.index0) }}
+      {* endif *}
+      {* if 'floor' in layers *}
+        {{ get(line='center',layer='floor',outvar='&'~prefix~'cf'~loop.index0) }}
+      {* endif *}
+      {* if 'surface' in layers *}
+        {{ get(line='center',layer='surface',outvar='&'~prefix~'cs'~loop.index0) }}
+      {* endif *}
+      {* if 'head' in layers *}
+        {{ get(line='center',layer='head',outvar='&'~prefix~'ch'~loop.index0) }}
+      {* endif *}
+      {* if 'roof' in layers *}
+        {{ get(line='center',layer='roof',outvar='&'~prefix~'cr'~loop.index0) }}
+      {* endif *}
+      {* if 'top' in layers *}
+        {{ get(line='center',layer='top',outvar='&'~prefix~'ct'~loop.index0) }}
+      {* endif *}
+    
+    {* endif *}
+    
+    {* if 'right' in lines *}
+    
+      {* if 'underground' in layers *}
+        {{ get(line='right',layer='underground',outvar='&'~prefix~'ru'~loop.index0) }}
+      {* endif *}
+      {* if 'floor' in layers *}
+        {{ get(line='right',layer='floor',outvar='&'~prefix~'rf'~loop.index0) }}
+      {* endif *}
+      {* if 'surface' in layers *}
+        {{ get(line='right',layer='surface',outvar='&'~prefix~'rs'~loop.index0) }}
+      {* endif *}
+      {* if 'head' in layers *}
+        {{ get(line='right',layer='head',outvar='&'~prefix~'rh'~loop.index0) }}
+      {* endif *}
+      {* if 'roof' in layers *}
+        {{ get(line='right',layer='roof',outvar='&'~prefix~'rr'~loop.index0) }}
+      {* endif *}
+      {* if 'top' in layers *}
+        {{ get(line='right',layer='top',outvar='&'~prefix~'rt'~loop.index0) }}
+      {* endif *}
+    
+    {* endif *}
+    
+    {* if 'east-right' in lines *}
+    
+      {* if 'underground' in layers *}
+        {{ get(line='east-right',layer='underground',outvar='&'~prefix~'eu'~loop.index0) }}
+      {* endif *}
+      {* if 'floor' in layers *}
+        {{ get(line='east-right',layer='floor',outvar='&'~prefix~'ef'~loop.index0) }}
+      {* endif *}
+      {* if 'surface' in layers *}
+        {{ get(line='east-right',layer='surface',outvar='&'~prefix~'es'~loop.index0) }}
+      {* endif *}
+      {* if 'head' in layers *}
+        {{ get(line='east-right',layer='head',outvar='&'~prefix~'eh'~loop.index0) }}
+      {* endif *}
+      {* if 'roof' in layers *}
+        {{ get(line='east-right',layer='roof',outvar='&'~prefix~'er'~loop.index0) }}
+      {* endif *}
+      {* if 'top' in layers *}
+        {{ get(line='east-right',layer='top',outvar='&'~prefix~'et'~loop.index0) }}
+      {* endif *}
+    
+    {* endif *}
+    
+  {* endfor *}
+  
+{* endmacro *}
+
+
+
+
+  
+
+
+
+

@@ -1,0 +1,556 @@
+{* import "Federal.sense.sensor" as SENSOR *}
+{* import "Federal.text.chat" as CHAT *}
+{* import "Federal.data_structures.dict" as DICT *}
+{* import "Federal.data_structures.set" as SET *}
+{* import "Federal.data_structures.linked_list" as LLIST *}
+{* import "Federal.data_structures.list" as LIST *}
+
+{* set floor = [
+    'grass', '2',
+    'dirt', '3',
+    'stone', '1',
+    '\S+ore','56','73','74','129','153','14','15','16','21',
+    'wool','35',
+    'wooden_slab','43','44',
+    'bedrock','7'
+  ] 
+*}
+{* set passage = [
+    'air', '0',
+    'sapling', '6',
+    'tallgrass', '31',
+    'standing_sign','63','68',
+    'leaves','18',
+    'tallgrass','31'
+  ] 
+*}
+
+
+//----------------------------- DEFINIÇÕES -----------------------------------------
+//  · Um ASSOALHO é uma coordenada cujo bloco é do tipo floor. Isso significa que o
+// avatar do player pode andar sobre o bloco cuja a coordenada contém
+//  · Dado um assoalho (x,y,z), as coordenadas (l,m,n) ADJACENTES são todas aquelas
+// com l=x+q com q variando de -1 a 1, m=z+q com q variando de -1 a 1 e n=z+w com w 
+// variando de -1 a 1 com q diferente de 0 ou w diferente de 0.
+//  · Dado um assoalho (x,y,z), dentre as oito coordenadas adjacentes, uma
+// coordenada (l,m,n) qualquer é DIAGONAL quando x for diferente de l e z for
+// diferente de n.
+//  · Uma coordenada (x,y,z) é PASSÁVEL se ela guarda um bloco cujo espaço pode ser 
+// assumido pelo avatar do player. Exemplo, se a coordenada tem um bloco do tipo air.
+//  · A ABERTURA de uma coordenada (x,y,z) é um número w que indica a quantidade de 
+// coordenadas (y,m,z) passáveis. onde m é um número qualquer respeitando m >= y+1
+//  · Um assoalho (x,y,z) é VAGO quando sua abertura é maior ou igual a dois
+//  · Uma coordenada adjacente (l,m,n) não diagonal de um assoalho (x,y,z) 
+// é ACESSÍVEL quando ela é vaga e quando satisfaz-se ao menos uma das sequintes
+// condições:
+//    🗸 m = y 
+//    🗸 m < y e a coordenada (l,m+3,n) for passável
+//    🗸 n > y e a coordenada (x,y+3,z) for passável
+// As mesmas regras valem para as coodenadas adjacentes com o adicional de que elas só
+// serão acessíveis se as coordenadas (x,a,n) e (l,b,z) também forem acessíveis. Além
+// disso será necessário que a=b e que a-m=b-m<=1
+//-----------------------------------------------------------------------------------
+
+//------------------------------- A* -----------------------------------------
+//  · A lista ligada se chamará 'linkedlist'. Os nós da lista ligada guardarão um
+// dicionário com os seguintes atributos:
+//    - X: coordenada X
+//    - Y: coordenada Y
+//    - Z: coordenada Z
+//    - F: custo do nó
+//  · A lista aberta se chamará 'openlist'. Será uma lista ordenada cujos elementos
+// serão nós da lista ligada.
+//  · A lista fechada se chamará 'closedlist'. Será uma lista não ordenada cujos elementos
+// serão nós da lista ligada. A LISTA FECHADA FOI DESCONTINUADA PORQUE É POSSÍVEL CONSULTAR
+// A LISTA LIGADA DIRETAMENTE PRA DESCOBRIR NÓS JÁ PROCESSADOS
+//  · A referência ao nó pai do nó em verificação ficará armazenado em #parentnode.
+//-----------------------------------------------------------------------------------
+
+//------------------------------- ALGORITMO -----------------------------------------
+//  · Verifica se a coordenada atual está na lista fechada ou na lista aberta. Caso positivo
+// ignora-se e continua a iteração do elemento seguinte
+//  · A partir de uma coordenada (x,y,z) itera-se as oito coordenadas adjacentes (l,m,n).
+// Primeiro as quatro não diagonais e então em seguida as diagonais.
+//  · Para cada coordenada adjacente, escolhe-se um número m que pode ser y-1 y ou y+1. 
+// O número n escolhido será aquele cuja coordenada (l,m,n) for acessível. Se não houver
+// m que corresponda a uma coordenada adjacente, ignora-se a coordenada.
+//  · Todas as coordenadas adjacentes acessíveis serão adicionadas à lista aberta e a
+// coordenada atual será adicionada à lista fechada. A lista aberta é uma lista ordenada
+// através da biblioteca SET.
+//-----------------------------------------------------------------------------------
+{!! ESTA MACRO RETORNA UMA LISTA DE CAMINHOS PARA O DESTINO !!}
+{* macro 
+  get(
+    xpos, 
+    ypos, 
+    zpos,
+    destx,
+    desty,
+    destz,
+    outlist,
+    delay='1t',
+    diagonals=True,
+    looplimit=100,
+    debug=False, 
+    prefixvar='gsr'~range(1,99999)|random
+  ) 
+*}
+  //Instancia a lista ligada
+  {{ LLIST.create(source=prefixvar~'linkedlist') }}
+  
+  {* if diagonals *}
+    {* set adjacent_relative_coordinates = [(-1,0),(0,-1),(0,1),(1,0),
+                         (-1,-1),(-1,1),(1,-1),(1,1)] *}
+  {* else *}
+    {* set adjacent_relative_coordinates = [(-1,0),(0,-1),(0,1),(1,0)] *}
+  {* endif *}
+  
+  SET({{ '#'~prefixvar~'currentx' }},{{ xpos }});
+  SET({{ '#'~prefixvar~'currenty' }},{{ ypos }});
+  SET({{ '#'~prefixvar~'currentz' }},{{ zpos }});
+  
+  {{ is_floor(xpos='%#'~prefixvar~'currentx%', ypos='%#'~prefixvar~'currenty%', zpos='%#'~prefixvar~'currentz%', outvar=prefixvar~'iscurrentfloor', debug=debug) }}
+  
+  IF({{ prefixvar~'iscurrentfloor' }});
+  
+    {{ 
+      build_dict_node(
+        dict={
+          'X':'%#'~prefixvar~'currentx%',
+          'Y':'%#'~prefixvar~'currenty%',
+          'Z':'%#'~prefixvar~'currentz%',
+          'F':'99999'
+        },
+        outvar='&'~prefixvar~'rootnode'
+      ) 
+    }}
+  
+    //Inicializa o ponteiro que irá pra o nó raiz
+    SET({{ '#'~prefixvar~'parentnode' }},0);
+    
+    //Indica que o caminho ainda não foi encontrado :)
+    UNSET({{ prefixvar~'pathfound' }});
+    
+    //Adiciona o nó raiz à lista ligada  
+    {{ LLIST.add(source=prefixvar~'linkedlist',content='%&'~prefixvar~'rootnode%',pointer='%#'~prefixvar~'parentnode%',outvar='#'~prefixvar~'parentnode') }}
+    
+    
+    DO({{ looplimit }});
+    
+      //IF(!{{ prefixvar~'isinclosedlist' }});
+    
+      SET(#{{ prefixvar }}y,{{ '%#'~prefixvar~'currenty%' }});
+      
+      {!! ITERA-SE PRIMEIRO AS COORDENADAS ADJACENTES NÃO DIAGONAIS !!}
+      {* for q, w in adjacent_relative_coordinates *}
+        
+        
+        //LOG({{ q }}, {{ w }});
+        #{{ prefixvar }}x={{ '%#'~prefixvar~'currentx%' }}+({{ q }});
+        #{{ prefixvar }}z={{ '%#'~prefixvar~'currentz%' }}+({{ w }});
+  
+        {{ 
+          choose_adjacent_m(
+            xpos='%#'~prefixvar~'x%', 
+            ypos='%#'~prefixvar~'currenty%', 
+            zpos='%#'~prefixvar~'z%', 
+            outvar='#'~prefixvar~'choosenm', 
+            debug=debug)
+        }}
+        
+        //Verifica se o nó adjacente candidato já se encontra na lista ligada, portanto, já processado
+        {{ 
+          is_there_node(
+            source=prefixvar~'linkedlist', 
+            dict={
+              'X':'%#'~prefixvar~'x%',
+              'Y':'%#'~prefixvar~'choosenm%',
+              'Z':'%#'~prefixvar~'z%'
+            },
+            outvar=prefixvar~'isinlinkedlist'
+          ) 
+        }}
+        IF(!{{ prefixvar~'isinlinkedlist' }});
+        
+          {* if debug *}
+            LOG("not in linked");
+          {* endif *}
+          
+          UNSET({{ prefixvar~'selected' }});
+          IF({{ '#'~prefixvar~'choosenm' }}>=0);
+            {{ 
+              is_accessable(
+                xpos='%#'~prefixvar~'currentx%', 
+                ypos='%#'~prefixvar~'currenty%', 
+                zpos='%#'~prefixvar~'currentz%', 
+                lpos='%#'~prefixvar~'x%', 
+                mpos='%#'~prefixvar~'choosenm%', 
+                npos='%#'~prefixvar~'z%', 
+                outvar=prefixvar~'selected', 
+                debug=debug)
+            }}
+          ENDIF;
+    
+          UNSET({{ prefixvar~'okadded' }});
+          
+          IF({{ prefixvar~'selected' }});
+    
+            //Tratamento especial para diagonais
+            {* if q != 0 and w != 0 *}
+            
+              {{ 
+                DICT.get(
+                  source=prefixvar~'notdiagonal', 
+                  key='/'~'%#'~prefixvar~'currentx%/%#'~prefixvar~'z%/', 
+                  outvar='#'~prefixvar~'diag1check'
+                )
+              }}
+              {{ 
+                DICT.get(
+                  source=prefixvar~'notdiagonal', 
+                  key='/%#'~prefixvar~'x%/%#'~prefixvar~'currentz%'~'/', 
+                  outvar='#'~prefixvar~'diag2check'
+                )
+              }}
+              
+              IF(({{ '#'~prefixvar~'diag1check' }}>0)&&({{ '#'~prefixvar~'diag2check' }}>0)&&({{ '#'~prefixvar~'diag1check' }}=={{ '#'~prefixvar~'diag2check' }}));
+                IF({{ '#'~prefixvar~'choosenm' }}<={{ '#'~prefixvar~'diag1check' }});
+                  {{ '#'~prefixvar~'mdiff1' }}={{ '%#'~prefixvar~'diag1check%' }}-{{ '%#'~prefixvar~'choosenm%' }};
+                  IF({{ '#'~prefixvar~'mdiff1' }}<=1);
+                    SET({{ prefixvar~'okadded' }});
+                  ENDIF;
+                ENDIF;
+              ENDIF;
+                
+              //LOG("%{{ prefixvar~'diag1check' }}% :: %{{ prefixvar~'diag2check' }}% => X{{ '%#'~prefixvar~'x%' }} Y{{ '%#'~prefixvar~'choosenm%' }} Z{{ '%#'~prefixvar~'z%' }}")
+              
+            {* else *}
+              
+              SET({{ prefixvar~'okadded' }});
+            
+              {* if diagonals *}
+                {{ 
+                  DICT.update(
+                    source=prefixvar~'notdiagonal',
+                    dict={
+                      '/%#'~prefixvar~'x%/%#'~prefixvar~'z%/': '%#'~prefixvar~'choosenm%'
+                    }
+                  ) 
+                }}
+              {* endif *}
+            {* endif *}
+          
+          ENDIF;
+      
+          IF({{ prefixvar~'okadded' }});
+            {* if debug *}
+              {{ CHAT.print(message='X %#'~prefixvar~'x% Y %#'~prefixvar~'choosenm% Z %#'~prefixvar~'z%',type='success',label='added') }}
+            {* endif *}
+            //Calculando H - p/ destino
+            {{ '#'~prefixvar~'distdestx' }}=({{ '%#'~prefixvar~'x%' }})-({{ destx }});
+            {{ '#'~prefixvar~'distdesty' }}=({{ '%#'~prefixvar~'choosenm%' }})-({{ desty }});
+            {{ '#'~prefixvar~'distdestz' }}=({{ '%#'~prefixvar~'z%' }})-({{ destz }});
+              
+            //Calculando G - p/ origem
+            {{ '#'~prefixvar~'distparentx' }}=({{ '%#'~prefixvar~'x%' }})-({{ xpos }}); {!! '%#'~prefixvar~'currentx%' !!}
+            {{ '#'~prefixvar~'distparenty' }}=({{ '%#'~prefixvar~'choosenm%' }})-({{ ypos }}); {!! '%#'~prefixvar~'currenty%' !!}
+            {{ '#'~prefixvar~'distparentz' }}=({{ '%#'~prefixvar~'z%' }})-({{ zpos }}); {!! '%#'~prefixvar~'currentz%' !!}
+          
+            
+            //Pegando os números absolutos
+            MATCH("%{{ '#'~prefixvar~'distdestx' }}%","-?([0-9]+)",{{ '#'~prefixvar~'hvaluex' }},1);
+            MATCH("%{{ '#'~prefixvar~'distdesty' }}%","-?([0-9]+)",{{ '#'~prefixvar~'hvaluey' }},1);
+            MATCH("%{{ '#'~prefixvar~'distdestz' }}%","-?([0-9]+)",{{ '#'~prefixvar~'hvaluez' }},1);
+            
+            MATCH("%{{ '#'~prefixvar~'distparentx' }}%","-?([0-9]+)",{{ '#'~prefixvar~'gvaluex' }},1);
+            MATCH("%{{ '#'~prefixvar~'distparenty' }}%","-?([0-9]+)",{{ '#'~prefixvar~'gvaluey' }},1);
+            MATCH("%{{ '#'~prefixvar~'distparentz' }}%","-?([0-9]+)",{{ '#'~prefixvar~'gvaluez' }},1);
+            
+            
+            {{ '#'~prefixvar~'hvalue' }}={{ '#'~prefixvar~'hvaluex' }}+{{ '#'~prefixvar~'hvaluey' }}+{{ '#'~prefixvar~'hvaluez' }}
+            {{ '#'~prefixvar~'gvalue' }}={{ '#'~prefixvar~'gvaluex' }}+{{ '#'~prefixvar~'gvaluey' }}+{{ '#'~prefixvar~'gvaluez' }}
+            
+            //LOG(Xorigin {{ '%#'~prefixvar~'x%' }}-({{ '%#'~prefixvar~'currentx%' }})={{ '%#'~prefixvar~'distparentx%' }}={{ '%#'~prefixvar~'gvaluex%' }});
+            //LOG(Yorigin {{ '%#'~prefixvar~'choosenm%' }}-({{ '%#'~prefixvar~'currenty%' }})={{ '%#'~prefixvar~'distparenty%' }}={{ '%#'~prefixvar~'gvaluey%' }});
+            //LOG(Zorigin {{ '%#'~prefixvar~'z%' }}-({{ '%#'~prefixvar~'currentz%' }})={{ '%#'~prefixvar~'distparentz%' }}={{ '%#'~prefixvar~'gvaluez%' }});
+            
+            //LOG(Xdest {{ '%#'~prefixvar~'x%' }}-({{ destx }})={{ '%#'~prefixvar~'distdestx%' }}={{ '%#'~prefixvar~'hvaluex%' }});
+            //LOG(Ydest {{ '%#'~prefixvar~'choosenm%' }}-({{ desty }})={{ '%#'~prefixvar~'distdesty%' }}={{ '%#'~prefixvar~'hvaluey%' }});
+            //LOG(Zdest {{ '%#'~prefixvar~'z%' }}-({{ destz }})={{ '%#'~prefixvar~'distdestz%' }}={{ '%#'~prefixvar~'hvaluez%' }});
+            
+            {{ '#'~prefixvar~'fvalue' }}={{ '%#'~prefixvar~'hvalue%' }}*10;//Optou-se por usar o algoritmo greedy
+            
+            {* if q != 0 and w != 0 *}
+              //INC({!! '#'~prefixvar~'fvalue' !!},4);
+            {* endif *}
+            
+            //LOG(FValue {{ '%#'~prefixvar~'hvaluex%' }}+{{ '%#'~prefixvar~'hvaluey%' }}+{{ '%#'~prefixvar~'hvaluez%' }}+{{ '%#'~prefixvar~'gvaluex%' }}+{{ '%#'~prefixvar~'gvaluey%' }}+{{ '%#'~prefixvar~'gvaluez%' }}={{ '%#'~prefixvar~'fvalue%' }});
+            
+            //P guarda o ponteiro para o nó na lista ligada
+            
+            //Inserindo o nó em análise na linkedlist
+            
+            {{ 
+              build_dict_node(
+                dict={
+                  'X':'%#'~prefixvar~'x%',
+                  'Y':'%#'~prefixvar~'choosenm%',
+                  'Z':'%#'~prefixvar~'z%',
+                  'F':'%#'~prefixvar~'fvalue%'
+                },
+                outvar='&'~prefixvar~'nodetemp'
+              ) 
+            }}
+            
+            {{ LLIST.add(source=prefixvar~'linkedlist',content='%&'~prefixvar~'nodetemp%',pointer='%#'~prefixvar~'parentnode%',outvar='#'~prefixvar~'nodepointer') }}
+            
+            {{ 
+              build_dict_node(
+                dict={
+                  'X':'%#'~prefixvar~'x%',
+                  'Y':'%#'~prefixvar~'choosenm%',
+                  'Z':'%#'~prefixvar~'z%',
+                  'F':'%#'~prefixvar~'fvalue%',
+                  'P':'%#'~prefixvar~'nodepointer%'
+                },
+                outvar='&'~prefixvar~'nodetemptolist'
+              ) 
+            }}
+            
+            {{ 
+              build_dict_node(
+                dict={
+                  'X':'[-0-9]+',
+                  'Y':'[-0-9]+',
+                  'Z':'[-0-9]+',
+                  'F':'([0-9]+)',
+                  'P':'[0-9]+'
+                },
+                outvar='&'~prefixvar~'noderegtemp'
+              ) 
+            }}
+            
+            //Inserindo o nó em análise à openlist
+            {{ SET.insert(source=prefixvar~'openlist',content='%&'~prefixvar~'nodetemptolist%',content_group_regex='%&'~prefixvar~'noderegtemp%', debug=False) }}
+      
+            IF(({{ '%#'~prefixvar~'x%' }}=={{ destx }})&&({{ '%#'~prefixvar~'choosenm%' }}=={{ desty }})&&({{ '%#'~prefixvar~'z%' }}=={{ destz }}));
+              SET({{ prefixvar~'pathfound' }});
+              BREAK;
+            ENDIF;
+      
+          ELSE;
+            {* if debug *}
+              {{ CHAT.print(message='X %#'~prefixvar~'x% Y %#'~prefixvar~'choosenm% Z %#'~prefixvar~'z%',type='error',label='refused') }}
+            {* endif *}
+          ENDIF;
+          
+        ELSE;
+          {* if debug *}
+            log("already in linked list");
+          {* endif *}
+        ENDIF;
+  
+      {* endfor *}
+      
+      //Adicionando nó raiz na closedlist
+      //NOTOU-SE QUE ADICIONAR NA CLOSEDLIST É INÚTIL NA ATUAL PROGRAMAÇÃO
+      {!! LIST.push(source='closedlist',content='%&'~prefixvar~'rootnode%') !!}
+      
+      //---------------------//
+      // Selecionando novo nó
+      //---------------------//
+        
+        //SET(&aaabbb,%&{{ prefixvar~'openlist' }}%);
+        
+          
+        //SET(&aaaccc,%&{{ prefixvar~'openlist' }}%);
+          
+        //IFCONTAINS(%&aaaccc%,%{{ '&'~prefixvar~'rootnode' }}%);
+        //  LOG("§eTÁ ERRRAAADOOO!");
+        //  BREAK;
+        //ELSE;
+        //  LOG("§aATÁ CERTOO!");
+        //ENDIF;
+          
+        IF(&{{ prefixvar~'openlist' }});
+          
+          {{ LIST.shift(source=prefixvar~'openlist',outvar='&'~prefixvar~'rootnode') }}
+        
+          {{ DICT.write_to(source=prefixvar~'nextrootnode',content='%&'~prefixvar~'rootnode%') }}
+          {{ DICT.get(source=prefixvar~'nextrootnode',key='X',outvar='#'~prefixvar~'currentx') }}
+          {{ DICT.get(source=prefixvar~'nextrootnode',key='Y',outvar='#'~prefixvar~'currenty') }}
+          {{ DICT.get(source=prefixvar~'nextrootnode',key='Z',outvar='#'~prefixvar~'currentz') }}
+          {{ DICT.get(source=prefixvar~'nextrootnode',key='F',outvar='#'~prefixvar~'tempfvalue') }}
+          {{ DICT.get(source=prefixvar~'nextrootnode',key='P',outvar='#'~prefixvar~'parentnode') }}
+          
+          {!! 
+            build_dict_node(
+              dict={
+                'X':'%#'~prefixvar~'currentx%',
+                'Y':'%#'~prefixvar~'currenty%',
+                'Z':'%#'~prefixvar~'currentz%',
+                'F':'%#'~prefixvar~'tempfvalue%'
+              },
+              outvar='&'~prefixvar~'rootnode'
+            ) 
+          !!}
+        ELSE;
+          {{ CHAT.print(message='sem caminhos disponíveis',label='path',type='warning') }}
+          BREAK;
+        ENDIF;
+        
+        //LOG("{{ '%&'~prefixvar~'rootnode%' }} :: x{{ '%#'~prefixvar~'currentx%' }} y{{ '%#'~prefixvar~'currenty%' }} z{{ '%#'~prefixvar~'currentz%' }}");
+      //---------------------//
+      //---------------------//
+        
+        
+      WAIT({{ delay }});
+    UNTIL(KEY_DELETE);
+  ELSE;
+    {* if debug *}
+      {{ CHAT.print(message='block is not floor',label='get_surround_roads',type='warning') }}
+    {* endif *}
+  ENDIF;
+  
+    
+  IF({{ prefixvar~'pathfound' }});
+    {{ CHAT.print(message='caminho localizado',label='path',type='success') }}
+    {!! LLIST.list(source=prefixvar~'linkedlist') !!}
+    
+    {{ LLIST.follow_path(source=prefixvar~'linkedlist',outlist=outlist) }}
+    //LOG(%&{{ prefixvar~'finalpath' }}%)
+    //LOG(%&{{ prefixvar~'openlist' }}%)
+  ELSE;
+    {{ CHAT.print(message='não foi possível rastrear o caminho',label='path',type='error') }}
+  ENDIF;
+
+    
+
+{* endmacro *}
+
+{!! VERIFICA SE HÁ OCORRÊNCIA DE DICIONÁRIO COM AS COORDENADAS INFORMADAS NA FONTE INDICADA !!}
+{* macro is_there_node(source, dict, outvar,prefixvar='itn'~range(1,99999)|random) *}
+  UNSET({{ outvar }});
+  {{ build_dict_node(dict=dict,outvar='&'~prefixvar) }}
+  IFCONTAINS(%&{{ source }}%,%{{ '&'~prefixvar }}%);
+    SET({{ outvar }});
+  ENDIF;
+{* endmacro *}
+
+{!! RETORNA UM STRING DE NÓ NO FORMATO CRU DE UM DICIONÁRIO !!}
+{* macro build_dict_node(dict, outvar, prefixvar='bdn'~range(1,99999)|random) *}
+  {{ DICT.update(source=prefixvar~'tempdict',dict=dict,replace=True) }}
+  SET({{ outvar }},%&{{ prefixvar~'tempdict' }}%);
+  {{ DICT.destroy(source=prefixvar~'tempdict') }}
+{* endmacro *}
+
+//  · Uma coordenada adjacente (l,m,n) não diagonal de um assoalho (x,y,z) 
+// é ACESSÍVEL quando ela é vaga e quando:
+//    🗸 m = y 
+//    🗸 m < y e a coordenada (l,m+3,n) for passável
+//    🗸 m > y e a coordenada (x,y+3,z) for passável
+{!! 
+  RECEBE A COORDENADA REFERÊNCIA, A COORDENADA ADJACENTE PARA VERIFICAR
+  SE É ACESSÍVEL, OU SEJA, SE ESTÃO LIGADAS.
+!!}
+{* macro is_accessable(xpos, ypos, zpos, lpos, mpos, npos, outvar='accessable', debug=False, prefixvar='isa'~range(1,99999)|random) *}
+  
+  UNSET({{ outvar }});
+  IF({{ mpos }}=={{ ypos }});
+    SET({{ outvar }});
+  ELSE;
+    IF({{ mpos }}<{{ ypos }});
+      {{ '#'~prefixvar~'topblock' }}={{ mpos }}+3;
+      GETID({{ lpos }},{{ '%#'~prefixvar~'topblock%' }},{{ npos }},&{{ prefixvar }}block);
+      {* if debug *}
+        {{ CHAT.print(message='evaluating §f['~lpos~',%#'~prefixvar~'topblock%,'~npos~'] {%&'~prefixvar~'block%}',label='is_accessable') }}
+      {* endif *}
+    ELSE;//mpos > y
+      {{ '#'~prefixvar~'topblock' }}={{ ypos }}+3;
+      GETID({{ xpos }},{{ '%#'~prefixvar~'topblock%' }},{{ zpos }},&{{ prefixvar }}block);
+      {* if debug *}
+        {{ CHAT.print(message='evaluating §f['~xpos~',%#'~prefixvar~'topblock%,'~zpos~'] {%&'~prefixvar~'block%}',label='is_accessable') }}
+      {* endif *}
+    ENDIF;
+    IFMATCHES("{%&{{ prefixvar }}block%}","{{ SENSOR.regexp_has_ids(ids=passage, only=True) }}");
+      SET({{ outvar }});
+    ENDIF;
+  ENDIF;
+  {* if debug *}
+    {{ CHAT.print(message='§f['~xpos~','~ypos~','~zpos~']§7->§f['~lpos~','~mpos~','~npos~'] result: %'~outvar~'%',label='is_accessable') }}
+  {* endif *}
+{* endmacro *}
+
+{!! 
+  RETORNA UM NÚMERO m (ALTURA Y) DA COORDENADA ADJACENTE. 
+  RETORNA UMA DAS QUATRO POSSIBILIDADES: y+1,y,y-1 OU -1
+  RETORNA -1 SE NÃO HOUVER ASSOALHO DISPONÍVEL VAGO
+!!}
+{* macro choose_adjacent_m(xpos, ypos, zpos, outvar='#result', debug=False, prefixvar='cam'~range(1,99999)|random) *}
+  SET({{ outvar }},-1);
+  #{{ prefixvar }}ycount={{ ypos }}+1;
+  {{ is_floor(xpos=xpos, ypos='%#'~prefixvar~'ycount%', zpos=zpos, outvar=prefixvar~'isfloor', debug=debug) }}
+  {{ is_vacant(xpos=xpos, ypos='%#'~prefixvar~'ycount%', zpos=zpos, outvar=prefixvar~'mclear', debug=debug) }}
+  IF(({{ prefixvar~'mclear' }})&&({{ prefixvar~'isfloor' }}));
+    SET({{ outvar }},%#{{ prefixvar }}ycount%);
+    {* if debug *}
+      {{ CHAT.print(message='TOP',label='m') }}
+    {* endif *}
+  ELSE;
+    DEC(#{{ prefixvar }}ycount);
+    {{ is_floor(xpos=xpos, ypos='%#'~prefixvar~'ycount%', zpos=zpos, outvar=prefixvar~'isfloor', debug=debug) }}
+    {{ is_vacant(xpos=xpos, ypos='%#'~prefixvar~'ycount%', zpos=zpos, outvar=prefixvar~'mclear', debug=debug) }}
+    IF(({{ prefixvar~'mclear' }})&&({{ prefixvar~'isfloor' }}));
+      SET({{ outvar }},%#{{ prefixvar }}ycount%);
+      {* if debug *}
+        {{ CHAT.print(message='MIDDLE',label='m') }}
+      {* endif *}
+    ELSE;
+      DEC(#{{ prefixvar }}ycount);
+      {{ is_floor(xpos=xpos, ypos='%#'~prefixvar~'ycount%', zpos=zpos, outvar=prefixvar~'isfloor', debug=debug) }}
+      {{ is_vacant(xpos=xpos, ypos='%#'~prefixvar~'ycount%', zpos=zpos, outvar=prefixvar~'mclear', debug=debug) }}
+      IF(({{ prefixvar~'mclear' }})&&({{ prefixvar~'isfloor' }}));
+        SET({{ outvar }},%#{{ prefixvar }}ycount%);
+        {* if debug *}
+          {{ CHAT.print(message='BOTTOM',label='m') }}
+        {* endif *}
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  {* if debug *}
+    {{ CHAT.print(message='result: %'~outvar~'%',label='choose_adjacent_m') }}
+  {* endif *}
+{* endmacro *}
+
+{!! VERIFICA SE UMA COORDENADA É UM ASSOALHO !!}
+{* macro is_floor(xpos, ypos, zpos, outvar='result', debug=False, prefixvar='isf'~range(1,99999)|random) *}
+  UNSET({{ outvar }});
+  GETID({{ xpos }},{{ ypos }},{{ zpos }},&{{ prefixvar }}block);
+  IFMATCHES("{%&{{ prefixvar }}block%}","{{ SENSOR.regexp_has_ids(ids=floor) }}");
+    SET({{ outvar }});
+  ENDIF;
+  {* if debug *}
+    {{ CHAT.print(message='[%&'~prefixvar~'block%] result: %'~outvar~'%',label='is_floor') }}
+  {* endif *}
+{* endmacro *}
+
+{!!
+  VERIFICA SE TODOS OS BLOCOS ACIMA DE MESMA COORDENADA X E Z NO RANGE
+  INFORMADO COORRESPONDEM UNICAMENTE AOS IDS INDICADOS EM passage.
+!!}
+{* macro is_vacant(xpos, ypos, zpos, outvar='vacant', debug=False, prefixvar='mur'~range(1,99999)|random) *}
+  {* set container = [] *}
+  SET(#{{ prefixvar }}ycount,{{ ypos }});
+  {* for i in range(2) *}
+    INC(#{{ prefixvar }}ycount);
+    GETID({{ xpos }},%#{{ prefixvar }}ycount%,{{ zpos }},&{{ prefixvar~loop.index0 }}resulty);
+    {* set aux_container = container.append('{%&'~prefixvar~loop.index0~'resulty%}') *}
+  {* endfor *}
+  UNSET({{ outvar }});
+  IFMATCHES("{{ container|join('') }}","{{ SENSOR.regexp_has_ids(ids=passage, only=True) }}");
+    SET({{ outvar }});
+  ENDIF;
+  {* if debug *}
+    {{ CHAT.print(message=container|join('')~' result: %'~outvar~'%',label='is_vacant:'~reach) }}
+  {* endif *}
+{* endmacro *}

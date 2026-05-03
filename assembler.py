@@ -31,6 +31,7 @@ import json
 import os
 import sys
 import random
+import traceback
 from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
 from jinja2 import pass_context
 from markupsafe import Markup
@@ -276,7 +277,8 @@ def main() -> None:
                 msg += " Dica: use -d para especificar o diretório de templates."
             sys.exit(msg)
         except Exception as exc:  # noqa: BLE001
-            sys.exit(f"Erro durante a renderização: {exc}")
+            print(traceback.format_exc(), file=sys.stderr)
+            sys.exit(f"Erro durante a renderização: {type(exc).__name__}: {exc}")
 
     else:
         # --- Modo arquivo (comportamento original) ---
@@ -303,7 +305,7 @@ def main() -> None:
         env.globals.update({
             "dev": "Federal", #Hardcoded para facilitar debug
             "build": '3E26•E30•Federal', #Hardcoded para facilitar debug
-            "this": {'code': '...', 'csid': 'csid'}, #Hardcoded para facilitar debug
+            "this": {'code': '...', 'csid': 'csid', 'type': 'Main'}, #Hardcoded para facilitar debug
             "nid": Cortex.get_next_number,
             "raise": Cortex.throw,
         })
@@ -327,7 +329,8 @@ def main() -> None:
         try:
             rendered = template.render(**context)
         except Exception as exc:  # noqa: BLE001
-            sys.exit(f"Erro durante a renderização: {exc}")
+            print(traceback.format_exc(), file=sys.stderr)
+            sys.exit(f"Erro durante a renderização: {type(exc).__name__}: {exc}")
 
     sys.stdout.write(rendered)
 

@@ -1,0 +1,21 @@
+{* macro setup() *}
+	{* block setup *}
+	{* endblock *}
+{* endmacro *}
+
+{* macro loop() *}
+	{* block loop *}
+	{* endblock *}
+{* endmacro *}
+
+$${
+	
+	{{ setup() }}
+	
+	DO;
+		
+		{{ loop() }}
+		
+	LOOP;
+	
+}$$

@@ -1,0 +1,364 @@
+{* set jump_pattern = '^jump ([^\(]+)\(([^\)]*)\)' *}
+{* set call_pattern = '^call ([^\(]+)\(([^\)]*)\)(?: => ([^\(]+)\(([^\)]*)\))?' *}
+{* set return_pattern = '^return *(.*)?' *}
+{* set callback_pattern = '^([^\(]+)\(([^\)]*)\)' *}
+{* import 'Macrosoft.cortex.common' as CORTEX *}
+
+{* macro set_task(name) *}
+	SET(&task__,"{{ name }}");
+{* endmacro *}
+
+{* macro register_exception_raise() *}
+	SET(&exception__,%&raise_%);
+	UNSET(&raise_);
+{* endmacro *}
+
+{* macro interrupt_on_unhandled_exception() *}
+	IF(&exception__);
+		LOG("§8§l%&pname__% §4✗ §c§lERROR! §cUnhandled §cexception §7§l%&exception__% §8on §8§l[§5%&task__%§8§l] §8from §8§l[§5%&ltask__%§8§l]");
+		SET(stop___);
+	ENDIF;
+{* endmacro *}
+
+{* macro postpone_interruption() *}
+	SET(postponed_interruption__);
+	SET(postponed_from_pause__,%pause___%);
+	UNSET(pause___);
+	UNSET(stop___);
+{* endmacro *}
+
+{* macro resume_interruption() *}
+	UNSET(pause___);
+	UNSET(stop___);
+	IF(postponed_from_pause__);
+		SET(pause___);
+	ELSE;
+		SET(stop___);
+	ENDIF;
+{* endmacro *}
+
+{* macro set_args(str) *}
+	SET(&args__,"{{ str }}");
+	MATCH("{{ str }}","([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",&args__[]);
+  	MATCH("{{ str }}","([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",#args__[]);
+{* endmacro *}
+
+{* macro show_transition(type) *}
+	LOG("%&phash__% §8§ltransition §7§l{{ type }} §7%&ltask__% §8§l=> §7%&task__% §8%&args__[1]%•%&args__[2]%•%&args__[3]%•%&args__[4]%•%&args__[5]%•%&args__[6]%•%&args__[7]%•%&args__[8]%•%&args__[9]%•%&args__[10]%");
+{* endmacro *}
+
+{* macro show_message(message) *}
+	LOG("%&phash__% {{ message }}");
+{* endmacro *}
+
+{* macro trigger_section(triggers) *}
+	
+	{* if triggers|length > 0 *}
+
+		DO(1);
+			{* for trigger in triggers *}
+
+				{* if trigger.active *}
+
+					{{ trigger.fetch_code(CORTEX) }}
+
+				{* endif *}
+				
+			{* endfor *}
+		LOOP;
+
+	{* endif *}
+    
+{* endmacro *}
+
+
+
+{* import 'Macrosoft.CTRL.compontents' as CTRL *}
+
+{* macro route_processor(project) *}	
+
+	UNSET(&match__);
+	UNSET(&groups__[]);
+
+	{{ CTRL.get_in() }}
+	IFMATCHES(%&in__%,"{{ CTRL.stop_message_pattern }}|{{ CTRL.pause_message_pattern }}");
+		IFMATCHES(%&in__%,"{{ CTRL.stop_message_pattern }}");
+			SET(stop___);
+		ELSE;
+			SET(pause___);
+		ENDIF;
+		{!! CTRL.clear_in() !!}
+	ELSE;
+		IFMATCHES(%&in__%,"{{ CTRL.play_message_pattern }}");
+
+			MATCH("%&in__%","{{ CTRL.play_message_pattern }}",&groups__[]);
+			{{ set_task("%&entrypoint__%") }}
+			IF(&groups__[1]);
+				{{ set_task("%&groups__[1]%") }}
+			ENDIF;
+			{{ set_args("%&groups__[2]%") }}
+
+			{{ CTRL.clear_in() }}
+
+			{* if project.debug *}
+				{{ show_transition("play") }}
+			{* endif *}
+
+		ELSE;
+
+			IFMATCHES("%&transition_%","{{ jump_pattern }}");
+
+				MATCH("%&transition_%","{{ jump_pattern }}",&groups__[]);
+				{{ set_task("%&groups__[1]%") }}
+				{{ set_args("%&groups__[2]%") }}
+
+				{* if project.debug *}
+					{{ show_transition("jump") }}
+				{* endif *}
+
+				//==========CCTITLE=========//
+				{{ CTRL.set_cctitle("§1JUMP") }}
+
+			ELSE;
+
+				IFMATCHES("%&transition_%","{{ call_pattern }}");
+
+					MATCH("%&transition_%","{{ call_pattern }}",&groups__[]);
+					{{ set_task("%&groups__[1]%") }}
+					{{ set_args("%&groups__[2]%") }}
+
+					IF(&groups__[3]);
+						PUSH(&stack__,"%&groups__[3]%(%&groups__[4]%)");
+					ELSEIF(&ltask__);
+						PUSH(&stack__,"%&ltask__%(%&largs__%)");
+					ENDIF;
+
+					{* if project.debug *}
+						{{ show_transition("call") }}
+					{* endif *}
+
+					//==========CCTITLE=========//
+					{{ CTRL.set_cctitle("§1CALL") }}
+
+				ELSE;
+
+					IFMATCHES("%&transition_%","{{ return_pattern }}",&value__,1);
+
+						SET(#value__,%&value__%);
+						ARRAYSIZE(&stack__,#stack_size__);
+					    IF(#stack_size__>0);
+							POP(&stack__,&callback__);
+							REPLACE(&callback__,"{$}",%&value__%);
+							MATCH("%&callback__%","{{ callback_pattern }}",&groups__[]);
+							{{ set_task("%&groups__[1]%") }}
+							{{ set_args("%&groups__[2]%") }}
+							SET(callback__);
+					    ELSE;
+					    	LOG("§8§l%&pname__% §4✗ §c§lERROR! §7Invalid §7return §8§l[§5%&ltask__%§8§l]");
+					    	SET(stop___);
+					    ENDIF;
+
+					    {* if project.debug *}
+							{{ show_transition("return") }}
+							LOG("§8§l%&pname__% §8§lreturned §7%&value__% §8#§7%#value__%");
+						{* endif *}
+
+						//==========CCTITLE=========//
+						{{ CTRL.set_cctitle("§1RETURN") }}
+
+					ELSE;
+
+						IF(postponed_interruption__);
+							{* if project.debug *}
+								{{ show_message("§7§lcalling endpoint §f§l%&endpoint__%") }}
+							{* endif *}
+							{{ set_task("%&endpoint__%") }}
+
+							//==========CCTITLE=========//
+							{{ CTRL.set_cctitle("§1ENDPOINT") }}
+
+						ELSE;
+							{* if project.debug *}
+								LOG("§8§l%&pname__% §8§lno transition set. => §7%&entrypoint__%§7(§8%&hello__%§7)");
+							{* endif *}
+							{{ set_task("%&entrypoint__%") }}
+							{{ set_args("%&hello__%") }}
+						ENDIF;
+						
+					ENDIF;
+
+				ENDIF
+
+			ENDIF;
+
+		ENDIF;
+
+	ENDIF;
+	// =============== Limpa o indicador de transições
+	UNSET(&transition_);
+
+{* endmacro *}
+
+{* macro ending_processor(project) *}	
+
+	{{ interrupt_on_unhandled_exception() }}
+	SET(&ltask__,%&task__%);
+	SET(&largs__,%&args__%);
+
+	IF({{ CTRL.interruptions }});
+		IF(postponed_interruption__);
+			{{ resume_interruption() }}
+			{* if project.debug *}
+				LOG("§8§l%&pname__% §8resuming interruption");
+			{* endif *}
+		ELSEIF(force_interruption_); //It prevents endpoint to be called
+			{* if project.debug *}
+				LOG("§8§l%&pname__% §8forced interruption");
+			{* endif *}
+			UNSET(force_interruption_);
+		ELSEIF(&endpoint__);
+			{* if project.debug *}
+				LOG("§8§l%&pname__% §8endpoint activated");
+			{* endif *}
+			{{ postpone_interruption() }}
+			UNSET(&transition_); //Removes the transition record
+			{{ CTRL.clear_in() }}			
+		ENDIF;
+	ENDIF;
+
+{* endmacro *}
+
+{* macro task_processor(tasks, project) *}
+
+	//==== TASK PROCESSOR LOOP ====//
+
+	{* for task in tasks *}
+
+		{* if loop.index==1 *}
+			IF(&task__=="{{ task.name }}");
+		{* else *}
+			ELSEIF(&task__=="{{ task.name }}");
+		{* endif *}
+
+			//==========INDICATES PLAYING========//
+			{{ CTRL.set_status("playing") }}
+
+			//==========CCTITLE=========//
+			{{ CTRL.set_cctitle("%&task__%") }}
+
+			UNSET(#loop__);
+
+			{* if task.unsafe is not none and project.unsafe is none *}
+				UNSAFE({{ task.unsafe }});
+			{* endif *}
+
+			{* set triggers = task.trigger_package *}
+
+			//==== OPENING TRIGGERS
+
+			{{ trigger_section(triggers.opening) }}
+
+			{* if triggers.opening|length > 0 *}
+				//==== CTRL fast interruptions checker
+				{{ CTRL.get_in() }}
+				
+				IFMATCHES(%&in__%,"{{ CTRL.stop_message_pattern }}|{{ CTRL.pause_message_pattern }}|{{ CTRL.play_message_pattern }}");
+					SET(interrupt_);
+				ENDIF;
+			{* endif *}
+
+			//==== MAIN TRIGGERS - LOOP
+			IF(!interrupt_);
+				DO;
+					
+					{* if task.delay is number *}
+					  WAIT({{ task.delay }}t);
+          {* endif *}
+
+					{{ trigger_section(triggers.main) }}
+
+					//==== CTRL fast interruptions checker
+					{{ CTRL.get_in() }}
+					
+					IFMATCHES(%&in__%,"{{ CTRL.stop_message_pattern }}|{{ CTRL.pause_message_pattern }}|{{ CTRL.play_message_pattern }}");
+						SET(interrupt_);
+					ELSEIF({{ project.emergency_key }});
+						SET(emergency_exit___);
+					ENDIF;
+
+					//==== #LOOP increment
+					INC(#loop__);
+
+				UNTIL((interrupt_) || {{ CTRL.interruptions }});
+			ENDIF;
+
+			//==== CTRL route interruptions checker
+			{{ CTRL.get_in() }}
+			IFMATCHES(%&in__%,"{{ CTRL.stop_message_pattern }}");
+				SET(stop___);
+				{!! CTRL.clear_in() !!}
+			ELSE;
+				IFMATCHES(%&in__%,"{{ CTRL.pause_message_pattern }}");
+					SET(pause___);
+					{!! CTRL.clear_in() !!}
+				ENDIF;
+			ENDIF;
+
+			//==== ENDING TRIGGERS
+
+			{{ trigger_section(triggers.ending) }}
+
+		{* if task.unsafe is not none and project.unsafe is none *}
+			ENDUNSAFE;
+		{* endif *};
+
+	{* endfor *}
+
+	{* if tasks|length > 0 *}
+		ELSE;
+ 
+			LOG("§8§l%&pname__% §4✗ §c§lERROR! §7Task §8%&task__% §7not found §8§l[§5%&ltask__%§8§l]");
+			SET(stop___);
+
+		ENDIF;
+	{* else *}
+
+		LOG("§8§l%&pname__% §4✗ §c§lERROR! §cno §ctasks §cregistered");
+		SET(stop___);
+
+	{* endif *}
+
+{* endmacro *}
+
+// =================================================
+//			PROCESS INNER AS A SET OF TASKS
+// =================================================
+{* macro inner(tasks, project) *}	
+
+	UNSET(&ltask__);
+	IF(!&endpoint__);
+		SET(&endpoint__,"{{ project.endpoint }}");
+	ENDIF;
+	IF(!&entrypoint__);
+		SET(&entrypoint__,"{{ project.entrypoint }}");
+	ENDIF;
+	{{ set_task("%&entrypoint__%") }}
+	
+	DO;
+
+		UNSET(interrupt_);
+		UNSET(callback__);
+
+		{{ route_processor(project) }}
+  
+		IF({{ CTRL.interruptions_not }})
+			//The exception is discarted if the interruption appears
+			{{ register_exception_raise() }}
+			{{ task_processor(tasks, project) }}
+		ENDIF;
+  
+    {{ ending_processor(project) }}
+  
+	UNTIL({{ CTRL.interruptions }});
+
+{* endmacro *}

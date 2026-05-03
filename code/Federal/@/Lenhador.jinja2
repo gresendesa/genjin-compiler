@@ -1,0 +1,1073 @@
+{* extends 'Federal.sketch.miniduino' *}
+{* import 'Federal.sketch.flow' as FLOW *}
+{* import "Federal.INTEL.GEO" as GEO *}
+{* import 'Federal.text.chat' as CHAT *}
+{* import 'Federal.data_structures.dict' as DICT *}
+{* import "Federal.wood.common" as WOOD *}
+{* import 'Macrosoft.common.control' as CONTROL *}
+{* import 'Federal.INTEL.block' as BLOCK *}
+{* import 'Federal.text.chat' as CHAT *}
+{* import 'Federal.@.extension' as EXTENSION *}
+{* import "Federal.data_structures.list" as LIST *}
+{* import "Federal.sense.path" as PATH *}
+{* import "Federal.text.chat" as CHAT *}
+{* import "Federal.wood.common" as WOOD *}
+{* import 'Federal.sense.engine' as ENGINE *}
+{* import 'Federal.INTEL.insights' as INSIGHTS *}
+{* import 'Macrosoft.CLOUDSCRIPT.collector' as COLLECTOR *}
+{* import 'Federal.@.COLLECTOR' as COLLECTOR *}
+{* import 'Federal.INTEL.QUEUE' as QUEUE *}
+{* import 'Federal.INTEL.COLLECT' as COLLECT *}
+{* import 'Federal.@.shared' as SHARED *}
+
+{* set regex_folhas = '^18$|^leaves$|^leaves2$' *}
+{* set regex_madeira = '^17$|^log$|^log2$' *}
+
+{* block loop *}
+	
+	//Rastreia as árvores ao redor
+	{{
+		FLOW.try(
+			macros=[(procura_árvores, {'outvar_array_arvores': '&arvores_coordenadas'}),], debug=False,
+			outvar='#resultado',
+			catch=('#resultado!='~RESULTADO.SUCESSO, (tratar_exceção0, {'resultado': '%#resultado%'})),
+		)
+	}}
+	
+	SET(#arvore_posicao_lista,0);//Redefine a posição da lista de coordenadas de árvores após cada procura de árvore
+	
+	IF(#resultado=={{ RESULTADO.SUCESSO }});
+		DO;
+			{{
+				FLOW.try(
+					macros=[
+						(seleciona_árvore, {'invar_array_arvores': '&arvores_coordenadas', 'outvar_x': '#treex', 'outvar_y': '#treey', 'outvar_z': '#treez', 'outvar_posicao_lista': '#arvore_posicao_lista'}),
+						(calcula_caminho, {'x': '%#treex%', 'y': '%#treey%', 'z': '%#treez%', 'outvar_array_caminho': '&array_caminho'}),
+						(percorre_caminho, {'invar_array_caminho': '&array_caminho'}),
+						(colhe_madeira, {'hotslot_ferramenta': 1})
+					],
+					outvar='#resultado',
+					catch=('#resultado!='~RESULTADO.SUCESSO, (tratar_exceção, {'exceção': '%#resultado%'})),
+					debug=False
+				)
+			}}
+		WHILE(#resultado!={{ RESULTADO.REINICIAR_CICLO }});
+	ENDIF;
+	
+{* endblock *}
+
+{*
+	set RESULTADO = {
+		'SUCESSO': 0,
+		'SEM_ÁRVORES_AO_REDOR': 1,
+		'DEMORA': 5,
+		'DEMORA_PERCURSO': 20,
+		'DEMORA_REMOVER_OBSTRUÇÃO': 21,
+		'DEMORA_EXTRAIR_BLOCO': 22,
+		'ERRO_NÃO_TRATADO': 11,
+		'SEM_MAIS_ÁRVORES_PARA_PROCESSAR': 12,
+		'CAMINHO_NÃO_ENCONTRADO': 13,
+		'OBSTRUÇÃO_NO_PERCURSO': 14,
+		'OBSTRUÇÃO_NÃO_LOCALIZADA': 15,
+		'REINICIAR_CICLO': 99,
+		'SEM_FERRAMENTA': 16,
+		'FERRAMENTA_GASTA': 17,
+		
+		'ARVORE_NAO_ENCONTRADA': 404,
+		'BLOCO_MUITO_LONGE': 499,
+		'SEM_SUPORTE': 573
+	}
+*}
+
+{* block setup *}
+	{{ CONTROL.switch() }}
+{* endblock *}
+
+{* set regex_assoalho='^1$|^stone$|^2$|^grass$|^3$|^dirt$|^12$|^sand$|^78$|^snow_layer$' *}
+{* set regex_passável = '^0$|^air$|^31$|^tallgrass$|^18$|^leaves$|^8$|^flowing_water$|^9$|^water$' *}
+{* set regex_passável_rápido = '^0$|^air$|^31$|^tallgrass$|^8$|^flowing_water$|^9$|^water$' *}
+
+{* macro procura_árvores(outvar, outvar_array_arvores) *}
+	
+	{* set r = nid() *}
+	
+	UNSET({{ outvar_array_arvores }}[]);//Limpa lista de árvores
+	SET({{ outvar }},{{ RESULTADO.ERRO_NÃO_TRATADO }});
+	{{ CHAT.print('Procurando árvores','info') }}
+	{{ verificar_localização(outvar='#boa_localizacao'~r) }}
+	{{
+		GEO.find_block(
+			id=regex_madeira,
+			radius=30,
+			regex_passável=regex_passável,
+			regex_assoalho=regex_assoalho,
+			outvar_array=outvar_array_arvores
+		)
+	}}
+	
+	ARRAYSIZE({{ outvar_array_arvores }},#size{{ r }});
+	SET(#quantidade_arvores_encontradas{{ r }},%#size{{ r }}%);//Variável usada em 'despacha-ordem.BEFORE.encaminha-se para a árvore seguinte'
+	
+	IF(#size{{ r }});
+		{{ CHAT.print('%#size'~r~'% árvores encontradas', 'info', 'Radar') }}
+		SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+	ELSE;
+		{{ CHAT.print('Sem árvores no radar', 'warning', 'Maps') }}
+		SET({{ outvar }},{{ RESULTADO.SEM_ÁRVORES_AO_REDOR }});
+	ENDIF;
+	
+{* endmacro *}
+
+{* macro verificar_localização(outvar) *}
+	{* set rand = nid() *}
+	UNSET(floor_ok{{ rand }});
+	DO(5);
+		SET(#current_y{{ rand }},%YPOS%);
+		DEC(#current_y{{ rand }});
+		GETID(%XPOS%,%#current_y{{ rand }}%,%ZPOS%,&id{{ rand }});
+		IFMATCHES("%&id{{ rand }}%","{{ regex_assoalho }}");
+			SET(floor_ok{{ rand }});
+		ELSE;
+			{{ CHAT.print('não tenho suporte para andar (%&id'~rand~'%)','warning','tentando centralizar') }}
+			{{ BLOCK.center() }}
+			WAIT(5t);
+		ENDIF;
+	UNTIL(floor_ok{{ rand }});
+	IF(floor_ok{{ rand }});
+		SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+	ELSE;
+		SET({{ outvar }},{{ RESULTADO.SEM_SUPORTE }});
+	ENDIF;
+{* endmacro *}
+
+{* macro seleciona_árvore(outvar, invar_array_arvores, outvar_x, outvar_y, outvar_z, outvar_posicao_lista) *}
+	//Seleciona a coordenada seguinte e incrementa a variável da posição na lista
+	SET({{ outvar }},{{ RESULTADO.ERRO_NÃO_TRATADO }});
+	{* set r = nid() *}
+	
+	ARRAYSIZE({{ invar_array_arvores }},#quantidade_arvores_encontradas{{ r }});
+	
+	//Essa variável controla a quantidade de árvores a serem avaliadas
+	//IF({{ outvar_posicao_lista }}>#quantidade_arvores_encontradas{{ r }});
+	//	SET({{ outvar_posicao_lista }},0);
+	//ENDIF;
+	
+	SET(&coordenada{{ r }},%{{ invar_array_arvores }}[%{{ outvar_posicao_lista }}%]%)
+	{{ DICT.write_to(source='node'~r,content='%&coordenada'~r~'%') }}
+	{{ DICT.get(source='node'~r,key='X',outvar=outvar_x) }}
+	{{ DICT.get(source='node'~r,key='Y',outvar=outvar_y) }}
+	{{ DICT.get(source='node'~r,key='Z',outvar=outvar_z) }}
+	
+	SET(#pos_display{{ r }},%{{ outvar_posicao_lista }}%);
+	INC(#pos_display{{ r }},1);
+	
+	//#quantidade_arvores_encontradas é uma variável definida em 'procura-árvores.LOOP.vasculha árvores'
+	IF({{ outvar_posicao_lista }}<#quantidade_arvores_encontradas{{ r }});
+		{{ CHAT.print('Despachando árvore %#pos_display'~r~'%§7/%#quantidade_arvores_encontradas'~r~'% §8[§7%'~outvar_x~'% | §7%'~outvar_y~'% | §7%'~outvar_z~'%]', 'default', 'Maps') }}
+		INC({{ outvar_posicao_lista }},1);
+		SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+	ELSE;
+		{{ CHAT.print('Já processei todas as árvores', 'info', 'Selecionar árvore') }}
+		SET({{ outvar }},{{ RESULTADO.SEM_MAIS_ÁRVORES_PARA_PROCESSAR }});
+		//UNSET({{ outvar_posicao_lista }});
+	ENDIF;
+	//ENDIF;
+{* endmacro *}
+
+{* macro calcula_caminho(outvar, x, y, z, outvar_array_caminho) *}
+	
+	{* set r = nid() *}
+	
+	SET({{ outvar }},{{ RESULTADO.ERRO_NÃO_TRATADO }});
+	
+	
+	{!! CHAT.print('calculando caminho para §7'~x~' | §7'~y~' | §7'~z~' em §8'~outvar_array_caminho, 'info', 'Maps') !!}
+	{{ verificar_localização(outvar='#boa_localizacao'~r) }}
+	
+	IF(#boa_localizacao{{ r }}!={{ RESULTADO.SUCESSO }});
+		SET({{ outvar }},{{ RESULTADO.SEM_SUPORTE }});
+	ELSE;
+		UNSET({{ outvar_array_caminho }}[]);
+		{{
+			GEO.find_path(
+				x=x,
+				y=y,
+				z=z,
+				regex_passável=WOOD.regex_passável,
+				regex_assoalho=WOOD.regex_assoalho,
+				radius=40,
+				outvar_array=outvar_array_caminho~'[]'
+			)
+		}}
+		
+		ARRAYSIZE({{ outvar_array_caminho }}[],#size_tiles{{ r }});
+		
+		UNSET(following_next{{ r }});
+		UNSET(#current_position{{ r }});//limpa a posição atual do array de posições a seguir
+		
+		IF(#size_tiles{{ r }});
+			{{ CHAT.print('rota estabelecida', 'success', 'Maps') }}
+			SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+		ELSE;
+			{{ CHAT.print('sem caminho disponível', 'error', 'Maps') }}
+			SET({{ outvar }},{{ RESULTADO.CAMINHO_NÃO_ENCONTRADO }});
+		ENDIF;
+	ENDIF;
+	
+{* endmacro *}
+
+
+{* macro vai_até_coordenada(outvar, x, y, z, outvar_obstruções) *}
+	
+	{* set r = nid() *}
+	
+	UNSET(obstacle_to_clear{{ r }});
+	SET({{ outvar }},{{ RESULTADO.DEMORA_PERCURSO }});
+	UNSET(nextreached{{ r }});
+	UNSET({{ outvar_obstruções }});//Limpa o array de obstruções
+	DO(100);
+		
+		//CALCYAWTO({{ x }},{{ z }},#yaw{{ r }},#distance{{ r }});
+		{{ INSIGHTS.calc_yaw_and_pitch_to(x=x,y=y,z=z,yawvar='#yaw'~r,pitchvar='#pitch'~r,distancevar='#distance'~r) }}
+		
+		//INC(#yaw{{ r }},180);
+		SMOOTHLOOK(%#yaw{{ r }}%,0);
+		//LOOK(%#yaw{{ r }}%,0);
+		
+		SET(#cx{{ r }},%XPOS%);//Current X
+		SET(#cy{{ r }},%YPOS%);//Current Y
+		DEC(#cy{{ r }});//Increments Y for getting floor reference
+		SET(#cz{{ r }},%ZPOS%);//Current Z
+		
+		SET(#ax{{ r }},{{ x }});//Adjacent X
+		SET(#ay{{ r }},{{ y }});//Adjacent Y
+		SET(#az{{ r }},{{ z }});//Adjacent Z
+		
+		//Obtém a diferença Y entre a posição atual do player e o bloco de destino
+		//Será 1 se o bloco de destino estiver 1 bloco acima da superfície onde está o player (vai precisar pular)
+		//Será 0 se o bloco de destino estiver na mesma altura da superfície onde está o player
+		//Será -1 se o bloco de destino estiver 1 bloco abaixo da superfície onde está o player
+		#aydiff{{ r }}=#ay{{ r }}-#cy{{ r }};
+		
+		//Verificamos primeiro se o bloco destino está perpendicular ou diagonalmente em relação ao player
+		UNSET(diagonal{{ r }});
+		IF((#cx{{ r }}!=#ax{{ r }})&&(#cz{{ r }}!=#az{{ r }}));
+			SET(diagonal{{ r }});
+		ENDIF;
+		
+		//Busca por possíveis obstruções
+		//Separa-se em quatro linhas verticais
+		//ic: interno centro
+		//edx: externa diagonal x
+		//edz: externa diagonal z
+		//p: player
+		
+		//ic
+		SET(#layer{{ r }},%#ay{{ r }}%);
+		INC(#layer{{ r }},1);
+		GETID(%#ax{{ r }}%,%#layer{{ r }}%,%#az{{ r }}%,&ic0{{ r }});
+		INC(#layer{{ r }},1);
+		GETID(%#ax{{ r }}%,%#layer{{ r }}%,%#az{{ r }}%,&ic1{{ r }});
+		INC(#layer{{ r }},1);
+		GETID(%#ax{{ r }}%,%#layer{{ r }}%,%#az{{ r }}%,&ic2{{ r }});
+		
+		//edx
+		SET(#layer{{ r }},%#ay{{ r }}%);
+		INC(#layer{{ r }},1);
+		GETID(%#cx{{ r }}%,%#layer{{ r }}%,%#az{{ r }}%,&edx0{{ r }});
+		INC(#layer{{ r }},1);
+		GETID(%#cx{{ r }}%,%#layer{{ r }}%,%#az{{ r }}%,&edx1{{ r }});
+		//INC(#layer{{ r }},1);
+		//GETID(%#cx{{ r }}%,%#layer{{ r }}%,%#az{{ r }}%,&edx2{{ r }});
+		
+		//edz
+		SET(#layer{{ r }},%#ay{{ r }}%);
+		INC(#layer{{ r }},1);
+		GETID(%#ax{{ r }}%,%#layer{{ r }}%,%#cz{{ r }}%,&edz0{{ r }});
+		INC(#layer{{ r }},1);
+		GETID(%#ax{{ r }}%,%#layer{{ r }}%,%#cz{{ r }}%,&edz1{{ r }});
+		//INC(#layer{{ r }},1);
+		//GETID(%#ax{{ r }}%,%#layer{{ r }}%,%#cz{{ r }}%,&edz2{{ r }});
+		
+		//p
+		GETIDREL(0,2,0,&p{{ r }});//O bloco acima da cabeça do player
+		
+		//LOG("IC0: %&ic0{{ r }}% | IC1: %&ic1{{ r }}% | IC2: %&ic2{{ r }}%");
+		//LOG("EDX0: %&edx0{{ r }}% | EDX1: %&edx1{{ r }}% | EDX2: %&edx2{{ r }}%");
+		//LOG("EDZ0: %&edz0{{ r }}% | EDZ1: %&edz1{{ r }}% | EDZ2: %&edz2{{ r }}%");
+		//LOG("P: %&p{{ r }}%");
+		
+		//Identifica as obstruções básicas (diagonal e não diagonal)
+		IF(#aydiff{{ r }}<0);
+			SET(#oy{{ r }},%#ay{{ r }}%);//y da obstrução
+			{* for n in [0,1,2] *}
+				INC(#oy{{ r }},1);
+				IFMATCHES("%&ic{{ n }}{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#ax'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#az'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+			{* endfor *}
+		ELSEIF(#aydiff{{ r }}>0);
+			SET(#oy{{ r }},%#ay{{ r }}%);//y da obstrução
+			{* for n in [0,1] *}
+				INC(#oy{{ r }},1);
+				IFMATCHES("%&ic{{ n }}{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#ax'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#az'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+			{* endfor *}
+			SET(#oy{{ r }},%YPOS%);//y da obstrução
+			INC(#oy{{ r }},2);
+			IFMATCHES("%&p{{ r }}%","{{ regex_folhas }}");
+				{{ DICT.update(source='s'~r, dict={'X': '%XPOS%', 'Y': '%#oy'~r~'%', 'Z': '%ZPOS%'}, replace=True) }}
+				PUT({{ outvar_obstruções }},%&s{{ r }}%);
+			ENDIF;
+		ELSE;//#aydiff{{ r }}==0
+			SET(#oy{{ r }},%#ay{{ r }}%);//y da obstrução
+			{* for n in [0,1] *}
+				INC(#oy{{ r }},1);
+				IFMATCHES("%&ic{{ n }}{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#ax'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#az'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+			{* endfor *}
+		ENDIF;
+		
+		//Decide o que é obstrução
+		IF(diagonal{{ r }});//Se o bloco de destino estiver na diagonal em relação ao player
+			
+			SET(#oy{{ r }},%#ay{{ r }}%);//y da obstrução
+			INC(#oy{{ r }},2);
+			IFMATCHES("%&edx1{{ r }}%","{{ regex_folhas }}");
+				{{ DICT.update(source='s'~r, dict={'X': '%#cx'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#az'~r~'%'}, replace=True) }}
+				PUT({{ outvar_obstruções }},%&s{{ r }}%);
+			ENDIF;
+			IFMATCHES("%&edz1{{ r }}%","{{ regex_folhas }}");
+				{{ DICT.update(source='s'~r, dict={'X': '%#ax'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#cz'~r~'%'}, replace=True) }}
+				PUT({{ outvar_obstruções }},%&s{{ r }}%);
+			ENDIF;
+			
+			IF(#aydiff{{ r }}>=0);
+				SET(#oy{{ r }},%#ay{{ r }}%);//y da obstrução
+				INC(#oy{{ r }},1);
+				IFMATCHES("%&edx0{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#cx'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#az'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+				IFMATCHES("%&edz0{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#ax'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#cz'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+			ELSE;//#aydiff{{ r }}<0
+				SET(#oy{{ r }},%#ay{{ r }}%);//y da obstrução
+				INC(#oy{{ r }},3);
+				IFMATCHES("%&edx2{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#cx'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#az'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+				IFMATCHES("%&edz2{{ r }}%","{{ regex_folhas }}");
+					{{ DICT.update(source='s'~r, dict={'X': '%#ax'~r~'%', 'Y': '%#oy'~r~'%', 'Z': '%#cz'~r~'%'}, replace=True) }}
+					PUT({{ outvar_obstruções }},%&s{{ r }}%);
+				ENDIF;
+			ENDIF;
+		ENDIF;
+		
+		UNSET(#quant_obstructions{{ r }});
+		ARRAYSIZE({{ outvar_obstruções }},#quant_obstructions{{ r }});
+		IF(#quant_obstructions{{ r }});
+			SET({{ outvar }},{{ RESULTADO.OBSTRUÇÃO_NO_PERCURSO }});
+			KEYUP(FORWARD);//para de andar diante de obstrução
+			{!! CHAT.print('%#quant_obstructions'~r~'% obstruções encontradas','warning') !!}
+			BREAK;
+		ENDIF;
+		
+		KEYDOWN(FORWARD);//anda
+		IF(#aydiff{{ r }}>0);//Pula se a diferença for 1
+			KEYDOWN(JUMP);
+		ELSE;
+			KEYUP(JUMP);
+		ENDIF;
+		
+		IF((XPOS=={{ x }})&&(ZPOS=={{ z }}));
+			SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+			{!! CHAT.print('OK','success') !!}
+			BREAK;
+		ENDIF;
+		
+	LOOP;
+	KEYUP(JUMP);
+	
+{* endmacro *}
+
+{* macro pg(outvar) *}
+{* endmacro *}
+
+{* macro quebrar_loop(outvar) *}
+	//LOG("loop quebrado");
+	SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+	BREAK;
+{* endmacro *}
+
+{* macro percorre_caminho(outvar, invar_array_caminho) *}
+	
+	{* set r = nid() *}
+	{{ CHAT.print('encaminhando-se','info') }}
+	
+	
+	UNSET(#target_pointer{{ r }});//Armazena a posição da coordenada alvo sendo processada no momento (padrão 0)
+	ARRAYSIZE({{ invar_array_caminho }},#array_size{{ r }});
+	//LOG("TAMANHO: %#array_size{{ r }}%");
+	DO;
+		
+		DO;
+			
+			&target{{ r }}=%{{ invar_array_caminho }}[%#target_pointer{{ r }}%]%;//Obtém a coordenada alvo
+			{{ DICT.write_to(source='node'~r,content='%&target'~r~'%') }}
+			{{ DICT.get(source='node'~r,key='X',outvar='#x'~r) }}
+			{{ DICT.get(source='node'~r,key='Y',outvar='#y'~r) }}
+			{{ DICT.get(source='node'~r,key='Z',outvar='#z'~r) }}
+			
+			//LOG("X:%#x{{ r }}% | Y:%#y{{ r }}% | Z:%#z{{ r }}%");
+			
+			UNSET(&obs{{ r }}[]);//Armazena as coordenadas das obstruções
+			{{ vai_até_coordenada(outvar='#resultado'~r, x='%#x'~r~'%', y='%#y'~r~'%', z='%#z'~r~'%', outvar_obstruções='&obs'~r~'[]') }}
+			
+			IF(#resultado{{ r }}!={{ RESULTADO.SUCESSO }});
+				BREAK;//Quebra o loop. Se eventualmente o loop for executado novamente, parte-se da mesmo alvo
+			ELSE;
+				INC(#target_pointer{{ r }});//Incrementa o ponteiro indicando que deve-se processa a posição seguinte
+				IF(#target_pointer{{ r }}>=#array_size{{ r }});//Se o ponteiro alcançar o limite do array, chegamos ao final
+					KEYUP(FORWARD);//para de andar diante de obstrução
+					{{ CHAT.print('caminho processado por completo','success') }}
+					BREAK;
+				ENDIF;
+			ENDIF;
+			
+		LOOP;
+		
+		IF(#resultado{{ r }}!={{ RESULTADO.SUCESSO }});
+			
+			{{
+				FLOW.switch(
+					evaluate='%#resultado'~r~'%',
+					cases=[
+						(RESULTADO.DEMORA_PERCURSO,         [(exibir_exceção, {'resultado': 'Demora!', 'pausar': False})]),
+						(RESULTADO.OBSTRUÇÃO_NO_PERCURSO,   [(remove_obstruções, {'array_obstruções': '&obs'~r~'[]'})]),
+					],
+					outvar='#processamento'~r,
+				)
+			}}
+			
+		ELSE;
+			//LOG("caminho alcançado!");
+			BREAK;
+		ENDIF;
+		
+		
+	LOOP;
+	
+	{{ CHAT.print('chegamos ao destino','success') }}
+	KEYUP(JUMP);
+	KEYUP(FORWARD);
+	
+{* endmacro *}
+
+
+{* macro percorre_caminho2(outvar, invar_array_caminho) *}
+	
+	{* set r = nid() *}
+	{{ CHAT.print('encaminhando-se','info') }}
+	
+	
+	UNSET(#target_pointer{{ r }});//Armazena a posição da coordenada alvo sendo processada no momento (padrão 0)
+	ARRAYSIZE({{ invar_array_caminho }},#array_size{{ r }});
+	//LOG("TAMANHO: %#array_size{{ r }}%");
+	//Como é 1 loop por coordenada + 1 loop por coordenada com obstrução, o dobro do array size é o limite
+	#limite_loops{{ r }}=#array_size{{ r }}*2;
+	UNSET(#contador_percorre{{ r }});//Conta quantos loops o programa já fez
+	DO();
+		
+		DO();
+			INC(#contador_percorre{{ r }},1);
+			
+			&target{{ r }}=%{{ invar_array_caminho }}[%#target_pointer{{ r }}%]%;//Obtém a coordenada alvo
+			{{ DICT.write_to(source='node'~r,content='%&target'~r~'%') }}
+			{{ DICT.get(source='node'~r,key='X',outvar='#x'~r) }}
+			{{ DICT.get(source='node'~r,key='Y',outvar='#y'~r) }}
+			{{ DICT.get(source='node'~r,key='Z',outvar='#z'~r) }}
+			
+			//LOG("X:%#x{{ r }}% | Y:%#y{{ r }}% | Z:%#z{{ r }}%");
+			
+			UNSET(&obs{{ r }}[]);//Armazena as coordenadas das obstruções
+			{{ vai_até_coordenada(outvar='#resultado'~r, x='%#x'~r~'%', y='%#y'~r~'%', z='%#z'~r~'%', outvar_obstruções='&obs'~r~'[]') }}
+			
+			IF(#resultado{{ r }}!={{ RESULTADO.SUCESSO }});
+				BREAK;//Quebra o loop. Se eventualmente o loop for executado novamente, parte-se da mesmo alvo
+			ELSE;
+				INC(#target_pointer{{ r }});//Incrementa o ponteiro indicando que deve-se processa a posição seguinte
+				IF(#target_pointer{{ r }}>=#array_size{{ r }});//Se o ponteiro alcançar o limite do array, chegamos ao final
+					KEYUP(FORWARD);//para de andar diante de obstrução
+					{{ CHAT.print('caminho processado por completo','success') }}
+					BREAK;
+				ENDIF;
+			ENDIF;
+			
+		LOOP;
+		
+		IF(#resultado{{ r }}!={{ RESULTADO.SUCESSO }});
+			
+			{{
+				FLOW.switch(
+					evaluate='%#resultado'~r~'%',
+					cases=[
+						(RESULTADO.DEMORA_PERCURSO,         [(exibir_exceção, {'resultado': 'Demora!', 'pausar': False})]),
+						(RESULTADO.OBSTRUÇÃO_NO_PERCURSO,   [(remove_obstruções, {'array_obstruções': '&obs'~r~'[]'})]),
+					],
+					outvar='#processamento'~r,
+				)
+			}}
+			
+		ELSE;
+			//LOG("caminho alcançado!");
+			SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+			BREAK;
+		ENDIF;
+		
+		IF(#contador_percorre{{ r }}>#limite_loops{{ r }});
+		  {{ CHAT.print('esse percurso levou mais loops que o limite permitido','warning') }}
+		  BREAK;
+		ENDIF;
+		SET({{ outvar }},{{ RESULTADO.DEMORA_PERCURSO }}); // Por padrão é demora no percurso
+	LOOP;
+	
+	{{ CHAT.print('chegamos ao destino','success') }}
+	KEYUP(JUMP);
+	KEYUP(FORWARD);
+	
+	//LOG("RESOLVEU %#array_size{{ r }}% passos em %#contador_percorre{{ r }}% loops. O limite é %#limite_loops{{ r }}%");
+	
+{* endmacro *}
+
+{* macro remove_obstruções(outvar, array_obstruções) *}
+	
+	{* set r = nid() *}
+	
+	FOREACH({{ array_obstruções }},&block{{ r }});
+		{{ DICT.write_to(source='node'~r,content='%&block'~r~'%') }}
+		{{ DICT.get(source='node'~r,key='X',outvar='#x'~r) }}
+		{{ DICT.get(source='node'~r,key='Y',outvar='#y'~r) }}
+		{{ DICT.get(source='node'~r,key='Z',outvar='#z'~r) }}
+		{{ INSIGHTS.calc_yaw_and_pitch_to(x='%#x'~r~'%',y='%#y'~r~'%',z='%#z'~r~'%',yawvar='#yaw'~r,pitchvar='#pitch'~r,distancevar='#distance'~r) }}
+		{!! CHAT.print('X: %#x'~r~'% | Y: %#y'~r~'% | Z: %#z'~r~'%','info','Obstrução') !!}
+		UNSET(obstruction_removed{{ r }});
+		//Geralmente custa 11 loops para remover uma obstrução
+		//Arredondo para 15 para uma boa margem de erro
+		SET(#loop_15_counter{{ r }},1);
+		SET(#yaw_adjustment{{ r }},0);//Um ajuste no yaw para lidar com diagonais perfeitamente alinhadas
+		DO(150);
+			GETID(%#x{{ r }}%,%#y{{ r }}%,%#z{{ r }}%,&block_content{{ r }});
+			//Sempre que o contador de 15 for igual a zero, sorteia-se um novo ajuste de yaw
+			IF(!#loop_15_counter{{ r }});
+				RANDOM(#yaw_adjustment{{ r }},5,1);
+				RANDOM(#yaw_adjustment_signal{{ r }},1,0);
+				IF(#yaw_adjustment_signal{{ r }}>0);
+					#yaw_adjustment{{ r }}=#yaw_adjustment{{ r }}*-1;
+				ENDIF;
+				{{ CHAT.print('em %#yaw_adjustment'~r~'%','warning','Correção de YAW') }}
+			ENDIF;
+			#effective_yaw{{ r }}=#yaw{{ r }}+#yaw_adjustment{{ r }};
+			IFMATCHES(%&block_content{{ r }}%,"{{ regex_folhas }}");
+				//LOG("removendo..");
+				SMOOTHLOOK(%#effective_yaw{{ r }}%,%#pitch{{ r }}%,0.01);
+				//SMOOTHLOOK(%#yaw{{ r }}%,%#pitch{{ r }}%,0.01);
+				IFMATCHES(%HITID%,"{{ regex_folhas }}");
+					//KEY(ATTACK);
+					{{ SHARED.tool.hotbar.pick_any_no_damageable(outvar='picked'~r) }}
+					{{ INSIGHTS.attack() }}
+					//ELSE;
+					{!! CHAT.print('estou olhando para o lugar certo?','warning','Estranho...') !!}
+				ENDIF;
+			ELSE;
+				SET(obstruction_removed{{ r }});
+				{!! CHAT.print('obstrução removida','default','OK') !!}
+				BREAK;
+			ENDIF;
+			INC(#loop_15_counter{{ r }});
+			IF(#loop_15_counter{{ r }}>=15);
+				UNSET(#loop_15_counter{{ r }});
+			ENDIF;
+		LOOP;
+	NEXT;
+	
+	IF(!obstruction_removed{{ r }});
+		SET({{ outvar }},{{ RESULTADO.DEMORA_REMOVER_OBSTRUÇÃO }});
+	ELSE;
+		SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+	ENDIF;
+	
+{* endmacro *}
+
+{* macro colhe_madeira(outvar, hotslot_ferramenta) *}
+	
+	{* set r = nid() *}
+	UNSET(&coordenadas_base_tora{{ r }});
+	UNSET(&blocos_tronco{{ r }}[]);//Armaze os blocos do tronco
+	SET(#coordenadas_origem_x{{ r }},%XPOS%);
+	SET(#coordenadas_origem_y{{ r }},%YPOS%);
+	DEC(#coordenadas_origem_y{{ r }},1);
+	SET(#coordenadas_origem_z{{ r }},%ZPOS%);
+	SET({{ outvar }},{{ RESULTADO.ERRO_NÃO_TRATADO }});
+	UNSET(damaged_tool{{ r }});
+	//===================================================
+	//Encontra a base do tronco 1x1 (necessariamente 1x1)
+	//===================================================
+	DO(1);
+		{* for x in [-1,0,1] *}
+			SET(#xref{{ r }},{{ x }});
+			{* for z in [-1,0,1] *}
+				SET(#zref{{ r }},{{ z }});
+				{* for y in [-1,0,1] *}
+					SET(#yref{{ r }},{{ y }});
+					GETIDREL(%#xref{{ r }}%,%#yref{{ r }}%,%#zref{{ r }}%,&subject{{ r }});
+					IFMATCHES("{%&subject{{ r }}%}","\{17|log\}");
+						DEC(#yref{{ r }});
+						#xpos_floor{{ r }}=XPOS+#xref{{ r }};
+						#ypos_floor{{ r }}=YPOS+#yref{{ r }};
+						#zpos_floor{{ r }}=ZPOS+#zref{{ r }};
+						{{ DICT.update('coordenadas'~r,replace=True,dict={'X':'%#xpos_floor'~r~'%','Y':'%#ypos_floor'~r~'%','Z':'%#zpos_floor'~r~'%'}) }}
+						SET(&coordenadas_base_tora{{ r }},%&coordenadas{{ r }}%);
+						BREAK;
+					ENDIF;
+				{* endfor *}
+			{* endfor *}
+		{* endfor *}
+	LOOP;
+	
+	//Lê tronco
+	IF(&coordenadas_base_tora{{ r }});
+		
+		{{ DICT.write_to(source='coordenada'~r,content='%&coordenadas_base_tora'~r~'%') }}
+		{{ DICT.get(source='coordenada'~r,key='X',outvar='#xcoordenada'~r) }}
+		{{ DICT.get(source='coordenada'~r,key='Y',outvar='#ycoordenada'~r) }}
+		{{ DICT.get(source='coordenada'~r,key='Z',outvar='#zcoordenada'~r) }}
+		
+		UNSET(#altura_tronco{{ r }});
+		DO(1);
+			{* for i in [1,2,3,4,5,6,7,8,9] *}
+				SET(#height{{ r }},{{ i }});
+				#next_y_up{{ r }}=#ycoordenada{{ r }}+#height{{ r }};
+				GETID(%#xcoordenada{{ r }}%,%#next_y_up{{ r }}%,%#zcoordenada{{ r }}%,&id_elem{{ r }});
+				IFMATCHES("{%&id_elem{{ r }}%}","\{17|log\}");
+					INC(#altura_tronco{{ r }});
+					{{ DICT.update('bloco'~r,replace=True,dict={'X':'%#xcoordenada'~r~'%','Y':'%#next_y_up'~r~'%','Z':'%#zcoordenada'~r~'%'}) }}
+					PUT(&blocos_tronco{{ r }}[],%&bloco{{ r }}%);
+				ELSE;
+					BREAK;
+				ENDIF;
+			{* endfor *}
+		LOOP;
+		
+		ARRAYSIZE(&blocos_tronco{{ r }}[],#quantidade_blocos_tronco{{ r }});
+		
+		IF(!#quantidade_blocos_tronco{{ r }});
+			SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+			{{ CHAT.print('Tronco vazio','warning','Ah não') }}
+			
+		ELSE;
+			FOREACH(&blocos_tronco{{ r }}[],&block{{ r }});
+				{{ DICT.write_to(source='node'~r,content='%&block'~r~'%') }}
+				{{ DICT.get(source='node'~r,key='X',outvar='#x'~r) }}
+				{{ DICT.get(source='node'~r,key='Y',outvar='#y'~r) }}
+				{{ DICT.get(source='node'~r,key='Z',outvar='#z'~r) }}
+				{!! CHAT.print('X: %#x'~r~'% | Y: %#y'~r~'% | Z: %#z'~r~'%','info','Removendo tronco') !!}
+				UNSET(block_removed{{ r }});
+				
+				//ic
+				SET(#layer{{ r }},%#ycoordenada{{ r }}%);
+				INC(#layer{{ r }},1);
+				GETID(%#xcoordenada{{ r }}%,%#layer{{ r }}%,%#zcoordenada{{ r }}%,&ic0{{ r }});
+				INC(#layer{{ r }},1);
+				GETID(%#xcoordenada{{ r }}%,%#layer{{ r }}%,%#zcoordenada{{ r }}%,&ic1{{ r }});
+				INC(#layer{{ r }},1);
+				GETID(%#xcoordenada{{ r }}%,%#layer{{ r }}%,%#zcoordenada{{ r }}%,&ic2{{ r }});
+				
+				//p
+				GETIDREL(0,2,0,&p{{ r }});//O bloco acima da cabeça do player
+				
+				UNSET(free_passage{{ r }});//Indica se o player já pode pode andar pra frente ou pular
+				
+				#ydiff{{ r }}=#ycoordenada{{ r }}-#coordenadas_origem_y{{ r }};
+				IFMATCHES(%&ic0{{ r }}%,"^0$|^air$");
+					IFMATCHES(%&ic1{{ r }}%,"^0$|^air$");
+						IF(#ydiff{{ r }}>=0);//Significa que posso seguir em frente reto
+							IF(#ydiff{{ r }}>0)
+								IFMATCHES(%&p{{ r }}%,"^0$|^air$");//Significa que posso seguir em frente e pular!
+									SET(free_passage{{ r }});
+								ENDIF;
+							ELSE;
+								SET(free_passage{{ r }});
+							ENDIF;
+						ELSE;
+							IFMATCHES(%&ic2{{ r }}%,"^0$|^air$");//Significa que posso seguir em frente e abaixo
+								SET(free_passage{{ r }});
+							ENDIF;
+						ENDIF;
+					ENDIF;
+				ENDIF;
+				
+				DO(100);
+					
+					GETID(%#x{{ r }}%,%#y{{ r }}%,%#z{{ r }}%,&block_content{{ r }});
+					
+					IFMATCHES("{%&block_content{{ r }}%}","\{17|log\}");
+						UNSET(block_removed{{ r }});
+					ELSE;
+						SET(block_removed{{ r }});
+					ENDIF;
+					
+					UNSET(wood_on_sight{{ r }});
+					IFMATCHES(%HITID%,"{{ regex_madeira }}");
+						SET(wood_on_sight{{ r }});
+					ENDIF;
+					
+					IF((wood_on_sight{{ r }})||(!block_removed{{ r }}));
+						{{ INSIGHTS.calc_yaw_and_pitch_to(x='%#x'~r~'%',y='%#y'~r~'%',z='%#z'~r~'%',yawvar='#yaw'~r,pitchvar='#pitch'~r,distancevar='#distance'~r) }}
+						SMOOTHLOOK(%#yaw{{ r }}%,%#pitch{{ r }}%,0.09);
+						IF(#distance{{ r }}>4);
+							{{ CHAT.print('O bloco está muito longe','warning','Aff') }}
+							BREAK;
+						ENDIF;
+						
+						IF(free_passage{{ r }});
+							IF((XPOS!=#xcoordenada{{ r }})||(ZPOS!=#zcoordenada{{ r }}));
+								IF(free_passage{{ r }});
+									KEYDOWN(FORWARD);
+									IF(#ydiff{{ r }}>0);//Então posso pular
+										KEYDOWN(JUMP);
+									ENDIF;
+								ENDIF;
+							ELSE;
+								KEYUP(FORWARD);
+								KEYUP(JUMP);
+							ENDIF;
+						ENDIF;
+						
+						IFMATCHES(%HITID%,"{{ regex_madeira }}|{{ regex_folhas }}");
+							//KEY(ATTACK);
+							{* set axes = [
+								'271','wooden_axe',
+								'275','stone_axe',
+								'286','golden_axe',
+								'258','iron_axe',
+								'279','diamond_axe'
+							] *}
+							
+							//PICK({{ axes|join(",") }});
+							SLOT({{ hotslot_ferramenta }});
+							{{ SHARED.tool.is_durability_ok(outvar='ok'~r, percent_limit=10) }}
+							IF(ok{{ r }});
+								{{ INSIGHTS.attack() }}
+							ELSE;
+								SET(damaged_tool{{ r }});
+								BREAK;
+							ENDIF;
+							
+						ENDIF;
+						
+					ELSEIF(block_removed{{ r }});
+						BREAK;
+					ENDIF;
+					
+				LOOP;
+				KEYUP(FORWARD);
+				KEYUP(JUMP);
+				
+				IF(damaged_tool{{ r }});
+					{{ CHAT.print('A ferramenta está gasta','error','Ah não') }}
+					SET({{ outvar }},{{ RESULTADO.FERRAMENTA_GASTA }});
+					BREAK;
+				ELSEIF(!block_removed{{ r }});
+					{{ CHAT.print('Não consegui tirar esse bloco','error','Ah não') }}
+					SET({{ outvar }},{{ RESULTADO.DEMORA_EXTRAIR_BLOCO }});
+					BREAK;
+				ENDIF;
+				
+			NEXT;
+			
+			IF(block_removed{{ r }});
+				SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+			ENDIF;
+		ENDIF;
+		
+	ENDIF;
+	
+{* endmacro *}
+
+
+
+{* macro colhe_madeira2(outvar, hotslot_ferramenta) *}
+	
+	{* set r = nid() *}
+	UNSET(&coordenadas_base_tora{{ r }});
+	UNSET(&blocos_tronco{{ r }}[]);
+	SET(#coordenadas_origem_x{{ r }},%XPOS%);
+	SET(#coordenadas_origem_y{{ r }},%YPOS%);
+	DEC(#coordenadas_origem_y{{ r }},1);
+	SET(#coordenadas_origem_z{{ r }},%ZPOS%);
+	
+	UNSET(damaged_tool{{ r }});
+	UNSET(block_too_far{{ r }});
+	
+	//===================================================
+	// 1. Encontra a base do tronco
+	//===================================================
+	DO(1);
+		{* for x in [-1,0,1] *}
+			SET(#xref{{ r }},{{ x }});
+			{* for z in [-1,0,1] *}
+				SET(#zref{{ r }},{{ z }});
+				{* for y in [-1,0,1] *}
+					SET(#yref{{ r }},{{ y }});
+					GETIDREL(%#xref{{ r }}%,%#yref{{ r }}%,%#zref{{ r }}%,&subject{{ r }});
+					IFMATCHES("{%&subject{{ r }}%}","\{17|log\}");
+						DEC(#yref{{ r }});
+						#xpos_floor{{ r }}=XPOS+#xref{{ r }};
+						#ypos_floor{{ r }}=YPOS+#yref{{ r }};
+						#zpos_floor{{ r }}=ZPOS+#zref{{ r }};
+						{{ DICT.update('coordenadas'~r,replace=True,dict={'X':'%#xpos_floor'~r~'%','Y':'%#ypos_floor'~r~'%','Z':'%#zpos_floor'~r~'%'}) }}
+						SET(&coordenadas_base_tora{{ r }},%&coordenadas{{ r }}%);
+						BREAK;
+					ENDIF;
+				{* endfor *}
+			{* endfor *}
+		{* endfor *}
+	LOOP;
+	
+	//===================================================
+	// 2. Processa o resultado da busca pela base
+	//===================================================
+	IF(!&coordenadas_base_tora{{ r }});
+		// ESTADO FINAL 1: Árvore não foi encontrada
+		SET({{ outvar }},{{ RESULTADO.ARVORE_NAO_ENCONTRADA }});
+	ELSE;
+		// A base foi encontrada, agora lê o tronco.
+		{{ DICT.write_to(source='coordenada'~r,content='%&coordenadas_base_tora'~r~'%') }}
+		{{ DICT.get(source='coordenada'~r,key='X',outvar='#xcoordenada'~r) }}
+		{{ DICT.get(source='coordenada'~r,key='Y',outvar='#ycoordenada'~r) }}
+		{{ DICT.get(source='coordenada'~r,key='Z',outvar='#zcoordenada'~r) }}
+		
+		DO(1);
+			{* for i in [1,2,3,4,5,6,7,8,9] *}
+				SET(#height{{ r }},{{ i }});
+				#next_y_up{{ r }}=#ycoordenada{{ r }}+#height{{ r }};
+				GETID(%#xcoordenada{{ r }}%,%#next_y_up{{ r }}%,%#zcoordenada{{ r }}%,&id_elem{{ r }});
+				IFMATCHES("{%&id_elem{{ r }}%}","\{17|log\}");
+					{{ DICT.update('bloco'~r,replace=True,dict={'X':'%#xcoordenada'~r~'%','Y':'%#next_y_up'~r~'%','Z':'%#zcoordenada'~r~'%'}) }}
+					PUT(&blocos_tronco{{ r }}[],%&bloco{{ r }}%);
+				ELSE;
+					BREAK;
+				ENDIF;
+			{* endfor *}
+		LOOP;
+		
+		ARRAYSIZE(&blocos_tronco{{ r }}[],#quantidade_blocos_tronco{{ r }});
+		
+		IF(!#quantidade_blocos_tronco{{ r }});
+			// ESTADO FINAL 2: Tronco vazio (sucesso)
+			SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+			{{ CHAT.print('Tronco vazio ou já colhido','warning','Aviso') }}
+		ELSE;
+			// O tronco tem blocos, vamos iterar sobre eles.
+			SET(loop_completed_successfully{{ r }},1); // Assumimos sucesso até que um erro ocorra
+			
+			FOREACH(&blocos_tronco{{ r }}[],&block{{ r }});
+				// ... (lógica interna para quebrar o bloco, idêntica à versão anterior)
+				{{ DICT.write_to(source='node'~r,content='%&block'~r~'%') }}
+				{{ DICT.get(source='node'~r,key='X',outvar='#x'~r) }}
+				{{ DICT.get(source='node'~r,key='Y',outvar='#y'~r) }}
+				{{ DICT.get(source='node'~r,key='Z',outvar='#z'~r) }}
+				UNSET(block_removed{{ r }});
+				
+				//ic
+				SET(#layer{{ r }},%#ycoordenada{{ r }}%);
+				INC(#layer{{ r }},1);
+				GETID(%#xcoordenada{{ r }}%,%#layer{{ r }}%,%#zcoordenada{{ r }}%,&ic0{{ r }});
+				INC(#layer{{ r }},1);
+				GETID(%#xcoordenada{{ r }}%,%#layer{{ r }}%,%#zcoordenada{{ r }}%,&ic1{{ r }});
+				INC(#layer{{ r }},1);
+				GETID(%#xcoordenada{{ r }}%,%#layer{{ r }}%,%#zcoordenada{{ r }}%,&ic2{{ r }});
+				
+				//p
+				GETIDREL(0,2,0,&p{{ r }});//O bloco acima da cabeça do player
+				
+				UNSET(free_passage{{ r }});//Indica se o player já pode pode andar pra frente ou pular
+				
+				#ydiff{{ r }}=#ycoordenada{{ r }}-#coordenadas_origem_y{{ r }};
+				IFMATCHES(%&ic0{{ r }}%,"^0$|^air$");
+					IFMATCHES(%&ic1{{ r }}%,"^0$|^air$");
+						IF(#ydiff{{ r }}>=0);//Significa que posso seguir em frente reto
+							IF(#ydiff{{ r }}>0)
+								IFMATCHES(%&p{{ r }}%,"^0$|^air$");//Significa que posso seguir em frente e pular!
+									SET(free_passage{{ r }});
+								ENDIF;
+							ELSE;
+								SET(free_passage{{ r }});
+							ENDIF;
+						ELSE;
+							IFMATCHES(%&ic2{{ r }}%,"^0$|^air$");//Significa que posso seguir em frente e abaixo
+								SET(free_passage{{ r }});
+							ENDIF;
+						ENDIF;
+					ENDIF;
+				ENDIF;
+				
+				DO(100);
+					GETID(%#x{{ r }}%,%#y{{ r }}%,%#z{{ r }}%,&block_content{{ r }});
+					IFMATCHES("{%&block_content{{ r }}%}","\{17|log\}");
+						UNSET(block_removed{{ r }});
+					ELSE;
+						SET(block_removed{{ r }});
+					ENDIF;
+					UNSET(wood_on_sight{{ r }});
+					IFMATCHES(%HITID%,"{{ regex_madeira }}");
+						SET(wood_on_sight{{ r }});
+					ENDIF;
+					
+					IF((wood_on_sight{{ r }})||(!block_removed{{ r }}));
+						{{ INSIGHTS.calc_yaw_and_pitch_to(x='%#x'~r~'%',y='%#y'~r~'%',z='%#z'~r~'%',yawvar='#yaw'~r,pitchvar='#pitch'~r,distancevar='#distance'~r) }}
+						SMOOTHLOOK(%#yaw{{ r }}%,%#pitch{{ r }}%,0.09);
+						IF(#distance{{ r }}>4);
+							SET(block_too_far{{ r }});
+							BREAK;
+						ENDIF;
+						
+						IF(free_passage{{ r }});
+							IF((XPOS!=#xcoordenada{{ r }})||(ZPOS!=#zcoordenada{{ r }}));
+								IF(free_passage{{ r }});
+									KEYDOWN(FORWARD);
+									IF(#ydiff{{ r }}>0);//Então posso pular
+										KEYDOWN(JUMP);
+									ENDIF;
+								ENDIF;
+							ELSE;
+								KEYUP(FORWARD);
+								KEYUP(JUMP);
+							ENDIF;
+						ENDIF;
+						
+						IFMATCHES(%HITID%,"{{ regex_madeira }}|{{ regex_folhas }}");
+							SLOT({{ hotslot_ferramenta }});
+							{{ SHARED.tool.is_durability_ok(outvar='ok'~r, percent_limit=10) }}
+							IF(ok{{ r }});
+								{{ INSIGHTS.attack() }}
+							ELSE;
+								SET(damaged_tool{{ r }});
+								BREAK;
+							ENDIF;
+						ENDIF;
+					ELSEIF(block_removed{{ r }});
+						BREAK;
+					ENDIF;
+				LOOP;
+				KEYUP(FORWARD); KEYUP(JUMP);
+				
+				// Verificação de erros que interrompem o loop FOREACH
+				IF(damaged_tool{{ r }});
+					// ESTADO FINAL 3: Ferramenta gasta
+					SET({{ outvar }},{{ RESULTADO.FERRAMENTA_GASTA }});
+					SET(loop_completed_successfully{{ r }}, 0);
+					BREAK;
+				ELSEIF(block_too_far{{ r }});
+					// ESTADO FINAL 4: Bloco muito longe
+					SET({{ outvar }},{{ RESULTADO.BLOCO_MUITO_LONGE }});
+					SET(loop_completed_successfully{{ r }}, 0);
+					BREAK;
+				ELSEIF(!block_removed{{ r }});
+					// ESTADO FINAL 5: Demora para extrair
+					SET({{ outvar }},{{ RESULTADO.DEMORA_EXTRAIR_BLOCO }});
+					SET(loop_completed_successfully{{ r }}, 0);
+					BREAK;
+				ENDIF;
+				
+			NEXT;
+			
+			IF(loop_completed_successfully{{ r }});
+				// ESTADO FINAL 6: Todos os blocos foram removidos (sucesso)
+				SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+			ENDIF;
+		ENDIF;
+	ENDIF;
+	
+{* endmacro *}
+
+{* macro exibir_exceção(outvar, resultado, pausar=True) *}
+	{{ CHAT.print(resultado,'error','Exceção') }}
+	{* if pausar *}
+		DO;
+		UNTIL(KEY_RETURN);
+	{* endif *}
+{* endmacro *}
+
+{* macro tratar_exceção0(outvar, resultado) *}
+	
+	{{
+		FLOW.switch(
+			evaluate=resultado,
+			cases=[
+				(RESULTADO.SEM_ÁRVORES_AO_REDOR,  [(lidar_sem_árvores, {})]),
+			],
+			outvar='#res',
+		)
+	}}
+	
+	SET({{ outvar }},%#res%);
+	
+{* endmacro *}
+
+{* macro lidar_sem_árvores(outvar) *}
+	{{ CHAT.print('sem árvores ao redor [ENTER] para continuar','warning','Exceção') }}
+	DO;
+	UNTIL(KEY_RETURN);
+	SET({{ outvar }},{{ RESULTADO.REINICIAR_CICLO }});
+{* endmacro *}
+
+{* macro notificar_exceção(outvar, mensagem) *}
+	{{ CHAT.print(mensagem~' • [ENTER] para continuar','warning','Exceção') }}
+	DO;
+	UNTIL(KEY_RETURN);
+	SET({{ outvar }},{{ RESULTADO.REINICIAR_CICLO }});
+{* endmacro *}
+
+{* macro tratar_ferramenta_gasta(outvar) *}
+	{{ CHAT.print('troque a ferramenta [ENTER] para continuar','warning','Exceção') }}
+	DO;
+	UNTIL(KEY_RETURN);
+	SET({{ outvar }},{{ RESULTADO.SUCESSO }});
+{* endmacro *}
+
+{* macro tratar_exceção(outvar, exceção) *}
+	
+	{{
+		FLOW.switch(
+			evaluate=exceção,
+			cases=[
+				(RESULTADO.DEMORA_EXTRAIR_BLOCO,              [(registrar_demora, {})]),
+				(RESULTADO.SEM_MAIS_ÁRVORES_PARA_PROCESSAR,   [(todas_árvores_processadas, {})]),
+				(RESULTADO.FERRAMENTA_GASTA,                  [(tratar_ferramenta_gasta, {})]),
+			],
+			outvar='#resultado2',
+		)
+	}}
+	
+	SET({{ outvar }},%#resultado2%);
+	
+{* endmacro *}
+
+{* macro registrar_demora(outvar) *}
+	{{ CHAT.print('Demora para extrair bloco','warning','Vamos continuar') }}
+{* endmacro *}
+
+{* macro todas_árvores_processadas(outvar) *}
+	{{ CHAT.print('Processamos todas as árvores','success','Ótimo') }}
+	SET({{ outvar }},{{ RESULTADO.REINICIAR_CICLO }});
+{* endmacro *}

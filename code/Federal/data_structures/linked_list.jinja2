@@ -1,0 +1,94 @@
+{* import "Federal.text.chat" as CHAT *}
+{* import "Federal.data_structures.list" as LIST *}
+
+
+{!! CRIA UMA NOVA LISTA LIGADA SOBRESCREVENDO UMA ATUAL !!}
+{* macro create(source) *}
+  UNSET(#{{ source }});
+  UNSET(&{{ source }});
+  UNSET(#{{ source }}_entrypoint);
+{* endmacro *}
+
+
+{!! ADICIONA UM NÓ À LISTA LIGADA E RETORNA O ID DO NÓ CRIADO !!}
+{* macro add(source, content, pointer=0, outvar='#index') *}
+  INC(#{{ source }});//Incrementa o gerador de índices
+  {{ LIST.push(source=source, content=build_node(index='%#'~source~'%', content=content, pointer=pointer)) }}
+  SET(#{{ source }}_entrypoint,%#{{ source }}%);//Define o novo entrypoint como o índice do novo nó adicionado
+  SET({{ outvar }},%#{{ source }}%);//Retorna o valor do novo índice
+{* endmacro *}
+
+
+{!! EXTRAI ELEMENTO ENTRYPOINT DA LISTA !!}
+{* macro 
+    pop(
+      source, 
+      index_outvar='#index', 
+      content_outvar='&content', 
+      pointer_outvar='#pointer', 
+      aux_itemvar='&item_____', 
+      aux_arrayvarname='node_____'
+    ) 
+*}
+  {{ find(source=source, index='%#'~source~'_entrypoint%', outvar=aux_itemvar) }}
+  {{ parse_node(node_var=aux_itemvar, array_outvar='&'~aux_arrayvarname~'[]') }}
+  SET({{ index_outvar }},%&{{ aux_arrayvarname }}[1]%);
+  SET({{ content_outvar }},%&{{ aux_arrayvarname }}[2]%);
+  SET({{ pointer_outvar }},%&{{ aux_arrayvarname }}[3]%);
+  IF({{ index_outvar }}>0);
+    REPLACE(&{{ source }},%{{ aux_itemvar }}%,"");
+    SET(#{{ source }}_entrypoint,%{{ pointer_outvar }}%);//Atualiza o entrypoint
+  ENDIF;
+{* endmacro *}
+
+
+{!! PESQUISA UM NÓ A PARTIR DOS ARGUMENTOS INFORMADOS !!}
+{* macro find(source, outvar, index='[0-9]+', content='[^⟩]+', pointer='[0-9]+') *}
+  {{ LIST.get(source=source, regex=build_node(index=index, content=content, pointer=pointer), outvar=outvar) }}
+{* endmacro *}
+
+
+{!! LISTA OS NÓS DA LISTA LIGADA !!}
+{* macro list(source, aux_itemvar='&item_____', aux_indexvar='#index_____') *}
+  SET({{ aux_indexvar }},%#{{ source }}_entrypoint%);
+  {{ CHAT.print('%#'~source~'_entrypoint%','info','entrypoint') }}
+  DO;
+    {{ find(source=source, index='%'~aux_indexvar~'%', outvar=aux_itemvar) }}
+    IF({{ aux_itemvar }});
+      {{ parse_node(node_var=aux_itemvar, array_outvar='&node_____[]') }}
+      {{ CHAT.print('%&node_____[2]% §6→ §8§l%&node_____[3]%','default','%&node_____[1]%') }}
+      SET({{ aux_indexvar }},%&node_____[3]%);
+    ELSE;
+      BREAK;
+    ENDIF;
+  UNTIL(KEY_DELETE);
+{* endmacro *}
+
+
+{!! PEGA O CAMINHO DA LISTA LIGADA !!}
+{* macro follow_path(source, outlist, aux_itemvar='&item_____', aux_indexvar='#index_____') *}
+  SET({{ aux_indexvar }},%#{{ source }}_entrypoint%);
+  UNSET(&{{ outlist }});
+  DO;
+    {{ find(source=source, index='%'~aux_indexvar~'%', outvar=aux_itemvar) }}
+    IF({{ aux_itemvar }});
+      {{ parse_node(node_var=aux_itemvar, array_outvar='&node_____[]') }}
+      SET(&{{ outlist }},"{{ LIST.build_element(content='%&node_____[2]%') }}%&{{ outlist }}%")
+      SET({{ aux_indexvar }},%&node_____[3]%);
+    ELSE;
+      BREAK;
+    ENDIF;
+  UNTIL(KEY_DELETE);
+{* endmacro *}
+
+
+{!! INTERPRETA UM NÓ CRU PARA UM ARRAY. ÍNDICE FICA NA POSIÇÃO 1. CONTEÚDO NA POSIÇÃO 2. PONTEIRO NA POSIÇÃO 3!!}
+{* macro parse_node(node_var, array_outvar='&node_____[]') *}
+  UNSET({{ array_outvar }});
+  MATCH('%{{ node_var }}%',"{{ build_node(index='([0-9]+)', content='([^⟩]+)', pointer='([0-9]+)') }}",{{ array_outvar }});
+{* endmacro *}
+
+
+{!! RETORNA UMA STRING QUE REPRESENTA UM NÓ !!}
+{* macro build_node(index, content, pointer) -*}{{ '⟨'~index~'⟩⟨'~content~'⟩⟨'~pointer~'⟩' }}{*- endmacro *}
+

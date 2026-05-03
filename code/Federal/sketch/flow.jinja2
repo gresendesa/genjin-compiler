@@ -1,0 +1,103 @@
+{* import 'Federal.text.chat' as CHAT *}
+
+{* macro try(macros, outvar, catch, debug=False, debug_delay='10t', macros_=None) *}
+	DO(1);
+		{* for macro, params in macros *}
+			UNSET({{ outvar }});
+			{* if debug *}
+				{{ CHAT.print('[ '~macro.name~' ]',type='info',label='TRY') }}
+			{* endif *}
+			{{ macro(outvar=outvar, **params) }}
+			{* if debug *}
+				{{ CHAT.print('[ '~macro.name~' ] --> [ §c%'~outvar~'% ]',type='warning',label='TRY-RESULT') }}
+				WAIT({{ debug_delay }});
+			{* endif *}
+			
+			{* if catch *}
+				{* if catch is iterable and (catch is not string and catch is not mapping) *}
+					{* if catch|length > 1 *}
+						{* set evaluation = catch[0] *}
+						{* set exception_macro, exception_params = catch[1] *}
+						{* if exception_macro is callable *}
+							IF({{ evaluation }});
+								BREAK;
+							ENDIF;
+						{* endif *}
+					{* endif *}
+				{* endif *}
+			{* endif *}
+			
+		{* endfor *}
+	LOOP;
+	
+	{* if catch *}
+		{* if catch is iterable and (catch is not string and catch is not mapping) *}
+			{* if catch|length > 1 *}
+				{* set evaluation = catch[0] *}
+				{* set exception_macro, exception_params = catch[1] *}
+				{* if exception_macro is callable *}
+					IF({{ evaluation }});
+						{* if debug *}
+							{{ CHAT.print('[ '~exception_macro.name~' ] --> [ '~evaluation~' ] = True',type='error', label='TRY-CATCH') }}
+							WAIT({{ debug_delay }});
+						{* endif *}
+						{* if exception_macro is callable *}
+							{{ exception_macro(outvar=outvar, **exception_params) }}
+						{* endif *}
+					ENDIF;
+				{* else *}
+					{{ raise('"catch" attribute should carry a Tuple[str, --> Tuple[callable, dict]]') }}
+				{* endif *}
+			{* else *}
+				{{ raise('"catch" attribute should carry a --> Tuple[str, Tuple[callable, dict]]') }}
+			{* endif *}
+		{* else *}
+			{{ raise('"catch" attribute should carry a --> Tuple[str, Tuple[callable, dict]]') }}
+		{* endif *}
+	{* else *}
+		{{ raise('"TRY" should receive an attribute called "catch"') }}
+	{* endif *}
+	
+{* endmacro *}
+
+{* macro switch(evaluate, cases, outvar, debug=False, debug_delay='10t') *}
+	
+	DO(1);
+		{* for case in cases *}
+			{* set value = case[0] *}
+			{* set macros = case[1] *}
+			{* set break = case[2] *}
+			IF({{ evaluate }}=={{ value }});
+				
+				
+				{* if debug *}
+					{{ CHAT.print('[ '~value~' ]', type='info', label='SWITCH') }}
+				{* endif *}
+				
+				//Parâmetro "macros" admite tanto uma macro como uma lista de macros
+				{* if macros is callable *}
+					{{ macros(outvar=outvar) }}
+				{* elif macros is iterable and (macros is not string and macros is not mapping) *}
+					{* for macro, params in macros *}
+						
+						{* if debug *}
+							{{ CHAT.print('[ '~value~' ] [ '~macro.name~' ]', type='tip', label='SWITCH-CASE') }}
+						{* endif *}
+						
+						{{ macro(outvar=outvar, **params) }}
+						
+						{* if debug *}
+							{{ CHAT.print('[ '~macro.name~' ] --> [ §c%'~outvar~'% ]',type='default', label='SWITCH-CASE-RESULT') }}
+							{* if loop.index == macros | length *}
+								WAIT({{ debug_delay }});
+							{* endif *}
+						{* endif *}
+						
+					{* endfor *}
+				{* endif *}
+				
+			ENDIF;
+		{* endfor *}
+	LOOP;
+	
+{* endmacro *}

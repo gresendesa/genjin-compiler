@@ -1,0 +1,76 @@
+{* import "Federal.data_structures.list" as LIST *}
+
+{!! ADICIONA UM ELEMENTO DE FORMA UNICA, NÃO VAZIO, ORDENADA DE FORMA CRESCENTE
+    COM BASE NO VALOR INDICADO PELO GRUPO DA REGEX INFORMADA (DEFINA GRUPO) !!}
+{* macro insert(
+  source, 
+  content, 
+  content_group_regex='([0-9]+)', 
+  debug=false,
+  auxintvar='#setauxint'~range(1,99999)|random, 
+  auxstrvar='&setauxstr'~range(1,99999)|random,
+  auxword0='&setauxword0'~range(1,99999)|random,
+  auxword1='&setauxword1'~range(1,99999)|random,
+  auxword2='&setauxword2'~range(1,99999)|random,
+  auxcounter0='#setcounter0'~range(1,99999)|random,
+  auxcounter1='#setcounter1'~range(1,99999)|random,
+  auxcounter2='#setcounter2'~range(1,99999)|random,
+  auxcounter3='#setcounter3'~range(1,99999)|random) 
+*}
+
+  IFCONTAINS("{{ LIST.dump(source=source) }}","{{ LIST.build_element(content=content) }}");
+    {* if debug *} LOG("o elemento já existe na lista"); {* endif *}
+    
+  ELSE;
+    //ALGORITMO DE ORDENAÇÃO
+    //- Transformar para array
+    //- Se o array for vazio, adiciona-se o elemento -> FIM
+    //- Se não for vazio, à partir das bordas procura-se um elemento referência
+    //   1- Começa procurando um elemento referência menor ou igual, a partir do fim
+    //   2- Começa procurando um elemento referência maior ou igual, a partir do início
+    //- Quando o elemento referência for encontrado, coloca-se à esquerda em 2 e à direta em 1
+    //- FIM
+    {{ LIST.to_array(source=source, outvar=auxstrvar~'[]') }}
+    ARRAYSIZE({{ auxstrvar~'[]' }},{{ auxintvar }});
+    IF({{ auxintvar }});//SPLIT adiciona um elemento vazio no início. Por isso a verificação
+      
+      {{ LIST.extract(content=content, regex=content_group_regex, outvar=auxcounter3) }}
+      {* if debug *} LOG("§e%{{ auxcounter3 }}%"); {* endif *}
+      FOREACH({{ auxstrvar~'[]' }},{{ auxword0 }},{{ auxcounter0 }});
+        //LOG("%{{ auxcounter0 }}% ==> %{{ auxword0 }}%");
+        {{ auxcounter1 }}={{ auxintvar }}-%{{ auxcounter0 }}%+1;
+        //LOG("%{{ auxcounter1 }}% ==> %{{ auxstrvar~'[%'~auxcounter1~'%]' }}%");
+        
+        {{ LIST.extract(content='%'~auxword0~'%', regex=content_group_regex, outvar=auxcounter2) }}
+        {* if debug *} LOG("§8%{{ auxcounter2 }}%"); {* endif *}
+        IF({{ auxcounter2 }}>={{ auxcounter3 }});//Elemento referência à esquerda encontrado : )
+          {* if debug *} LOG("encontrei! vou adicionar %{{ auxcounter3 }}% antes de %{{ auxcounter2 }}%"); {* endif *}
+          SET({{ auxword1 }},{{ LIST.dump(source=source) }});
+          REPLACE({{ auxword1 }},"{{ LIST.left_item_border~'%'~auxword0~'%'~LIST.right_item_border }}","{{ LIST.left_item_border~content~LIST.right_item_border }}{{ LIST.left_item_border~'%'~auxword0~'%'~LIST.right_item_border }}");
+          {{ LIST.define(source=source, content='%'~auxword1~'%') }}
+          BREAK;
+        ENDIF;
+        
+        SET({{ auxword1 }},%{{ auxstrvar~'[%'~auxcounter1~'%]' }}%);
+        {{ LIST.extract(content='%'~auxword1~'%', regex=content_group_regex, outvar=auxcounter2) }}
+        {* if debug *} LOG("§7%{{ auxcounter2 }}%"); {* endif *}
+        IF({{ auxcounter2 }}<={{ auxcounter3 }});//Elemento referência à direta encontrado : )
+          {* if debug *} LOG("encontrei! vou adicionar %{{ auxcounter3 }}% depois de %{{ auxcounter2 }}%"); {* endif *}
+          SET({{ auxword2 }},{{ LIST.dump(source=source) }});
+          REPLACE({{ auxword2 }},"{{ LIST.left_item_border~'%'~auxword1~'%'~LIST.right_item_border }}","{{ LIST.left_item_border~'%'~auxword1~'%'~LIST.right_item_border }}{{ LIST.left_item_border~content~LIST.right_item_border }}");
+          {{ LIST.define(source=source, content='%'~auxword2~'%') }}
+          BREAK;
+        ENDIF;
+        
+        IF(({{ auxcounter0 }}=={{ auxcounter1 }})||({{ auxcounter0 }}>{{ auxcounter1 }}));
+          BREAK;
+        ENDIF;
+      NEXT;
+    ELSE;
+      {* if debug *} LOG("igual que 0 ::: [%{{ auxintvar }}%] %&{{ source }}%"); {* endif *}
+      {{ LIST.define(source=source, content=LIST.build_element(content=content)) }}
+    ENDIF;
+    
+  ENDIF;
+
+{* endmacro *}
