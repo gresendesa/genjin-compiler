@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-023 adicionado)
+Ultima atualizacao: 2026-05-03 (B-024 adicionado — bloqueio de B-023)
 
 ## Objetivo
 
@@ -49,7 +49,8 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | (a definir) | baixo | [B-023.md](backlog-items/B-023.md) |
+| B-024 | Inline `while`: aceitar múltiplos códigos e códigos borbulhados | 1 (crítica) | médio | [B-024.md](backlog-items/B-024.md) |
+| B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | 1 (crítica) | baixo | [B-023.md](backlog-items/B-023.md) |
 
 ### Em andamento
 
