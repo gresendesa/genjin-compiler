@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-02
+Ultima atualizacao: 2026-05-03
 
 ## Objetivo
 
@@ -132,8 +132,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: médio (2.0)
 - Resultado: B-017 concluído — spec completa em `docs/proc-blocos.md`, 7 pontos de design avaliados, DEC-003 registrada, impacto estimado (~330 linhas). Spinoff B-018 identificado.
 - Arquivo detalhado: [ia/sprints/SPR-2026-10.md](sprints/SPR-2026-10.md)
-- Risco da sprint: médio (2.0)
-- Arquivo detalhado: [ia/sprints/SPR-2026-10.md](sprints/SPR-2026-10.md)
+
+
+### SPR-2026-11
+
+- Status: ativa
+- Data de início: 2026-05-03
+- Foco: B-021 — `examples/lenhador.gnj` + fix parser `param: Type[]` com ref implícita
+- Itens: B-021
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (1.6)
+- Arquivo detalhado: [ia/sprints/SPR-2026-11.md](sprints/SPR-2026-11.md)
 
 
 ## Template sintetico para novas sprints
