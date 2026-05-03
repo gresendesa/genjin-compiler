@@ -22,31 +22,31 @@ vars {
 procs {
     // --- server_tools_cl_77_78 ---
 
-    Teleportar(home: &Text) from "Federal.@.server_tools_cl_77_78.Teleportar" {
+    Teleportar(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_teleportar" {
         codes SUCESSO<0>, DEMORA<99>, NÃO_EXISTE<404>, CANCELADO<3>
     }
 
-    Definir_Home(home: &Text) from "Federal.@.server_tools_cl_77_78.Definir_Home" {
+    Definir_Home(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_definir_home" {
         codes SUCESSO<0>, DEMORA<99>, LIMITE_ALCANCADO<4>, PROIBIDO<1>
     }
 
-    Ping() from "Federal.@.server_tools_cl_77_78.Ping" {
+    Ping() from "Federal.@.server_tools_cl_77_78.serviço_testar_conectividade" {
         codes SUCESSO<0>, DEMORA<99>
     }
 
-    Pegar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.Pegar_Itens_MKB" {
+    Pegar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.serviço_pegar_itens_mkb" {
         codes SUCESSO<0>, DEMORA<99>
     }
 
-    Guardar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.Guardar_Itens_MKB" {
+    Guardar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.serviço_guardar_itens_mkb" {
         codes SUCESSO<0>, DEMORA<99>
     }
 
-    Resetar_MKB(gaveta: Text) from "Federal.@.server_tools_cl_77_78.Resetar_MKB" {
+    Resetar_MKB(gaveta: Text) from "Federal.@.server_tools_cl_77_78.serviço_resetar_mkb" {
         codes SUCESSO<0>, DEMORA<99>
     }
 
-    Pode_Usar_Home_Temp(gaveta: Text) from "Federal.@.server_tools_cl_77_78.Pode_Usar_Home_Temp" {
+    Pode_Usar_Home_Temp(gaveta: Text) from "Federal.@.server_tools_cl_77_78.serviço_pergunta_pode_usar_home_temp" {
         codes SUCESSO<0>, NAO_EXISTE<404>, DEMORA<99>
     }
 
