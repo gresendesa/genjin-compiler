@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-13 concluída — B-022 entregue, backlog zerado)
+Ultima atualizacao: 2026-05-03 (B-023 adicionado)
 
 ## Objetivo
 
@@ -49,7 +49,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| — | backlog zerado | — | — | — |
+| B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | (a definir) | baixo | [B-023.md](backlog-items/B-023.md) |
 
 ### Em andamento
 
