@@ -31,9 +31,57 @@ import json
 import os
 import sys
 import random
-
 from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
+from jinja2 import pass_context
+from markupsafe import Markup
+import unicodedata
+import re
+import copy
 
+@pass_context
+def call_macro_by_name(context, macro_name, *args, **kwargs):
+    return context.vars[macro_name](*args, **kwargs)
+
+def to_json(value, *args, **kwargs):
+    return Markup(json.dumps(value))
+
+def findall(value, pattern, *args, **kwargs):
+    return re.findall(pattern, value)
+
+def replace_especial_alphabetic_chars(value, *args, **kwargs):
+    return ''.join((c for c in unicodedata.normalize('NFD', value) if unicodedata.category(c) != 'Mn'))
+
+# --- Filtro 'place' adicionado aqui ---
+def place(dicionario, caminho_chave, valor):
+    """
+    Filtro Jinja2 que insere ou atualiza um valor em um dicionário,
+    suportando caminhos aninhados (ex: 'chave1.chave2.chave3').
+    """
+    # Retorna o valor original se não for um dicionário para evitar erros.
+    if not isinstance(dicionario, dict):
+        return dicionario
+
+    # Usa deepcopy para garantir que estruturas aninhadas sejam copiadas,
+    # evitando modificações no objeto original.
+    copia_dicionario = copy.deepcopy(dicionario)
+
+    # Divide o caminho em uma lista de chaves. Ex: "a.b.c" -> ['a', 'b', 'c']
+    chaves = caminho_chave.split('.')
+
+    # Navega/cria a estrutura até a penúltima chave
+    ponteiro = copia_dicionario
+    for chave in chaves[:-1]:
+        # setdefault é ideal: obtém o valor ou cria um dict vazio se não existir
+        ponteiro = ponteiro.setdefault(chave, {})
+        if not isinstance(ponteiro, dict):
+            # Para se o caminho for inválido (ex: tenta criar uma chave dentro de um número)
+            return copia_dicionario
+
+    # Na última chave, define o valor final
+    if chaves:
+        ponteiro[chaves[-1]] = valor
+
+    return copia_dicionario
 
 class Cortex:
     '''
@@ -205,6 +253,14 @@ def main() -> None:
             "raise":Cortex.throw
         })
 
+        env.filters.update({
+            "call_macro_by_name": call_macro_by_name,
+            "json": to_json,
+            "findall": findall,
+            "place": place,
+            "replace_especial_alphabetic_chars": replace_especial_alphabetic_chars,
+        })
+
         try:
             template = env.get_template(_STDIN_KEY)
         except TemplateSyntaxError as exc:
@@ -244,7 +300,20 @@ def main() -> None:
             comment_end_string=args.comment_end,
             keep_trailing_newline=True,
         )
-        env.globals.update({"nid": Cortex.get_next_number})
+        env.globals.update({
+            "dev": "Federal", #Hardcoded para facilitar debug
+            "build": '3E26•E30•Federal', #Hardcoded para facilitar debug
+            "this": {'code': '...', 'csid': 'csid'}, #Hardcoded para facilitar debug
+            "nid": Cortex.get_next_number,
+            "raise": Cortex.throw,
+        })
+        env.filters.update({
+            "macro": call_macro_by_name,
+            "to_json": to_json,
+            "findall": findall,
+            "place": place,
+            "replace_especial_alphabetic_chars": replace_especial_alphabetic_chars,
+        })
 
         try:
             template = env.get_template(template_name)

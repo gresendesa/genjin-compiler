@@ -1,0 +1,1857 @@
+
+/**
+	* TODO:
+	*   - OK        suporte a variáveis em textos e rótulos
+	*   - OK        suporte a ações para cada tipo
+	*   - OK        botões genéricos
+	*   - OK        validator para controlar abertura de um menu
+	*   - PENDENTE  filtrar todo o conteúdo a ser exibido para remover os caracteres
+	*
+	*
+	* CONCEITOS IMPORTANTES:
+	*
+	* 1. Um menu é uma interface de usuário.
+	* 2. Uma interface de usuário deve ser intuitiva para usuários.
+	*
+	* TEMAS
+	*
+	* Ditam como os diversos tipos devem ser exibidos para o usuário.
+	*
+	*
+	* MENU
+	*
+	* 1. Um menu é uma lista de um tipo T.
+	* 2. Essa lista é um conjunto de itens.
+	* 3. Cada item está vinculado a uma ação.
+	* 4. Cada menu armazena informações para o tipo designado
+	*
+	* NATUREZA
+	*
+	* 1. Fixa: Esse tipo de menu possui lista fixa de itens.
+	* 3. Dinâmica: Esse tipo de menu possui lista dinâmica de itens.
+	*
+	* TIPO
+	* 0. Menu
+	* 0.1. Checkbox
+	*  - Single (radio)    <===
+	*  - Multi             <===
+	* 0.2. Select (type blocks or list)
+	*  - Single
+	*  - Multi
+	* 0.3. Input
+	*  - Value
+	*
+	*
+	*
+	* TIPOS DE REGISTROS
+	*
+	* 1. MENU:            declara um menu
+	*
+	*   Exemplo: {'type': TYPE.MENU, 'short': 'oba','text': 'bey', 'name': 'menu0', 'outvars': {}, 'options': []}
+	*   'type':       [Obrigatório]
+	*   'short':      [Opcional]
+	*   'field':      [Opcional] O valor padrão é 'Option'
+	*   'breadcrumb': [Opcional] O texto que vai aparecer para fins de navegação
+	*   'text':       [Obrigatório] se vinculado a um menu, [Não requerido] se for o menu principal. Deve ser único no contexto do menu.
+	*   'name':       [Obrigatório] deve ser uma string única sem caracteres especiais e espaços
+	*   'options':    [Obrigatório] desejável se o menu tiver opções
+	*
+	* 2. LINE.BLANK:      declara uma linha vazia
+	*
+	*   Exemplo: {'type': TYPE.LINE.BLANK},
+	*   'type':     [Obrigatório]
+	*
+	* 3. LINE.DUMMY:    declara uma linha no menu com texto inativo
+	*
+	*   Exemplo: {'text': '______', 'type': TYPE.LINE.DUMMY},
+	*   'type':     [Obrigatório]
+	*   'text':     [Obrigatório] o texto que deverá aparecer. Deve ser único no contexto do menu.
+	*
+	* 4. INPUT.CHECKBOX:  declara uma das opções dentre as opções de um checkbox (opções predefinidas)
+	*
+	*   Exemplo: {'text': 'mytext', 'name': 'xpto', value='somevalue', 'default': False, 'type': TYPE.INPUT.CHECKBOX},
+	*   'type':     [Obrigatório]
+	*   'text':     [Obrigatório] o texto que deverá aparecer no menu
+	*   'name':     [Obrigatório] o nome do radio (deve ser igual em todos os elementos do checkbox)
+	*   'value':    [Obrigatório] o valor relacionado a esse item do checkbox
+	*   'default':  [Opcional] Por padrão é False. True para o caso de o item dever estar ativo por padrão.
+	*   'validator':[Opcional]    deve receber uma macro com os seguintes parâmetros:
+	*      value:       O valor a ser validado é recebido aqui
+	*      accept():    A macro que deve ser executada caso o valor deva ser aceito.
+	*      reject(msg): A macro que deve ser executada caso um valor não deva ser aceito e uma mensagem é exibida.
+	*
+	* 5. INPUT.RADIO:     declara uma das opções dentre as opções de um radio (opções predefinidas)
+	*
+	*   Exemplo: {'text': 'mytext', 'name': 'xpto', value='somevalue', 'default': False, 'type': TYPE.INPUT.RADIO},
+	*   'type':     [Obrigatório]
+	*   'text':     [Obrigatório] o texto que deverá aparecer no menu
+	*   'name':     [Obrigatório] o nome do radio (deve ser igual em todos os elementos do radio)
+	*   'value':    [Obrigatório] o valor relacionado a esse radio
+	*   'default':  [Opcional] recebe True ou False. True para o caso de o valor ser o padrão
+	*   'validator':[Opcional]    deve receber uma macro com os seguintes parâmetros:
+	*      value:       O valor a ser validado é recebido aqui
+	*      accept():    A macro que deve ser executada caso o valor deva ser aceito.
+	*      reject(msg): A macro que deve ser executada caso um valor não deva ser aceito e uma mensagem é exibida.
+	*
+	*
+	* 6. INPUT.VALUE:     declara um leitor de valor
+	*
+	*   Exemplo: {'text': 'beyba', 'name': 'value', 'type': TYPE.INPUT.VALUE, 'validator': valid},
+	*   'type':     [Obrigatório]
+	*   'text':     [Obrigatório] o texto que deverá aparecer. Deve ser único no contexto do menu.
+	*   'name':     [Obrigatório]
+	*   'label':    [Opcional] o texto que deve aparecer durante o input.
+	*   'default':  [Opcional]  O valor padrão que deve ser inserido caso nenhum registro exista
+	*   'validator':[Opcional]    deve receber uma macro com os seguintes parâmetros:
+	*      value: O valor a ser validado é recebido aqui
+	*      accept(): A macro que deve ser executada caso o valor deva ser aceito.
+	*      reject(msg): A macro que deve ser executada caso um valor não deva ser aceito e uma mensagem é exibida.
+	*
+	* 7: INPUT.SWITCH: isso vai trocar o estado ativado/desativado. com suporte de validator. e valor vinculado
+	*
+	*   Exemplo: {'text': 'beyba', 'name': 'value', 'type': TYPE.INPUT.SWITCH, 'validator': valid},
+	*   'type':     [Obrigatório]
+	*   'text':     [Obrigatório] o texto que deverá aparecer. Deve ser único no contexto do menu.
+	*   'name':     [Obrigatório]
+	* 	'values':   [Obrigatório] um tupla com dois valores, o primeiro para o valor padrão, o segundo para o não padrão
+	*
+	* 8: INPUT.TAGS: isso acumula uma lista de opções (opções não predefinidas)
+	*   8.1 INPUT.TAGS.VALUE: Similar ao INPUT.VALUE, exceto que cada valor inserido vai para uma lista
+	*   8.2 INPUT.TAGS.HANDPICK: Cada item adicionado sai da própria mão
+	*   8.3 INPUT.TAGS.BLOCK: Cada item selecionado sai da lista global de blocos do MC
+	*
+	* 9: ACTION: isso executa alguma ação e é capaz de alterar o valor da opção
+	*
+	* ATENÇÃO: RECOMENDAMOS NÃO UTILIZAR VARIÁVEIS BOOLEANAS EM OUTVARS
+	*
+	* MECANISMO DE STORAGE
+	*
+	* 1. Os valores serão guardados em uma única variável global do tipo DICT
+	* 2. Doravante chamaremos de "storage" esse DICT global
+	* 3. Cada tipo de opção terá seu meio de armazenar valores:
+	*   3.1 INPUT.VALUE:
+	*     3.1.1 KEY: a key correspondente no storage será formado pelos seguintes componente separados por _
+	*       - 'name' do menu correspondente
+	*       - 'name' da opção correspondente
+	*     3.1.2 FORMATO: uma string
+	*
+**/
+
+{*
+	set TYPE = {
+		'MENU': 'menu',
+		'DATA': 'data',
+		'PANEL': {
+			'LIST': 'list'
+		},
+		'LINE': {
+			'BLANK': 'blankline',
+			'DUMMY': 'dummyoption'
+		},
+		'INPUT': {
+			'CHECKBOX': 'checkbox',
+			'RADIO': 'radio',
+			'VALUE': 'value',
+			'LIST': {
+				'VALUE': 'list_value',
+				'BLOCK': 'list_block',
+				'HAND': 'list_hand'
+			}
+		},
+		'BUTTON': {
+			'SUBMIT': 'submit',
+			'CANCEL': 'cancel',
+			'BACK': 'back',
+			'RESET': 'reset',
+			'GENERIC': 'generic'
+		}
+	}
+*}
+//߷
+//⬤
+//⎔
+//◬
+//✤
+{*
+	set DEFAULT_SETTINGS = {
+		'BACK_TEXT': 'back',
+		'CANCEL_TEXT': 'cancel',
+		'SUBMIT_TEXT': 'done',
+		'RESET_TEXT': 'reset',
+		'PANEL_LIST_VALUE_INPUT_TEXT': 'add',
+		'PANEL_LIST_BLOCK_INPUT_TEXT': 'choose block',
+		'PANEL_LIST_HAND_INPUT_TEXT': 'hold and enter',
+		'CANCEL_TEXT_COLOR': '§c§n',
+		'BACK_TEXT_COLOR': '§7§n',
+		'SUBMIT_TEXT_COLOR': '§a§l§n',
+		'RESET_TEXT_COLOR': '§e§n',
+		'BREADCRUMB_SEPARATOR': ' > ',
+		'BREADCRUMB_SEPARATOR_COLOR': '§8',
+		'BREADCRUMB_BOUNDARY_COLOR': '§8§l',
+		'BREADCRUMB_LEFT_BOUNDARY': '[',
+		'BREADCRUMB_RIGHT_BOUNDARY': ']',
+		'BREADCRUMB_ACTIVE_LEVEL_COLOR': '§f§l',
+		'BREADCRUMB_PREVIOUS_LEVEL_COLOR': '§7',
+		'BREADCRUMB_PRESENCE': True,
+		'BUILD_STAMP_PRESENCE': False,
+		'ICON_PRESENCE': True,
+		'BACK_PRESENCE':  False,
+		'CANCEL_PRESENCE': False,
+		'SUBMIT_PRESENCE': False,
+		'BUILD_STAMP_COLOR': '§8',
+		
+		'GENERIC_ICON': '☀',
+		'GENERIC_ICON_COLOR': '§3',
+		'GENERIC_TEXT_COLOR': '§f',
+		
+		'MENU_VALIDATOR_WARN_PREFIX': '§e⚠ ',
+		'MENU_VALIDATOR_WARN_COLOR': '§6§l',
+		
+		'INPUT_VALUE_WARN_PREFIX': '§4✗ ',
+		'INPUT_VALUE_WARN_COLOR': '§c',
+		'INPUT_VALUE_PREVIEW_PREFIX_TEXT': '',
+		'INPUT_VALUE_PREVIEW_SUFFIX_TEXT': '',
+		'INPUT_VALUE_PREVIEW_COLOR': '§7',
+		'INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR': '§8',
+		'INPUT_VALUE_PREVIEW_PRESENCE': True,
+		
+		'INPUT_CHECKBOX_CHECKED_ICON': '☑',
+		'INPUT_CHECKBOX_UNCHECKED_ICON': '☐',
+		'INPUT_RADIO_CHECKED_ICON': '☒',
+		'INPUT_RADIO_UNCHECKED_ICON': '☐',
+		'INPUT_VALUE_ICON': '★',
+		'INPUT_SWITCH_ICON': '★',
+		'INPUT_VALUE_LABEL_COLOR': '§a',
+		
+		'INPUT_VALUE_FILLED_COLOR': '§f',
+		'INPUT_VALUE_UNFILLED_COLOR': '§7§m',
+		'INPUT_VALUE_FILLED_ICON_COLOR': '§a',
+		'INPUT_VALUE_UNFILLED_ICON_COLOR': '§f',
+		
+		'INPUT_CHECKBOX_CHECKED_COLOR': '§f',
+		'INPUT_CHECKBOX_UNCHECKED_COLOR': '§7§m',
+		'INPUT_CHECKBOX_CHECKED_ICON_COLOR': '§a',
+		'INPUT_CHECKBOX_UNCHECKED_ICON_COLOR': '§f',
+		
+		'INPUT_RADIO_CHECKED_COLOR': '§f',
+		'INPUT_RADIO_UNCHECKED_COLOR': '§7§m',
+		'INPUT_RADIO_CHECKED_ICON_COLOR': '§a',
+		'INPUT_RADIO_UNCHECKED_ICON_COLOR': '§f',
+		
+		'INPUT_SWITCH_CHECKED_COLOR': '§f',
+		'INPUT_SWITCH_UNCHECKED_COLOR': '§7',
+		'INPUT_SWITCH_CHECKED_ICON_COLOR': '§a',
+		'INPUT_SWITCH_UNCHECKED_ICON_COLOR': '§f',
+		
+		'PANEL_LIST_COLOR': '§7',
+		'PANEL_LIST_ICON': '♺',
+		'PANEL_LIST_ICON_COLOR': '§c',
+		
+		'PANEL_LIST_VALUE_INPUT_COLOR': '§a§n',
+		'PANEL_LIST_VALUE_INPUT_ICON': '⊕',
+		'PANEL_LIST_VALUE_INPUT_ICON_COLOR': '§3',
+		'PANEL_LIST_VALUE_INPUT_PROMPT': '$$?',
+		
+		'PANEL_LIST_BLOCK_INPUT_COLOR': '§a§n',
+		'PANEL_LIST_BLOCK_INPUT_ICON': '⊕',
+		'PANEL_LIST_BLOCK_INPUT_ICON_COLOR': '§3',
+		'PANEL_LIST_BLOCK_INPUT_PROMPT': '$$i',
+		
+		'PANEL_LIST_HAND_INPUT_COLOR': '§a§n',
+		'PANEL_LIST_HAND_INPUT_ICON': '⊕',
+		'PANEL_LIST_HAND_INPUT_ICON_COLOR': '§3',
+		'PANEL_LIST_HAND_INPUT_SELECTOR_KEY': 'KEY_RETURN',
+		'PANEL_LIST_HAND_INPUT_SOURCE': '%ITEM%',
+		
+		'MENU_ICON': '⇒',
+		'PANEL_ICON': '⊞',
+		'BACK_ICON': '⇐',
+		'SUBMIT_ICON': '▶',
+		'RESET_ICON': '↺',
+		'RESET_ICON_COLOR': '§e',
+		'BACK_ICON_COLOR': '§a',
+		'SUBMIT_ICON_COLOR': '§3',
+		'CANCEL_ICON': 'Ⅹ',
+		'CANCEL_ICON_COLOR': '§c',
+		'ICON_SEPARATOR': ' ',
+		'MENU_ICON_COLOR': '§3',
+		'STOP_ON_CANCEL': True,
+		'MENU_TEXT_COLOR': '§f',
+		'PANEL_ICON_COLOR': '§3',
+		'PANEL_TEXT_COLOR': '§f',
+		'GLOBAL_DICT_STORAGE_NAME': 'menu_'~this.csid|replace('-','_')|replace('.','_')|replace_especial_alphabetic_chars|lower,
+		
+		'RESET_COMMAND': '!reset'
+		
+	}
+*}
+
+{* set panel_list_permitted_type_options = [TYPE.INPUT.LIST.VALUE, TYPE.INPUT.LIST.BLOCK, TYPE.INPUT.LIST.HAND, TYPE.LINE.DUMMY, TYPE.BUTTON.BACK] *}
+{* set regular_menu_forbidden_type_options = [TYPE.DATA, TYPE.INPUT.LIST.VALUE, TYPE.INPUT.LIST.BLOCK, TYPE.INPUT.LIST.HAND] *}
+{* set PANEL_KEY_PREFIX = 'panel' *}
+
+{* import 'Macrosoft.common.UI' as UI *}
+{* import 'Macrosoft.common.control' as CONTROL *}
+{* import 'Federal.data_structures.list' as LIST *}
+{* import 'Federal.data_structures.dict' as DICT *}
+{* import 'Federal.INTEL.string' as STRING *}
+{* import 'Federal.text.chat' as CHAT *}
+
+{!! raise('[Menus] you cannot repeat ids for options') !!}
+
+{* macro get_outvar_from_item_name(name, menu_option, storage_key, rand) -*}
+	{*- set outvar = menu_option.outvars[name] -*}
+	{{ outvar if outvar else '&'~storage_key~rand }}
+{*- endmacro *}
+
+{* macro destroy_menu_data(settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{{ DICT.destroy(source=storage_name, global=True) }}
+{* endmacro *}
+
+{* macro get_storage_key(menu_name, item_name) -*}
+	{{ menu_name ~'_'~ item_name }}
+{*- endmacro *}
+
+{* macro db_is_there_record(name, menu, outvar, settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set storage_key = get_storage_key(menu, name) *}
+	{{ DICT.key_exists(source=storage_name, key=storage_key, outvar=outvar, global=True) }}
+{* endmacro *}
+{* macro db_get_record(name, menu, outvar, settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set storage_key = get_storage_key(menu, name) *}
+	{{ DICT.get(source=storage_name, key=storage_key, outvar=outvar, global=True) }}
+{* endmacro *}
+{* macro db_set_record(name, menu, content, settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set storage_key = get_storage_key(menu, name) *}
+	{{ DICT.update(source=storage_name, dict={storage_key: content}, global=True) }}
+{* endmacro *}
+{* macro db_remove_record(name, menu, settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set storage_key = get_storage_key(menu, name) *}
+	{{ DICT.update(source=storage_name, key=storage_key, global=True) }}
+{* endmacro *}
+{* macro destroy_database(settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{{ DICT.destroy(source=storage_name, global=True) }}
+{* endmacro *}
+
+{* macro warning_dependencies_missing(fatal=True) *}
+	IF(!HASINTEL);
+		LOG("§e[!] §cINTEL support not found!");
+		{* if fatal *}
+			STOP();
+		{* endif *}
+	ENDIF;
+{* endmacro *}
+
+{* macro db_get_list_record(name, menu, outvar, settings=DEFAULT_SETTINGS) *}
+	{{ warning_dependencies_missing() }}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set storage_key = get_storage_key(menu, name) *}
+	{* set temp_outvar = '&out_var'~nid() *}
+	{{ DICT.get(source=storage_name, key=storage_key, outvar=temp_outvar, global=True) }}
+	
+	{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor='^'~LIST.left_item_border, replacewith='') }}
+	{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor=LIST.right_item_border~'$', replacewith='') }}
+	{{ STRING.explode(string='%&temp_list'~rand~'%', array=outvar~'[]', delimiter=LIST.right_item_border~LIST.left_item_border) }}
+	
+	{{ ARRAY.join(array=outvar~'[]', outvar='&panel_items'~rand, glue=','~item_list_formatting) }}
+	
+{* endmacro *}
+
+{* macro db_set_list_record(name, menu, arrayvar, settings=DEFAULT_SETTINGS) *}
+	{{ warning_dependencies_missing() }}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set storage_key = get_storage_key(menu, name) *}
+	{{ DICT.update(source=storage_name, dict={storage_key: content}, global=True) }}
+	
+{* endmacro *}
+
+{*
+	set DB_MANAGER = {
+		'is_there_record': db_is_there_record,
+		'get_record': db_get_record,
+		'set_record': db_set_record,
+		'remove_record': db_remove_record,
+		'destroy_all_records': destroy_database
+	}
+*}
+
+{* macro load_menu_data(menu_option, menu_name=None, option_name=None, option_outvar=None, settings=DEFAULT_SETTINGS) *}
+	{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+	{* set rand = nid() *}
+	{* set checkbox_list = [] *}
+	
+	{* if menu_option.type == TYPE.MENU *}
+		/* 1. Lê a base de dados deste menus */
+		{* for option in menu_option.options *}
+			
+			{!! if menu_name == None or option_name == None or option_outvar == None or (menu_name == menu_option.name and option_name == option.name)  !!}
+			
+			{* set pick_load_mode = menu_name != None and option_name != None and option_outvar != None *}
+			{* set picking_matches = (not pick_load_mode) or (menu_name == menu_option.name and option_name == option.name) *}
+			
+			{* set storage_key = get_storage_key(menu_option.name, option.name) *}
+			
+			{* if picking_matches and (option.type == TYPE.PANEL.LIST or option.meta_type == TYPE.PANEL.LIST) *}
+				
+				{{ warning_dependencies_missing() }}
+				
+				{* set copy_source = 'list'~nid() *}
+				{* set parent_menu_name = menu_option.name *}
+				{* set panel_storage_key = get_storage_key(parent_menu_name, option.name) *}
+				{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=panel_storage_key, rand=rand) if not pick_load_mode else option_outvar *}
+				{{ DICT.key_exists(source=storage_name, key=panel_storage_key, outvar='key_exists'~rand, global=True) }}
+				
+				IF(!key_exists{{ rand }});
+					{* for item in option.default *}
+						PUT({{ outvar }}[],"{{ item }}");
+					{* endfor *}
+				ELSE;
+					{{ DICT.get(source=storage_name, key=panel_storage_key, outvar='&'~copy_source, global=True) }}
+					SET(&temp_list{{ rand }},%&{{ copy_source }}%);
+					IF(&temp_list{{ rand }});
+						{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor='^'~LIST.left_item_border, replacewith='') }}
+						{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor=LIST.right_item_border~'$', replacewith='') }}
+						{{ STRING.explode(string='%&temp_list'~rand~'%', array=outvar~'[]', delimiter=LIST.right_item_border~LIST.left_item_border) }}
+					ENDIF;
+					
+				ENDIF;
+				
+			{* elif option.type == TYPE.MENU *}
+				
+				{{ load_menu_data(menu_option=option, menu_name=menu_name, option_name=option_name, option_outvar=option_outvar, settings=settings) }}
+				
+			{* elif picking_matches and option.type == TYPE.INPUT.CHECKBOX *}
+				
+				{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) if not pick_load_mode else option_outvar *}
+				{* set copy_source = 'list'~nid() *}
+				{* set copy_value_var = '&element'~nid() *}
+				
+				{* if checkbox_list|length <= 0 *}
+					UNSET({{ outvar }}[]);
+				{* endif *}
+				
+				{* set _ = checkbox_list.append(option) *}
+				
+				{* if option.default *}
+					
+					{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+					
+					IF(!key_exists{{ rand }});
+						SET({{ copy_value_var }},"{{ option.value }}");
+					ELSE;
+						{{ DICT.get(storage_name, storage_key, outvar='&'~copy_source, global=True) }}
+						{{ LIST.get(source=copy_source,regex='\Q'~option.value~'\E', outvar=copy_value_var) }}
+					ENDIF;
+					
+					IF({{ copy_value_var }});
+						PUT({{ outvar }}[],%{{ copy_value_var }}%);
+					ENDIF;
+					
+				{* else *}
+					
+					{{ DICT.get(storage_name, storage_key, outvar='&'~copy_source, global=True) }}
+					{{ LIST.get(source=copy_source,regex='\Q'~option.value~'\E', outvar=copy_value_var) }}
+					IF({{ copy_value_var }});
+						PUT({{ outvar }}[],%{{ copy_value_var }}%);
+					ENDIF;
+					
+				{* endif *}
+				
+			{* elif picking_matches and option.type == TYPE.INPUT.RADIO *}
+				
+				{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) if not pick_load_mode else option_outvar *}
+				{* set aux_outvar = '&copy'~rand *}
+				
+				{* if option.default *}
+					{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+					IF(!key_exists{{ rand }});
+						SET({{ outvar }},"{{ option.value }}");
+					ELSE;
+						{{ DICT.get(storage_name, storage_key, outvar=aux_outvar, global=True) }}
+					ENDIF;
+				{* else *}
+					{{ DICT.get(storage_name, storage_key, outvar=aux_outvar, global=True) }}
+					IF({{ aux_outvar }});
+						SET({{ outvar }},%{{ aux_outvar }}%);
+					ENDIF;
+				{* endif *}
+				
+			{* elif picking_matches and option.type == TYPE.DATA *}
+				
+				{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) if not pick_load_mode else option_outvar *}
+				
+				{* if option.default *}
+					{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+					IF(!key_exists{{ rand }});
+						SET({{ outvar }},"{{ option.default if option.default else '' }}");
+					ELSE;
+						{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+					ENDIF;
+				{* else *}
+					{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+				{* endif *}
+				
+			{* elif picking_matches and option.type == TYPE.INPUT.VALUE *}
+				
+				{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) if not pick_load_mode else option_outvar *}
+				
+				{* if option.default *}
+					{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+					IF(!key_exists{{ rand }});
+						SET({{ outvar }},"{{ option.default if option.default else '' }}");
+					ELSE;
+						{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+					ENDIF;
+				{* else *}
+					{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+				{* endif *}
+				
+			{* endif *}
+			
+			{!! endif !!}
+			
+		{* endfor *}
+	{* endif *}
+{* endmacro *}
+
+{* set OPTION_OUTVAR_ID = nid() *}
+
+
+
+/**
+	* Essa macro possui uma funcionalidade gostosinha de buscar as informações na base de dados
+	* ou na descrição do menu para obter valores padrão, cuidando, ao mesmo tempo, de
+	* não realizar consultas redundantes dentro do contexto de um menu - para economizar código.
+	*
+	* O histórico de buscas fica no dicionário 'option_content_read_menu_history'.
+	* Este dicionário guarda chaves referentes ao nome de um menu. Cada uma dessas chaves armazena
+	* uma lista contendo a junção do nome do menu e da opção (menu_name~'_'~option_name)
+	*
+	* Essa função é a responsável pela busca de informação para o suporte a variáveis nos textos
+	* das opções e nos textos dos labels.
+	*
+**/
+
+{* set option_content_read_menu_history = {} *}
+{* macro process_option_text(option, option_menu, outvar, global_menu, settings=DEFAULT_SETTINGS) *}
+	{* set context_menu_name = option_menu.name *}
+	{* set data_marks = option.text | findall('\[[a-z0-9_.]+\]') *}
+	{* set option_text = {'text': option.text} *}
+	UNSET({{ outvar }});
+	{* if data_marks | length > 0 *}
+		{* for mark in data_marks *}
+			{* set mark_text = mark | replace('[','') | replace (']','') *}
+			{* set mark_text_snippets = mark_text.split('.') *}
+			{* set menu_name, option_name = (mark_text_snippets[0] if mark_text_snippets | length > 1 else context_menu_name), (mark_text_snippets[1] if mark_text_snippets | length > 1 else mark_text_snippets[0]) *}
+			{* set unique_key = menu_name~'_'~option_name *}
+			{* set option_outvar = '&option_'~unique_key~OPTION_OUTVAR_ID *}
+			{* if unique_key not in option_content_read_menu_history[context_menu_name] *}
+				{{ load_menu_data(menu_option=global_menu, menu_name=menu_name, option_name=option_name, option_outvar=option_outvar, settings=DEFAULT_SETTINGS) }}
+				{* set menu_history = option_content_read_menu_history[context_menu_name] if context_menu_name in option_content_read_menu_history and option_content_read_menu_history[context_menu_name] is iterable and option_content_read_menu_history[context_menu_name] is not string else [] *}
+				{* set _ = menu_history.append(unique_key) *}
+				{* set _ = option_content_read_menu_history.update({context_menu_name: menu_history}) *}
+			{* endif *}
+			{* set _ = option_text.update({'text': option_text.text | replace(mark, '%'~option_outvar~'%')}) *}
+		{* endfor *}
+	{* endif *}
+	SET({{ outvar }},"{{ option_text.text }}");
+{* endmacro *}
+
+{* macro call_item_action(option, menu_context) *}
+	
+	{* if option.action and option.action is callable *}
+		{{ option.action(option=option, menu=menu_context) }}
+	{* endif *}
+	
+	//, DB=DB_MANAGER
+	
+{* endmacro *}
+
+{* set global_menus_list = [] *}
+
+/**
+	*
+	*
+	* build_menu()
+	*
+	*
+**/
+
+{* macro cancel_hook(value, accept, reject) *}
+	{{ accept() }}
+{* endmacro *}
+
+{* macro submit_hook(value, accept, reject) *}
+	{{ accept() }}
+{* endmacro *}
+
+{* macro build_menu(menu_option, history=[], on_cancel=cancel_hook, on_submit=submit_hook, settings=DEFAULT_SETTINGS) *}
+	
+	{* set rand = nid() *}
+	{* set options_list = [] *}
+	{* set choice_variable = '&choice'~rand *}
+	{* set formatted_text_attr = 'formatted_text' *}
+	{* set menu_warningvar = '&warning'~rand *}
+	{* set item_list_formatting = (settings.PANEL_LIST_ICON_COLOR ~ settings.PANEL_LIST_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.PANEL_LIST_COLOR *}
+	
+	
+	{* if menu_option.type != TYPE.MENU *}
+		{{ raise('Root menu must be TYPE.MENU') }}
+	{* endif *}
+	
+	{* if not menu_option.name *}
+		{{ raise('Menu must have "name" attribute') }}
+	{* endif *}
+	
+	/* verifica se há menus com 'name' iguais, o que seria um problema */
+	{* for menu in global_menus_list *}
+		{* if menu.name == menu_option.name *}
+			{{ raise('Menu name "'~menu.name~'" is repeated!') }}
+		{* endif *}
+	{* endfor *}
+	
+	{* set _ = global_menus_list.append(menu_option) *}
+	
+	{* if history|length > 0 *}
+		
+		{* if not menu_option.text *}
+			{{ raise('Menu "'~menu_option.name~'" must have "text" attribute') }}
+		{* endif *}
+		
+		{* if settings.BACK_PRESENCE *}
+			{* set _ = options_list.append((settings.BACK_ICON_COLOR ~ settings.BACK_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.BACK_TEXT_COLOR ~ settings.BACK_TEXT) *}
+		{* endif *}
+		
+	{* else *}
+		
+		{* if settings.SUBMIT_PRESENCE *}
+			{* set _ = options_list.append((settings.SUBMIT_ICON_COLOR ~ settings.SUBMIT_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.SUBMIT_TEXT_COLOR ~ settings.SUBMIT_TEXT) *}
+		{* endif *}
+		
+	{* endif *}
+	
+	{* if not menu_option.options or menu_option.options|length <= 0 *}
+		{{ raise('Menu "'~menu_option.name~'" must have "options" attribute') }}
+	{* endif *}
+	
+	DO;
+		
+		{* set storage_name = settings.GLOBAL_DICT_STORAGE_NAME *}
+		{* set checkbox_list = [] *}
+		
+		{{ call_item_action(option=menu_option, menu_context=history | last if history|length > 0 else None) }}
+		
+		{* if menu_option.type == TYPE.MENU *}
+			
+			/* 1. Lê valores e gera o prompt */
+			{* for option in menu_option.options *}
+				
+				{* set storage_key = get_storage_key(menu_option.name, option.name) *}
+				
+				{* if option.type == TYPE.BUTTON.BACK *}
+					
+					{* if history|length > 0 *}
+						{* set _ = options_list.append((settings.BACK_ICON_COLOR ~ settings.BACK_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.BACK_TEXT_COLOR ~ settings.BACK_TEXT) *}
+					{* endif *}
+					
+				{* elif option.type == TYPE.BUTTON.GENERIC *}
+					
+					{* if not option.text *}
+						{{ raise('BUTTON.GENERIC type must have "text" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* if not option.action *}
+						{{ raise('BUTTON.GENERIC type must have "action" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* set _outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_outvar, global_menu=global_menu, settings=settings) }}
+					{* set _ = option.update({formatted_text_attr: (settings.GENERIC_ICON_COLOR ~ settings.GENERIC_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.GENERIC_TEXT_COLOR ~ '%'~_outvar~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.BUTTON.RESET *}
+					
+					{!! if history|length <= 0 !!}
+					{* set _ = options_list.append((settings.RESET_ICON_COLOR ~ settings.RESET_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.RESET_TEXT_COLOR ~ settings.RESET_TEXT) *}
+					{!! endif !!}
+					
+				{* elif option.type == TYPE.BUTTON.CANCEL *}
+					
+					{* if history|length <= 0 *}
+						{* set _ = options_list.append((settings.CANCEL_ICON_COLOR ~ settings.CANCEL_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.CANCEL_TEXT_COLOR ~ settings.CANCEL_TEXT) *}
+					{* endif *}
+					
+				{* elif option.type == TYPE.BUTTON.SUBMIT *}
+					
+					{* if history|length <= 0 *}
+						{* set _ = options_list.append((settings.SUBMIT_ICON_COLOR ~ settings.SUBMIT_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.SUBMIT_TEXT_COLOR ~ settings.SUBMIT_TEXT) *}
+					{* endif *}
+					
+				{* elif option.type == TYPE.MENU *}
+					
+					{* if not option.text *}
+						{{ raise('MENU type must have "text" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* set _menu_outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_menu_outvar, global_menu=global_menu, settings=settings) }}
+					
+					{!! set _ = option.update({formatted_text_attr: settings.MENU_ICON_COLOR ~ settings.MENU_ICON ~ settings.ICON_SEPARATOR ~ settings.MENU_TEXT_COLOR ~ option.text}) !!}
+					{* set _ = option.update({formatted_text_attr: (settings.MENU_ICON_COLOR ~ settings.MENU_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.MENU_TEXT_COLOR ~ '%'~_menu_outvar~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.LINE.BLANK *}
+					
+					{* set _ = options_list.append(' ') *}
+					
+				{* elif option.type == TYPE.LINE.DUMMY *}
+					
+					{* if not option.text *}
+						{{ raise('LINE.DUMMY type must have "text" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* set _outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_outvar, global_menu=global_menu, settings=settings) }}
+					
+					{!! set _ = option.update({formatted_text_attr: option.text}) !!}
+					{* set _ = option.update({formatted_text_attr: '%'~_outvar~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.INPUT.CHECKBOX *}
+					
+					{* if not option.name *}
+						{{ raise('INPUT.CHECKBOX must have "name" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* if not option.text *}
+						{{ raise('INPUT.CHECKBOX "'~option.name~'" must have "text" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* if not option.value *}
+						{{ raise('INPUT.CHECKBOX "'~option.name~'" must have "value" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) *}
+					{* set copy_source = 'list'~nid() *}
+					{* set copy_value_var = '&element'~nid() *}
+					
+					{* if checkbox_list|length <= 0 *}
+						UNSET({{ outvar }}[]);
+					{* endif *}
+					
+					{* set _ = checkbox_list.append(option) *}
+					
+					{* if option.default *}
+						
+						{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+						
+						IF(!key_exists{{ rand }});
+							SET({{ copy_value_var }},"{{ option.value }}");
+						ELSE;
+							{{ DICT.get(storage_name, storage_key, outvar='&'~copy_source, global=True) }}
+							{{ LIST.get(source=copy_source,regex='\Q'~option.value~'\E', outvar=copy_value_var) }}
+						ENDIF;
+						
+						IF({{ copy_value_var }});
+							PUT({{ outvar }}[],%{{ copy_value_var }}%);
+						ENDIF;
+						
+					{* else *}
+						
+						{{ DICT.get(storage_name, storage_key, outvar='&'~copy_source, global=True) }}
+						{{ LIST.get(source=copy_source,regex='\Q'~option.value~'\E', outvar=copy_value_var) }}
+						IF({{ copy_value_var }});
+							PUT({{ outvar }}[],%{{ copy_value_var }}%);
+						ENDIF;
+						
+					{* endif *}
+					
+					{* set _outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_outvar, global_menu=global_menu, settings=settings) }}
+					
+					{* set option_variable = '&option'~nid() *}
+					//SET({{ option_variable }},"{{ settings.INPUT_CHECKBOX_UNCHECKED_ICON_COLOR ~ settings.INPUT_CHECKBOX_UNCHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_CHECKBOX_UNCHECKED_COLOR }}{{ option.text }}");
+					//IF({{ copy_value_var }});
+					//	SET({{ option_variable }},"{{ settings.INPUT_CHECKBOX_CHECKED_ICON_COLOR ~ settings.INPUT_CHECKBOX_CHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_CHECKBOX_CHECKED_COLOR }}{{ option.text }}");
+					//ENDIF;
+					SET({{ option_variable }},"{{ settings.INPUT_CHECKBOX_UNCHECKED_ICON_COLOR ~ settings.INPUT_CHECKBOX_UNCHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_CHECKBOX_UNCHECKED_COLOR }}%{{ _outvar }}%");
+					IF({{ copy_value_var }});
+						SET({{ option_variable }},"{{ settings.INPUT_CHECKBOX_CHECKED_ICON_COLOR ~ settings.INPUT_CHECKBOX_CHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_CHECKBOX_CHECKED_COLOR }}%{{ _outvar }}%");
+					ENDIF;
+					
+					{!! set _ = options_list.append('%'~option_variable~'%') !!}
+					{!! set _ = option.update({formatted_text_attr: '%'~option_variable~'%'}) !!}
+					{* set _ = option.update({formatted_text_attr: '%'~option_variable~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.INPUT.RADIO *}
+					
+					{* if not option.name *}
+						{{ raise('INPUT.RADIO must have "name" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* if not option.text *}
+						{{ raise('INPUT.RADIO "'~option.name~'" must have "text" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* if not option.value *}
+						{{ raise('INPUT.RADIO "'~option.name~'" must have "value" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) *}
+					
+					{* if option.default *}
+						
+						{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+						
+						IF(!key_exists{{ rand }});
+							SET({{ outvar }},"{{ option.value }}");
+						ELSE;
+							{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+						ENDIF;
+						
+					{* else *}
+						
+						{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+						
+					{* endif *}
+					
+					{* set _outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_outvar, global_menu=global_menu, settings=settings) }}
+					
+					{* set option_variable = '&option'~nid() *}
+					//SET({{ option_variable }},"{{ settings.INPUT_RADIO_UNCHECKED_ICON_COLOR ~ settings.INPUT_RADIO_UNCHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_RADIO_UNCHECKED_COLOR }}{{ option.text }}");
+					//IF({{ outvar }}=="{{ option.value }}");
+					//	SET({{ option_variable }},"{{ settings.INPUT_RADIO_CHECKED_ICON_COLOR ~ settings.INPUT_RADIO_CHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_RADIO_CHECKED_COLOR }}{{ option.text }}");
+					//ENDIF;
+					
+					SET({{ option_variable }},"{{ settings.INPUT_RADIO_UNCHECKED_ICON_COLOR ~ settings.INPUT_RADIO_UNCHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_RADIO_UNCHECKED_COLOR }}%{{ _outvar }}%");
+					IF({{ outvar }}=="{{ option.value }}");
+						SET({{ option_variable }},"{{ settings.INPUT_RADIO_CHECKED_ICON_COLOR ~ settings.INPUT_RADIO_CHECKED_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_RADIO_CHECKED_COLOR }}%{{ _outvar }}%");
+					ENDIF;
+					
+					{!! set _ = options_list.append('%'~option_variable~'%') !!}
+					{!! set _ = option.update({formatted_text_attr: '%'~option_variable~'%'}) !!}
+					{* set _ = option.update({formatted_text_attr: '%'~option_variable~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					//continuar aki
+					
+				{* elif option.type == TYPE.INPUT.VALUE *}
+					
+					{* if not option.name *}
+						{{ raise('INPUT.VALUE must have "name" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* if not option.text *}
+						{{ raise('INPUT.VALUE "'~option.name~'" must have "text" attribute [inside menu '~menu_option.name~']') }}
+					{* endif *}
+					
+					{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) *}
+					
+					{* if option.default *}
+						
+						{{ DICT.key_exists(source=storage_name, key=storage_key, outvar='key_exists'~rand, global=True) }}
+						
+						IF(!key_exists{{ rand }});
+							SET({{ outvar }},"{{ option.default if option.default else '' }}");
+						ELSE;
+							{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+						ENDIF;
+						
+					{* else *}
+						
+						{{ DICT.get(storage_name, storage_key, outvar, global=True) }}
+						
+					{* endif *}
+					
+					{* set _outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_outvar, global_menu=global_menu, settings=settings) }}
+					
+					{* set option_variable = '&option'~nid() *}
+					//SET({{ option_variable }},"{{ settings.INPUT_VALUE_UNFILLED_ICON_COLOR ~ settings.INPUT_VALUE_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_VALUE_UNFILLED_COLOR }}{{ option.text }}");
+					//IFMATCHES("%{{ outvar }}%",".+");
+					//	SET({{ option_variable }},"{{ settings.INPUT_VALUE_FILLED_ICON_COLOR ~ settings.INPUT_VALUE_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_VALUE_FILLED_COLOR }}{{ option.text }} {{ settings.INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR }}{{ settings.INPUT_VALUE_PREVIEW_PREFIX_TEXT }}{{ settings.INPUT_VALUE_PREVIEW_COLOR }}%{{ outvar }}%{{ settings.INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR }}{{ settings.INPUT_VALUE_PREVIEW_SUFFIX_TEXT }}");
+					//ENDIF;
+					SET({{ option_variable }},"{{ settings.INPUT_VALUE_UNFILLED_ICON_COLOR ~ settings.INPUT_VALUE_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_VALUE_UNFILLED_COLOR }}%{{ _outvar }}%");
+					IFMATCHES("%{{ outvar }}%",".+");
+						{* set preview = ' ' ~ settings.INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR ~ settings.INPUT_VALUE_PREVIEW_PREFIX_TEXT ~ settings.INPUT_VALUE_PREVIEW_COLOR ~ '%'~outvar~'%' ~ settings.INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR ~ settings.INPUT_VALUE_PREVIEW_SUFFIX_TEXT if settings.INPUT_VALUE_PREVIEW_PRESENCE else '' *}
+						SET({{ option_variable }},"{{ settings.INPUT_VALUE_FILLED_ICON_COLOR ~ settings.INPUT_VALUE_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '' }}{{ settings.INPUT_VALUE_FILLED_COLOR }}%{{ _outvar }}%{{ preview }}");
+					ENDIF;
+					REPLACE({{ option_variable }},",","?");
+					REPLACE({{ option_variable }},"[","?");
+					REPLACE({{ option_variable }},"]","?");
+					REPLACE({{ option_variable }},"|","?");
+					REPLACE({{ option_variable }},"$","?");
+					
+					{!! set _ = options_list.append('%'~option_variable~'%') !!}
+					{!! set _ = option.update({formatted_text_attr: '%'~option_variable~'%'}) !!}
+					
+					{* set _ = option.update({formatted_text_attr: '%'~option_variable~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.INPUT.LIST.VALUE *}
+					
+					{* set _ = option.update({formatted_text_attr: (settings.PANEL_LIST_VALUE_INPUT_ICON_COLOR ~ settings.PANEL_LIST_VALUE_INPUT_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.PANEL_LIST_VALUE_INPUT_COLOR ~ settings.PANEL_LIST_VALUE_INPUT_TEXT}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.INPUT.LIST.BLOCK *}
+					
+					{* set _ = option.update({formatted_text_attr: (settings.PANEL_LIST_BLOCK_INPUT_ICON_COLOR ~ settings.PANEL_LIST_BLOCK_INPUT_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.PANEL_LIST_BLOCK_INPUT_COLOR ~ settings.PANEL_LIST_BLOCK_INPUT_TEXT}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.INPUT.LIST.HAND *}
+					
+					{* set _ = option.update({formatted_text_attr: (settings.PANEL_LIST_HAND_INPUT_ICON_COLOR ~ settings.PANEL_LIST_HAND_INPUT_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.PANEL_LIST_HAND_INPUT_COLOR ~ settings.PANEL_LIST_HAND_INPUT_TEXT}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* elif option.type == TYPE.PANEL.LIST *}
+					
+					{{ warning_dependencies_missing() }}
+					
+					{* set _outvar = '&text'~nid() *}
+					{* set global_menu = history | first if history | length > 0 else menu_option *}
+					{{ process_option_text(option=option, option_menu=menu_option, outvar=_outvar, global_menu=global_menu, settings=settings) }}
+					
+					{!! set _ = option.update({formatted_text_attr: settings.PANEL_ICON_COLOR ~ settings.PANEL_ICON ~ settings.ICON_SEPARATOR ~ settings.PANEL_TEXT_COLOR ~ option.text}) !!}
+					
+					{* set _ = option.update({formatted_text_attr: (settings.PANEL_ICON_COLOR ~ settings.PANEL_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.PANEL_TEXT_COLOR ~ '%'~_outvar~'%'}) *}
+					{* set _ = options_list.append(option[formatted_text_attr]) *}
+					
+				{* endif *}
+				
+			{* endfor *}
+			
+			{!! set panel_storage_key = get_storage_key(menu_option.name, PANEL_KEY_PREFIX) !!}
+			
+			/* Busca as opções do painel de lista */
+			UNSET(&panel_items{{ rand }});
+			
+			{* if menu_option.meta_type == TYPE.PANEL.LIST *}
+				
+				//HERE <- lista
+				//GOTO -> data
+				
+				{* set copy_source = 'list'~nid() *}
+				{* set copy_value_var = '&element'~nid() *}
+				{* set parent_menu = history | last *}
+				
+				{* import 'Federal.data_structures.list' as LIST *}
+				{* import 'Federal.data_structures.dict' as DICT *}
+				{* import 'Federal.INTEL.string' as STRING *}
+				{* import 'Federal.INTEL.array' as ARRAY *}
+				
+				{* set parent_menu_name = menu_option.parent_menu_name *}
+				{* set panel_storage_key = get_storage_key(parent_menu_name, menu_option.name) *}
+				{* set outvar = get_outvar_from_item_name(name=menu_option.name, menu_option=parent_menu, storage_key=panel_storage_key, rand=rand) *}
+				{{ DICT.key_exists(source=storage_name, key=panel_storage_key, outvar='key_exists'~rand, global=True) }}
+				
+				//Preenche a base de dados com valores padrão se não houver
+				IF(!key_exists{{ rand }});
+					{* set list_source = 'list'~nid() *}
+					UNSET(&{{ list_source }});
+					{* for item in menu_option.default *}
+						{{ LIST.push(source=list_source, content=item) }}
+					{* endfor *}
+					{{ DICT.update(source=storage_name, dict={panel_storage_key:'%&'~list_source~'%'}, global=True) }}
+				ENDIF;
+				
+				{{ DICT.get(storage_name, panel_storage_key, outvar='&'~copy_source, global=True) }}
+				
+				SET(&temp_list{{ rand }},%&{{ copy_source }}%);
+				IF(&temp_list{{ rand }});
+					{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor='^'~LIST.left_item_border, replacewith='') }}
+					{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor=LIST.right_item_border~'$', replacewith='') }}
+					{{ STRING.explode(string='%&temp_list'~rand~'%', array=outvar~'[]', delimiter=LIST.right_item_border~LIST.left_item_border) }}
+					
+					{{ ARRAY.join(array=outvar~'[]', outvar='&panel_items'~rand, glue=','~item_list_formatting) }}
+					SET(&panel_items{{ rand }},"{{ item_list_formatting }}%&panel_items{{ rand }}%");
+				ENDIF;
+				{!! DICT.destroy(source=storage_name, global=True) !!}
+				
+				
+			{* endif *}
+			
+			/*Adiciona o botão de exit*/
+			{* if history|length == 0 and settings.CANCEL_PRESENCE *}
+				{* set _ = options_list.append((settings.CANCEL_ICON_COLOR ~ settings.CANCEL_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.CANCEL_TEXT_COLOR ~ settings.CANCEL_TEXT) *}
+			{* endif *}
+			
+			{* set items = [] *}
+			{* for option_text in options_list *}
+				{* set _ = items.append(option_text) *}
+			{* endfor *}
+			
+			{* set breadcrumb_list = [] *}
+			{* for item in history *}
+				
+				{* if item.breadcrumb *}
+					{* set _ = breadcrumb_list.append(settings.BREADCRUMB_PREVIOUS_LEVEL_COLOR ~ item.breadcrumb) *}
+				{* endif *}
+				
+			{* endfor *}
+			
+			{* if menu_option.breadcrumb *}
+				{* set _ = breadcrumb_list.append(settings.BREADCRUMB_ACTIVE_LEVEL_COLOR ~ menu_option.breadcrumb) *}
+			{* endif *}
+			
+			{* set breadcrumb = breadcrumb_list | join(settings.BREADCRUMB_SEPARATOR_COLOR ~ settings.BREADCRUMB_SEPARATOR) *}
+			
+			{* set _breadcrumb_outvar = '&breadcrumb'~nid() *}
+			{* set global_menu = history | first if history | length > 0 else menu_option *}
+			{{ process_option_text(option={'text': breadcrumb}, option_menu=menu_option, outvar=_breadcrumb_outvar, global_menu=global_menu, settings=settings) }}
+			{* set _short_outvar = '&short'~nid() *}
+			{{ process_option_text(option={'text': menu_option.short}, option_menu=menu_option, outvar=_short_outvar, global_menu=global_menu, settings=settings) }}
+			
+			
+			UNSET(&warning_formatted{{ rand }});
+			//IF({{ menu_warningvar }});
+			//	SET(&label{{ rand }},"{{ settings.MENU_VALIDATOR_WARN_PREFIX ~ settings.MENU_VALIDATOR_WARN_COLOR }}%{{ menu_warningvar }}% ");
+			//ELSE;
+			//	SET(&label{{ rand }},"{{ (( settings.BREADCRUMB_BOUNDARY_COLOR ~ settings.BREADCRUMB_LEFT_BOUNDARY ~ breadcrumb ~ settings.BREADCRUMB_BOUNDARY_COLOR ~ settings.BREADCRUMB_RIGHT_BOUNDARY ~ ' ' if settings.BREADCRUMB_PRESENCE else '' ) if breadcrumb_list|length > 0 else '' ) ~ ( (menu_option.short~' ' if menu_option.short else '') ) ~ ( ( settings.BUILD_STAMP_COLOR ~ build) if settings.BUILD_STAMP_PRESENCE else '' ) }}");
+			//ENDIF;
+			
+			IF({{ menu_warningvar }});
+				SET(&label{{ rand }},"{{ settings.MENU_VALIDATOR_WARN_PREFIX ~ settings.MENU_VALIDATOR_WARN_COLOR }}%{{ menu_warningvar }}% ");
+			ELSE;
+				SET(&label{{ rand }},"{{ (( settings.BREADCRUMB_BOUNDARY_COLOR ~ settings.BREADCRUMB_LEFT_BOUNDARY ~ '%'~_breadcrumb_outvar~'%' ~ settings.BREADCRUMB_BOUNDARY_COLOR ~ settings.BREADCRUMB_RIGHT_BOUNDARY ~ ' ' if settings.BREADCRUMB_PRESENCE else '' ) if breadcrumb_list|length > 0 else '' ) ~ ( ('%'~_short_outvar~'%'~' ' if menu_option.short else '') ) ~ ( ( settings.BUILD_STAMP_COLOR ~ build) if settings.BUILD_STAMP_PRESENCE else '' ) }}");
+			ENDIF;
+			
+			IF(CLOUDMC);
+				STRIP(&label{{ rand }},%&label{{ rand }}%);
+			ENDIF;
+			
+			{* set _field_outvar = '&field_menu'~rand *}
+			{{ process_option_text(option={'text': menu_option.label if 'label' in menu_option else 'Option'}, option_menu=menu_option, outvar=_field_outvar, global_menu=global_menu, settings=settings) }}
+			IFMATCHES(%{{ _field_outvar }}%,"[^a-zA-Z0-9 _-]");
+				SET({{ _field_outvar }},"Option");
+			ENDIF;
+			
+			{* if menu_option.meta_type != TYPE.PANEL.LIST *}
+				
+				{{
+					UI.menu(
+						items=items,
+						outvar=choice_variable,
+						label='%&label'~rand~'%',
+						field='%'~_field_outvar~'%',
+						strip=True,
+						safe=False
+					)
+				}}
+				
+			{* else *}
+				
+				{* set final_items_list = items+['%&panel_items'~rand~'%'] *}
+				{* set final_list_string = final_items_list|join(',') *}
+				{* import 'Federal.INTEL.string' as STRING *}
+				
+				SET(&string_items{{ rand }},"{{ final_list_string }}");
+				
+				{{ STRING.replaceall(string_var='&string_items'~rand, searchfor=',$', replacewith='') }}
+				
+				{{
+					UI.menu(
+						items=['%&string_items'~rand~'%'],
+						outvar=choice_variable,
+						label='%&label'~rand~'%',
+						field='%'~_field_outvar~'%',
+						strip=True,
+						safe=False
+					)
+				}}
+				
+			{* endif *}
+			
+			UNSET({{ menu_warningvar }}); //reseta as notificações
+			
+			{!! if history|length == 0 !!}
+			IF(({{ choice_variable }}=="{{ settings.RESET_COMMAND }}")||({{ choice_variable }}=="{{ (settings.RESET_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.RESET_TEXT }}"));
+				{{ destroy_menu_data(settings=settings) }}
+			ENDIF;
+			{!! endif !!}
+			
+			
+			/* 1. Gera as verificações */
+			{* set endif_list = [] *}
+			{* for option in menu_option.options *}
+				
+				{* if option.type != TYPE.DATA and option.type != TYPE.LINE.BLANK and (option.type != TYPE.LINE.DUMMY or menu_option.meta_type == TYPE.PANEL.LIST) and option.type != TYPE.BUTTON.BACK and option.type != TYPE.BUTTON.CANCEL and option.type != TYPE.BUTTON.SUBMIT and option.type != TYPE.BUTTON.RESET *}
+					
+					{* set storage_key = get_storage_key(menu_option.name, option.name) *}
+					
+					SET(&option_text{{ rand }},"{{ option[formatted_text_attr] }}");
+					STRIP(&option_text{{ rand }},%&option_text{{ rand }}%);
+					
+					{{ ('IFBEGINSWITH' if loop.index0 % 2 == 0 else 'ifbeginswith') ~ '(%'~choice_variable~'%,"%&option_text'~rand~'%");' }}
+					
+					{* if option.type == TYPE.MENU *}
+						{* set copy_history = [] *}
+						{* for item in history *}
+							{* set _ = copy_history.append(item) *}
+						{* endfor *}
+						{* set _ = copy_history.append(menu_option) *}
+						
+						{* set list_options = [] *}
+						{* for opt in option.options *}
+							{* if opt.type not in regular_menu_forbidden_type_options *}
+								{* set _ = list_options.append(opt) *}
+							{* endif *}
+						{* endfor *}
+						{* set _ = option.update({'options': list_options}) *}
+						
+						{* set has_validator = False *} /*//'validator' in option and option.validator is callable*/
+						{* set has_validator = 'validator' in option and option.validator is callable *}
+						
+						{* if has_validator *}
+							
+							{* set successvar = 'success'~nid() *}
+							
+							{* macro validate() *}
+								SET({{ successvar }});
+							{* endmacro *}
+							
+							{* macro reprehend(text) *}
+								SET({{ menu_warningvar }},"{{ text }}");
+							{* endmacro *}
+							
+							{{ option.validator(value=option.value, accept=validate, reject=reprehend) }}
+							
+							IF({{ successvar }});
+								{{ build_menu(menu_option=option, history=copy_history, settings=settings) }}
+							ENDIF;
+							
+						{* else *}
+							{{ build_menu(menu_option=option, history=copy_history, settings=settings) }}
+						{* endif *}
+						
+					{* elif option.type == TYPE.PANEL.LIST *}
+						{* set copy_history = [] *}
+						{* for item in history *}
+							{* set _ = copy_history.append(item) *}
+						{* endfor *}
+						{* set _ = copy_history.append(menu_option) *}
+						{* set _ = option.update({'type': TYPE.MENU}) *}
+						{* set _ = option.update({'meta_type': TYPE.PANEL.LIST}) *}
+						{* set _ = option.update({'parent_menu_name': menu_option.name}) *}
+						
+						{* set list_options = [] *}
+						{* for opt in option.options *}
+							{* if opt.type in panel_list_permitted_type_options *}
+								{* set _ = list_options.append(opt) *}
+							{* endif *}
+						{* endfor *}
+						{* set _ = option.update({'options': list_options}) *}
+						
+						{* set has_validator = False *} /*//'validator' in option and option.validator is callable*/
+						{* set has_validator = 'validator' in option and option.validator is callable *}
+						
+						{* if has_validator *}
+							
+							{* set successvar = 'success'~nid() *}
+							
+							{* macro validate() *}
+								SET({{ successvar }});
+							{* endmacro *}
+							
+							{* macro reprehend(text) *}
+								SET({{ menu_warningvar }},"{{ text }}");
+							{* endmacro *}
+							
+							{{ option.validator(value=option.value, accept=validate, reject=reprehend) }}
+							
+							IF({{ successvar }});
+								{{ build_menu(menu_option=option, history=copy_history, settings=settings) }}
+							ENDIF;
+							
+						{* else *}
+							{{ build_menu(menu_option=option, history=copy_history, settings=settings) }}
+						{* endif *}
+						
+					{* elif option.type == TYPE.BUTTON.GENERIC *}
+						
+						{{ call_item_action(option=option, menu_context=menu_option) }}
+						
+					{* elif option.type == TYPE.LINE.DUMMY *}
+						
+					{* elif option.type == TYPE.INPUT.LIST.VALUE or option.type == TYPE.INPUT.LIST.BLOCK or option.type == TYPE.INPUT.LIST.HAND *}
+						
+						{{ call_item_action(option=option, menu_context=menu_option) }}
+						
+						{* set has_validator = False *} /*//'validator' in option and option.validator is callable*/
+						{* set has_validator = 'validator' in option and option.validator is callable *}
+						
+						{* set parent_menu = history | last *}
+						
+						{* set parent_menu_name = menu_option.parent_menu_name *}
+						{* set panel_storage_key = get_storage_key(parent_menu_name, menu_option.name) *}
+						{* set outvar = get_outvar_from_item_name(name=menu_option.name, menu_option=parent_menu, storage_key=panel_storage_key, rand=rand) *}
+						
+						{* set successvar = 'success'~nid() *}
+						{* set readvar = '&reading'~nid() *}
+						{* set warningvar = '&warning'~nid() *}
+						{* set formatted_warningvar = '&formatted_warning'~nid() *}
+						
+						{* if has_validator *}
+							{{ 'DO;' }}
+							{{ 'UNSET(' ~ successvar ~ ');' }}//Se houve um validador, por padrão não se aceita
+						{* endif *}
+						UNSET({{ formatted_warningvar }});
+						IF({{ warningvar }});
+							SET({{ formatted_warningvar }},"{{ settings.INPUT_VALUE_WARN_PREFIX ~ settings.INPUT_VALUE_WARN_COLOR ~'%'~ warningvar ~ '%' }}");
+						ENDIF;
+						
+						{* set _prompt_label_outvar = '&label'~nid() *}
+						
+						{* if option.label and option.label is string *}
+							{* set global_menu = history | first if history | length > 0 else menu_option *}
+							{{ process_option_text(option={'text': option.label}, option_menu=menu_option, outvar=_prompt_label_outvar, global_menu=global_menu, settings=settings) }}
+						{* endif *}
+						
+						//SET(&label{{ rand }},"{{ settings.INPUT_VALUE_LABEL_COLOR ~ option.label ~ ' ' if option.label else '' }}%{{ formatted_warningvar }}%");
+						SET(&label{{ rand }},"{{ settings.INPUT_VALUE_LABEL_COLOR ~ '%' ~ _prompt_label_outvar ~ '%' ~ ' ' if option.label and option.label is string else '' }}%{{ formatted_warningvar }}%");
+						IF(CLOUDMC);
+							STRIP(&label{{ rand }},%&label{{ rand }}%);
+						ENDIF;
+						{* if option.type == TYPE.INPUT.LIST.VALUE *}
+							PROMPT({{ readvar }},"{{ settings.PANEL_LIST_VALUE_INPUT_PROMPT }}","%&label{{ rand }}%",true,%{{ outvar }}%);
+						{* elif option.type == TYPE.INPUT.LIST.BLOCK *}
+							PROMPT({{ readvar }},"{{ settings.PANEL_LIST_BLOCK_INPUT_PROMPT }}","%&label{{ rand }}%",true,%{{ outvar }}%);
+						{* elif option.type == TYPE.INPUT.LIST.HAND *}
+							{* if option.label is not iterable or option.label is string *}
+								LOG("%&label{{ rand }}%");
+							{* else *}
+								{* for label_line in option.label *}
+									
+									{* set _chat_label_outvar = '&label'~nid() *}
+									{* set global_menu = history | first if history | length > 0 else menu_option *}
+									{{ process_option_text(option={'text': label_line}, option_menu=menu_option, outvar=_chat_label_outvar, global_menu=global_menu, settings=settings) }}
+									
+									//LOG("{{ settings.INPUT_VALUE_LABEL_COLOR ~ label_line ~ ' ' if label_line else '' }}");
+									LOG("{{ settings.INPUT_VALUE_LABEL_COLOR ~ '%' ~ _chat_label_outvar ~ '%' ~ ' ' if label_line else '' }}");
+								{* endfor *}
+							{* endif *}
+							WAIT(5t);
+							DO;
+							UNTIL(((GUI=="UNKNOWN")||(GUI=="NONE"))&&({{ settings.PANEL_LIST_HAND_INPUT_SELECTOR_KEY }}));
+							SET({{ readvar }},"{{ settings.PANEL_LIST_HAND_INPUT_SOURCE }}");
+						{* endif *}
+						
+						UNSET({{ warningvar }});
+						{* if has_validator *}
+							
+							{* macro validate(updated_value=None) *}
+								{* if updated_value != None *}
+									SET({{ readvar }},"{{ updated_value }}");
+								{* endif *}
+								SET({{ successvar }});
+							{* endmacro *}
+							{* macro reprehend(text) *}
+								SET({{ warningvar }},"{{ text }}");
+							{* endmacro *}
+							{{ option.validator(value='%'~readvar~'%',accept=validate, reject=reprehend) }}
+							{{ 'UNTIL(('~successvar~')||(!'~readvar~'));' }}
+							{{ 'IF('~successvar~');' }}
+							
+						{* endif *}
+						
+						
+						IF({{ readvar }});
+							
+							REPLACE({{ readvar }},",","?");
+							REPLACE({{ readvar }},"[","?");
+							REPLACE({{ readvar }},"]","?");
+							REPLACE({{ readvar }},"|","?");
+							REPLACE({{ readvar }},"$","?");
+							
+							
+							{* set copy_source = 'list'~nid() *}
+							{* set copy_value_var = '&element'~nid() *}
+							
+							{* import 'Federal.data_structures.list' as LIST *}
+							{* import 'Federal.data_structures.dict' as DICT *}
+							{* import 'Federal.INTEL.string' as STRING *}
+							{* import 'Federal.INTEL.array' as ARRAY *}
+							
+							{{ DICT.get(storage_name, panel_storage_key, outvar='&'~copy_source, global=True) }}
+							{{ LIST.push(source=copy_source, content='%'~readvar~'%') }}
+							{{ DICT.update(storage_name, dict={panel_storage_key: '%&'~copy_source~'%'}, global=True) }}
+							
+							
+							SET(&temp_list{{ rand }},%&{{ copy_source }}%);
+							IF(&temp_list{{ rand }});
+								{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor='^'~LIST.left_item_border, replacewith='') }}
+								{{ STRING.replaceall(string_var='&temp_list'~rand, searchfor=LIST.right_item_border~'$', replacewith='') }}
+								{{ STRING.explode(string='%&temp_list'~rand~'%', array=outvar~'[]', delimiter=LIST.right_item_border~LIST.left_item_border) }}
+								
+								{{ ARRAY.join(array=outvar~'[]', outvar='&panel_items'~rand, glue=','~item_list_formatting) }}
+								SET(&panel_items{{ rand }},"{{ item_list_formatting }}%&panel_items{{ rand }}%");
+							ENDIF;
+							{!! DICT.destroy(source=storage_name, global=True) !!}
+							
+							{* if has_validator *}
+								{{ 'ENDIF;' }}
+							{* endif *}
+							
+						ENDIF;
+						
+					{* elif option.type == TYPE.INPUT.CHECKBOX *}
+						
+						{{ call_item_action(option=option, menu_context=menu_option) }}
+						
+						{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) *}
+						{* set copy_source = 'list'~nid() *}
+						{* set copy_value_var = '&element'~nid() *}
+						
+						{{ DICT.get(storage_name, storage_key, outvar='&'~copy_source, global=True) }}
+						{{ LIST.get(source=copy_source,regex='\Q'~option.value~'\E', outvar=copy_value_var) }}
+						
+						{* set has_validator = 'validator' in option and option.validator is callable *}
+						
+						{* if has_validator *}
+							
+							{* set successvar = 'success'~nid() *}
+							
+							{* macro validate() *}
+								SET({{ successvar }});
+							{* endmacro *}
+							
+							{* macro reprehend(text) *}
+								SET({{ menu_warningvar }},"{{ text }}");
+							{* endmacro *}
+							
+							{{ option.validator(value=option.value, accept=validate, reject=reprehend) }}
+							
+							IF({{ successvar }});
+								IF({{ copy_value_var }});
+									REPLACE(&{{ copy_source }},"{{ LIST.left_item_border }}{{ option.value }}{{ LIST.right_item_border }}","")
+									{{ DICT.update(storage_name, {storage_key: '%&' ~ copy_source ~ '%'}, global=True) }}
+								ELSE;
+									{{ LIST.push(source=copy_source, content=option.value) }}
+									{{ DICT.update(storage_name, {storage_key: '%&' ~ copy_source ~ '%'}, global=True) }}
+								ENDIF;
+							ENDIF;
+							
+						{* else *}
+							
+							IF({{ copy_value_var }});
+								REPLACE(&{{ copy_source }},"{{ LIST.left_item_border }}{{ option.value }}{{ LIST.right_item_border }}","")
+								{{ DICT.update(storage_name, {storage_key: '%&' ~ copy_source ~ '%'}, global=True) }}
+							ELSE;
+								{{ LIST.push(source=copy_source, content=option.value) }}
+								{{ DICT.update(storage_name, {storage_key: '%&' ~ copy_source ~ '%'}, global=True) }}
+							ENDIF;
+							
+						{* endif *}
+						
+					{* elif option.type == TYPE.INPUT.RADIO *}
+						
+						{{ call_item_action(option=option, menu_context=menu_option) }}
+						
+						{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) *}
+						
+						{* set has_validator = 'validator' in option and option.validator is callable *}
+						
+						{* if has_validator *}
+							
+							{* set successvar = 'success'~nid() *}
+							
+							{* macro validate() *}
+								SET({{ successvar }});
+							{* endmacro *}
+							
+							{* macro reprehend(text) *}
+								SET({{ menu_warningvar }},"{{ text }}");
+							{* endmacro *}
+							
+							{{ option.validator(value=option.value, accept=validate, reject=reprehend) }}
+							
+							IF({{ successvar }});
+								{{ DICT.update(source=storage_name, dict={storage_key: option.value}, global=True) }}
+								//SET({{ outvar }},%{{ readvar }}%);
+								SET({{ outvar }},"{{ option.value }}");
+							ENDIF;
+							
+						{* else *}
+							
+							{{ DICT.update(source=storage_name, dict={storage_key: option.value}, global=True) }}
+							//SET({{ outvar }},%{{ readvar }}%);
+							SET({{ outvar }},"{{ option.value }}");
+							
+						{* endif *}
+						
+					{* elif option.type == TYPE.INPUT.VALUE *}
+						
+						{{ call_item_action(option=option, menu_context=menu_option) }}
+						
+						{* set has_validator = False *} /*//'validator' in option and option.validator is callable*/
+						{* set has_validator = 'validator' in option and option.validator is callable *}
+						
+						{* set outvar = get_outvar_from_item_name(name=option.name, menu_option=menu_option, storage_key=storage_key, rand=rand) *}
+						
+						{* set successvar = 'success'~nid() *}
+						{* set readvar = '&reading'~nid() *}
+						{* set warningvar = '&warning'~nid() *}
+						{* set formatted_warningvar = '&formatted_warning'~nid() *}
+						
+						{* if has_validator *}
+							{{ 'DO;' }}
+							{{ 'UNSET(' ~ successvar ~ ');' }}//Se houve um validador, por padrão não se aceita
+						{* endif *}
+						UNSET({{ formatted_warningvar }});
+						IF({{ warningvar }});
+							SET({{ formatted_warningvar }},"{{ settings.INPUT_VALUE_WARN_PREFIX ~ settings.INPUT_VALUE_WARN_COLOR ~'%'~ warningvar ~ '%' }}");
+						ENDIF;
+						
+						{* set _prompt_label_outvar = '&label'~nid() *}
+						{* set global_menu = history | first if history | length > 0 else menu_option *}
+						{{ process_option_text(option={'text': option.label}, option_menu=menu_option, outvar=_prompt_label_outvar, global_menu=global_menu, settings=settings) }}
+						
+						//SET(&label{{ rand }},"{{ settings.INPUT_VALUE_LABEL_COLOR ~ option.label ~ ' ' if option.label else '' }}%{{ formatted_warningvar }}%");
+						SET(&label{{ rand }},"{{ settings.INPUT_VALUE_LABEL_COLOR ~ '%' ~ _prompt_label_outvar ~ '%' ~ ' ' if option.label else '' }}%{{ formatted_warningvar }}%");
+						IF(CLOUDMC);
+							STRIP(&label{{ rand }},%&label{{ rand }}%);
+						ENDIF;
+						
+						PROMPT("{{ readvar }}","$$?","%&label{{ rand }}%",true,%{{ outvar }}%);
+						UNSET({{ warningvar }});
+						{* if has_validator *}
+							
+							{* macro validate(updated_value=None) *}
+								{* if updated_value != None *}
+									SET({{ readvar }},"{{ updated_value }}");
+								{* endif *}
+								SET({{ successvar }});
+							{* endmacro *}
+							{* macro reprehend(text) *}
+								SET({{ warningvar }},"{{ text }}");
+							{* endmacro *}
+							{{ option.validator(value='%'~readvar~'%',accept=validate, reject=reprehend) }}
+							{{ 'UNTIL(('~successvar~')||(!'~readvar~'));' }}
+							{{ 'IF('~successvar~');' }}
+							
+						{* endif *}
+						
+						REPLACE({{ readvar }},",","?");
+						REPLACE({{ readvar }},"[","?");
+						REPLACE({{ readvar }},"]","?");
+						REPLACE({{ readvar }},"|","?");
+						REPLACE({{ readvar }},"$","?");
+						
+						{{ DICT.update(source=storage_name, dict={storage_key: '%'~readvar~'%'}, global=True) }}
+						SET({{ outvar }},%{{ readvar }}%);
+						
+						{* if has_validator *}
+							{{ 'ENDIF;' }}
+						{* endif *}
+						
+					{* endif *}
+					
+					{* if not loop.last *}
+						
+						{{ 'ELSE;' if loop.index0 % 2 == 0 else 'else;' }}
+						{* set _ = endif_list.append('ENDIF;' if loop.index0 % 2 == 0 else 'endif;') *}
+						
+					{* else *}
+						
+						{!! if menu_option.meta_type != TYPE.PANEL.LIST !!}
+						{{ 'ENDIF;' if loop.index0 % 2 == 0 else 'endif;' }}
+						{!! endif !!}
+						
+					{* endif *}
+					
+					
+				{* else *}
+					
+				{* endif *}
+				
+			{* endfor *}
+			
+			{* if menu_option.meta_type == TYPE.PANEL.LIST *}
+				
+				IF({{ choice_variable }});
+					
+					{* import 'Federal.INTEL.string' as STRING *}
+					SET(&choice_copy{{ rand }},"%{{ choice_variable }}%");
+					SET(&stripped_snippet{{ rand }},"{{ '^'~item_list_formatting }}");
+					STRIP(&stripped_snippet{{ rand }},%&stripped_snippet{{ rand }}%);
+					{{ STRING.replaceall(string_var='&choice_copy'~rand, searchfor='%&stripped_snippet'~rand~'%', replacewith='') }}
+					
+					{* set copy_source = 'list'~nid() *}
+					{* set copy_value_var = '&element'~nid() *}
+					{* set parent_menu = history | last *}
+					
+					{* import 'Federal.data_structures.list' as LIST *}
+					{* import 'Federal.data_structures.dict' as DICT *}
+					
+					{* set parent_menu_name = menu_option.parent_menu_name *}
+					{* set panel_storage_key = get_storage_key(parent_menu_name, menu_option.name) *}
+					
+					{* set outvar = get_outvar_from_item_name(name=menu_option.name, menu_option=parent_menu, storage_key=panel_storage_key, rand=rand) *}
+					{{ DICT.get(source=storage_name, key=panel_storage_key, outvar='&'~copy_source, global=True) }}
+					
+					{{ LIST.get(source=copy_source,regex='\Q'~'%&choice_copy'~rand~'%'~'\E', outvar=copy_value_var) }}
+					
+					IF({{ copy_value_var }});
+						
+						//Essa parte decide se o elemento deve ser removido da lista
+						{* set successvar = 'success'~nid() *}
+						SET({{ successvar }});
+						{* set has_delete_validator = 'delete_validator' in menu_option and menu_option.delete_validator is callable *}
+						
+						{* if has_delete_validator *}
+							
+							{* macro validate() *}
+							{* endmacro *}
+							
+							{* macro reprehend(text) *}
+								UNSET({{ successvar }});
+								SET({{ menu_warningvar }},"{{ text }}");
+							{* endmacro *}
+							
+							{{ menu_option.delete_validator(value='%&choice_copy'~rand~'%', accept=validate, reject=reprehend) }}
+							
+						{* endif *}
+						
+						//Essa parte deleta o elemento da lista
+						IF({{ successvar }});
+							REPLACE(&{{ copy_source }},"{{ LIST.left_item_border }}%&choice_copy{{ rand }}%{{ LIST.right_item_border }}","");
+							{{ DICT.update(storage_name, {panel_storage_key: '%&' ~ copy_source ~ '%'}, global=True) }}
+						ENDIF;
+					ENDIF;
+					
+				ENDIF;
+				
+			{* endif *}
+			
+			{* for end_if in endif_list *}
+				{{ end_if }}
+			{* endfor *}
+			
+		{* endif *}
+		
+		{* if history|length == 0 *}
+			
+			IF((!&choice{{ rand }})||(&choice{{ rand }}=="{{ (settings.CANCEL_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.CANCEL_TEXT }}"));
+				
+				{* if on_cancel is callable *}
+					
+					{* set successvar = 'success'~nid() *}
+					
+					//UNSET({{ successvar }});
+					
+					{* macro validate() *}
+						SET({{ successvar }});
+					{* endmacro *}
+					
+					{* macro reprehend(text) *}
+						SET({{ menu_warningvar }},"{{ text }}");
+						SET(&choice{{ rand }},"{{ nid()~nid()~nid() }}");
+					{* endmacro *}
+					
+					{{ on_cancel(value='%&choice'~rand~'%', accept=validate, reject=reprehend) }}
+					
+					{* if settings.STOP_ON_CANCEL *}
+						IF({{ successvar }});
+							STOP("{{ this.name }}");
+						ENDIF;
+					{* endif *}
+					
+				{* else *}
+					
+					{* if settings.STOP_ON_CANCEL *}
+						STOP;
+					{* endif *}
+					
+				{* endif *}
+				
+			ELSEIF(&choice{{ rand }}=="{{ (settings.SUBMIT_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.SUBMIT_TEXT }}");
+				
+				{* if on_submit is callable *}
+					
+					{* set successvar = 'success'~nid() *}
+					
+					//UNSET({{ successvar }});
+					
+					{* macro validate() *}
+						SET({{ successvar }});
+					{* endmacro *}
+					
+					{* macro reprehend(text) *}
+						SET({{ menu_warningvar }},"{{ text }}");
+					{* endmacro *}
+					
+					{{ on_submit(value='%&choice'~rand~'%', accept=validate, reject=reprehend) }}
+					
+					IF({{ successvar }});
+						BREAK;
+					ENDIF;
+					
+				{* else *}
+					
+					BREAK;
+					
+				{* endif *}
+				
+			ENDIF;
+			
+		{* endif *}
+		
+	UNTIL((!&choice{{ rand }})||(&choice{{ rand }}=="{{ (settings.BACK_ICON ~ settings.ICON_SEPARATOR if settings.ICON_PRESENCE else '') ~ settings.BACK_TEXT }}"));
+	
+{* endmacro *}
+
+
+{* macro get_config_copy(variable, settings) -*}
+	{*- set _ = variable.update(DEFAULT_SETTINGS) -*}
+	{*- set _ = variable.update(settings) -*}
+{*- endmacro *}
+
+{* macro example1() *}
+	{!!
+		{* set _ = DEFAULT_SETTINGS.update({'BACK_TEXT': 'voltar'}) *}
+		{* set _ = DEFAULT_SETTINGS.update({'CANCEL_TEXT': 'cancelar'}) *}
+		{* set _ = DEFAULT_SETTINGS.update({'SUBMIT_TEXT': 'concluir'}) *}
+		
+	!!}
+	
+	{* macro valid(value, accept, reject) *}
+		
+		SET(#value,{{ value }});
+		IF(#value>7);
+			{{ accept() }}
+		ELSE;
+			{{ reject('%#value% não é maior que 7') }}
+		ENDIF;
+		
+		
+	{* endmacro *}
+	
+	{* macro opa(value, accept, reject) *}
+		{{ reject('vc não é vip para fazer isso '~value) }}
+	{* endmacro *}
+	
+	{*
+		set mymenu = {
+			'type': TYPE.MENU,
+			'name': 'menu0',
+			'breadcrumb': 'level 1',
+			'outvars': {
+				'xpto': '&meuxpto',
+				'checkbox': '&bora',
+				'value': '#meuvalor',
+				'rad': '&opa',
+				'bob': '&bob'
+			},
+			'options': [
+				
+				{'type': TYPE.BUTTON.SUBMIT},
+				{'type': TYPE.BUTTON.CANCEL},
+				{'type': TYPE.BUTTON.RESET},
+				
+				{'text': 'Item a', 'name': 'rad', 'value': 'opa', 'type': TYPE.INPUT.RADIO, 'validator': opa},
+				{'text': 'Item b', 'name': 'rad', 'value': 'bey', 'type': TYPE.INPUT.RADIO, 'default': True},
+				{'text': 'Item c', 'name': 'rad', 'value': 'vio', 'type': TYPE.INPUT.RADIO},
+				{'text': 'Item d', 'name': 'rad', 'value': 'bib', 'type': TYPE.INPUT.RADIO},
+				
+				{'text': 'Item E', 'name': 'bob', 'value': 'ney', 'type': TYPE.INPUT.CHECKBOX, 'validator': opa},
+				{'text': 'Item F', 'name': 'bob', 'value': 'blo', 'type': TYPE.INPUT.CHECKBOX, 'default': True},
+				{'text': 'Item G', 'name': 'bob', 'value': 'cop', 'type': TYPE.INPUT.CHECKBOX, 'default': True},
+				{'text': 'Item H', 'name': 'bob', 'value': 'dud', 'type': TYPE.INPUT.CHECKBOX},
+				
+				{'text': 'Item 00', 'name': 'xpto', 'type': TYPE.INPUT.VALUE, 'default': '60'},
+				{'type': TYPE.LINE.BLANK},
+				{'text': '______', 'type': TYPE.LINE.DUMMY},
+				{'text': 'Item 01', 'name': 'oi', 'value': 'tip', 'type': TYPE.INPUT.RADIO},
+				{'text': 'beyba', 'name': 'value', 'label': '§ainsira o número', 'type': TYPE.INPUT.VALUE, 'validator': valid},
+				{
+					'type': TYPE.MENU,
+					'breadcrumb': 'level 2',
+					'text': 'Item 03',
+					'name': 'menu1',
+					'outvars': {
+						'xpto': '&valor',
+						'checkbox': '&bora',
+						'value': '&ata'
+					},
+					'options': [
+						{'type': TYPE.BUTTON.BACK},
+						{'text': 'Item 11', 'name': 'xpto', 'type': TYPE.INPUT.VALUE},
+						{'text': 'Item 22', 'name': 'checkbox', 'value': 'oba', 'type': TYPE.INPUT.CHECKBOX},
+						{'text': 'Item 33', 'name': 'value', 'type': TYPE.INPUT.VALUE},
+						
+						{
+							'type': TYPE.MENU,
+							
+							'short': 'oba',
+							'text': 'bey',
+							'name': 'menu2',
+							'outvars': {
+								'xpto': '&valor',
+								'checkbox': '&bora',
+								'value': '&ata'
+							},
+							'options': [
+								{'text': 'Item 00', 'name': 'xpto', 'type': TYPE.INPUT.VALUE},
+								{'type': TYPE.BUTTON.BACK},
+								{'text': 'Item 01', 'name': 'checkbox', 'value': 'oba', 'type': TYPE.INPUT.CHECKBOX},
+								{'text': 'Item 02', 'name': 'value', 'type': TYPE.INPUT.VALUE},
+								{
+									'type': TYPE.MENU,
+									'breadcrumb': 'level 4',
+									'short': 'opa',
+									'text': 'Item 03',
+									'name': 'menu3',
+									'outvars': {
+										'xpto': '&valor',
+										'checkbox': '&bora',
+										'value': '&ata'
+									},
+									'options': [
+										{'text': 'Item 11', 'name': 'xpto', 'type': TYPE.INPUT.VALUE},
+										{'text': 'Item 22', 'name': 'checkbox', 'value': 'oba', 'type': TYPE.INPUT.CHECKBOX},
+										{'text': 'Item 33', 'name': 'value', 'type': TYPE.INPUT.VALUE},
+										{'type': TYPE.BUTTON.BACK},
+									]
+								}
+							]
+						}
+						
+					]
+				}
+			]
+		}
+	*}
+	
+	{* macro enviar(value, accept, reject) *}
+		{{ accept() }}
+	{* endmacro *}
+	
+	{* macro cancelar(value, accept, reject) *}
+		IF(!{{ value }});
+			{{ reject('só posso fechar pelo botão') }}
+		ELSE;
+			{{ accept() }}
+		ENDIF;
+	{* endmacro *}
+	
+	{!! destroy_menu_data() !!}
+	{{ build_menu(mymenu, on_cancel=cancelar, on_submit=enviar) }}
+	{!! load_menu_data(mymenu) !!}
+	
+	LOG(%#meuvalor%);
+	LOG("xpto: %&meuxpto% %&opa%");
+	
+	FOREACH(&bob[],&a,#i);
+		LOG("§8%#i% §e%&a%");
+	NEXT;
+	
+	LOG(%@&menu_kku%);
+	
+{* endmacro *}
+
+{* macro action_template(option, menu, DB) *}
+	
+{* endmacro *}
+
+{* macro mymacro2() *}
+	
+	//HERE <- data
+	//GOTO -> lista
+	
+	{*
+		set mymenu = {
+			'type': TYPE.MENU,
+			'name': 'menu0',
+			'breadcrumb': 'level 1',
+			'outvars': {
+				'xpto': '&oba'
+			},
+			'options': [
+				{'type': TYPE.BUTTON.CANCEL},
+				{'type': TYPE.BUTTON.RESET},
+				{
+					'type': TYPE.PANEL.LIST,
+					'text': 'lista',
+					'name': 'xpto',
+					'breadcrumb': 'Lista A',
+					'short': 'opa',
+					'default': ['a','b','c'],
+					'options': [
+						{'type': TYPE.INPUT.LIST.VALUE, 'label': 'opa'},
+						{'type': TYPE.BUTTON.BACK},
+					]
+				},
+			]
+		}
+	*}
+	
+	{*
+		set mymenu2 = {
+			'type': TYPE.MENU,
+			'name': 'principal',
+			'short': 'Configure sua macro',
+			'breadcrumb': 'Início',
+			'options': [
+				
+				{'type': TYPE.BUTTON.SUBMIT},
+				{'type': TYPE.BUTTON.CANCEL},
+				{'type': TYPE.BUTTON.RESET},
+				
+				{'type': TYPE.LINE.BLANK},
+				
+				{'type': TYPE.INPUT.VALUE, 'text': 'Home', 'name': 'home', 'label': 'digite a home', 'default':'lenha'},
+				
+				{'type': TYPE.LINE.DUMMY, 'text': '§0_§8__§7__§7§l_§f§l_____§7§l_§7__§8__§0_'},
+				
+				{'type': TYPE.INPUT.RADIO, 'text': 'Sou vip', 'name': 'vip', 'value': 'sim', 'default': True},
+				{'type': TYPE.INPUT.RADIO, 'text': 'Não sou vip', 'name': 'vip', 'value': 'não'},
+				
+				{'type': TYPE.LINE.DUMMY, 'text': '§0_§8__§7__§7§l_§f§l_____§7§l_§7__§8__§0_'},
+				
+				{'type': TYPE.INPUT.CHECKBOX, 'text': 'Pedra', 'name': 'itens', 'value': 'stone'},
+				{'type': TYPE.INPUT.CHECKBOX, 'text': 'Terra', 'name': 'itens', 'value': 'dirt'},
+				{'type': TYPE.INPUT.CHECKBOX, 'text': 'Lava', 'name': 'itens', 'value': 'lava'},
+				
+				{
+					'type': TYPE.PANEL.LIST,
+					'text': 'Lista',
+					'name': 'minhalista',
+					'breadcrumb': 'Adicione itens à lista',
+					'short': ': )',
+					'default': ['item0','item1'],
+					'options': [
+						{'type': TYPE.INPUT.LIST.VALUE, 'label': 'type something'},
+						{'type': TYPE.BUTTON.BACK},
+						
+					]
+				},
+			],
+			'outvars': {
+				'home': '&minhahome',
+				'vip': '&souvip',
+				'itens': '&meusitens',
+				'minhalista': '&lista'
+			}
+		}
+	*}
+	
+	{{ build_menu(mymenu2) }}
+	
+	{{ load_menu_data(mymenu2) }}
+	
+	FOREACH(&oba[],&i);
+		LOG(%&i%);
+	NEXT;
+{* endmacro *}
+

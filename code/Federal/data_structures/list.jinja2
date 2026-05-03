@@ -1,0 +1,112 @@
+{* import "Macrosoft.cortex.common" as CORTEX *}
+
+{* set left_item_border = '⟦' *}
+{* set right_item_border = '⟧' *}
+
+
+{!! RETORNA UMA STRING QUE REPRESENTA UM ELEMENTO !!}
+{* macro build_element(content) -*}{{ left_item_border }}{{ content }}{{ right_item_border }}{*- endmacro *}
+	
+	{!! PRINTA UMA STRING CRUA DO CONTEÚDO DA LISTA !!}
+{* macro dump(source) -*}%&{{ source }}%{*- endmacro *}
+	
+	{!! DEFINE O CONTEÚDO DA LISTA COM UM CONTEÚDO CRU !!}
+	{* macro define(source, content,auxvar=range(1,99999)|random) *}
+		//MATCH(%{{ temp_auxvar }}%,"^(?:{{ build_element(content='([^'~right_item_border~']+)') }})?(.*)?",&co,1);
+		SET(&{{ source }},"{{ content }}");
+	{* endmacro *}
+	
+	{!! REMOVE O PRIMEIRO ELEMENTO DA LISTA E RETORNA ESSE ELEMENTO !!}
+	{* macro shift(source, outvar='&element',prefixvar='sft'~range(1,99999)|random) *}
+		UNSET(&{{ prefixvar }}array[]);
+		MATCH(%&{{ source }}%,"^(?:{{ build_element(content='([^'~right_item_border~']+)') }})?(.*)?",&{{ prefixvar }}array[]);
+		SET({{ outvar }},%&{{ prefixvar }}array[1]%)
+		SET(&{{ source }},%&{{ prefixvar }}array[2]%)
+	{* endmacro *}
+	
+	{!! ADICIONA UM ELEMENTO AO FIM DA LISTA !!}
+	{* macro push(source, content) *}
+		{{ define(source=source, content='%&'~source~'%'~build_element(content=content)) }}
+	{* endmacro *}
+	
+	{!! TRASFORMA UMA LISTA EM UM ARRAY E COLOCA O RESULTADO EM outvar !!}
+	{* macro to_array(
+		source,outvar='&array[]',
+		cortex=False,
+		auxvar='&litemtoarr'~range(1,99999)|random,
+		temp_auxvar='&tmpsrctoarr'~range(1,99999)|random,
+		prefixvar='listtoarray'~range(1,99999)|random
+	)
+	*}
+	UNSET({{ outvar }});
+	SET({{ temp_auxvar }},%&{{ source }}%);
+	
+	UNSET({{ prefixvar~'legacy' }});
+	IFMATCHES(%{{ temp_auxvar }}%,"^((?!{{ right_item_border~left_item_border }}).)*$");//Se não houver mais que dois elementos
+		SET({{ prefixvar~'legacy' }});
+	ELSE;
+		IFMATCHES(%ITEM%,"^[0-9]+$");//Se positivo, trata-se de Minecraft Legacy
+			SET({{ prefixvar~'legacy' }});
+		ENDIF;
+	ENDIF;
+	
+	IF({{ prefixvar~'legacy' }});//Se positivo, trata-se de Minecraft Legacy
+		DO;
+			{* if cortex *}
+				{{ CORTEX.loop() }}
+			{* endif *}
+			UNSET({{ auxvar }});
+			//MATCH(%{{ temp_auxvar }}%,"^(?:{{ build_element(content='([^'~right_item_border~']+)') }})?(.*)?",{{ auxvar }},1);
+			MATCH(%{{ temp_auxvar }}%,"^(?:{{ build_element(content='([^'~right_item_border~']+)') }})?(.*)?",{{ auxvar }}array[]);
+			SET({{ auxvar }},%{{ auxvar }}array[1]%)
+			IF({{ auxvar }});
+				//MATCH(%{{ temp_auxvar }}%,"^(?:{{ build_element(content='([^'~right_item_border~']+)') }})?(.*)?",{{ temp_auxvar }},2);
+				MATCH(%{{ temp_auxvar }}%,"^(?:{{ build_element(content='([^'~right_item_border~']+)') }})?(.*)?",{{ temp_auxvar }}array[]);
+				SET({{ temp_auxvar }},%{{ temp_auxvar }}array[2]%);
+				PUT({{ outvar }},%{{ auxvar }}%);
+			ENDIF;
+		UNTIL(!{{ auxvar }});
+	ELSE;
+		{* set delimiter = '¢£*@' *}
+		REPLACE({{ temp_auxvar }},"{{ right_item_border~left_item_border }}","{{ delimiter }}");
+		REPLACE({{ temp_auxvar }},"{{ left_item_border }}","");
+		REPLACE({{ temp_auxvar }},"{{ right_item_border }}","");
+		IFCONTAINS(%{{ temp_auxvar }}%,"{{ delimiter }}");
+			SPLIT("{{ delimiter }}",%{{ temp_auxvar }}%,{{ outvar }});
+		ENDIF;
+	ENDIF;
+{* endmacro *}
+
+
+{* macro from_array(source,arrayvar='&array[]',cortex=False,auxvar='&list_item___') *}
+	UNSET(&{{ source }});
+	IFMATCHES(%ITEM%,"^[0-9]+$");//Se positivo, trata-se de Minecraft Legacy
+		FOREACH({{ arrayvar }},{{ auxvar }});
+			{* if cortex *}
+				{{ CORTEX.loop() }}
+			{* endif *}
+			SET(&{{ source }},"%&{{ source }}%{{ build_element(content='%'~auxvar~'%') }}");
+		NEXT;
+	ELSE;
+		JOIN("{{ right_item_border~left_item_border }}",{{ arrayvar }},&{{ source }});
+		SET(&{{ source }},"{{ left_item_border }}%&{{ source }}%{{ right_item_border }}")
+	ENDIF;
+{* endmacro *}
+
+
+{!! RETORNA O CONTEÚDO DE UM ELEMENTO BASEADO NO PADRÃO INFORMADO (NÃO DEFINA GRUPO) !!}
+{* macro get(source, regex, outvar) *}
+	UNSET({{ outvar }});
+	UNSET({{ outvar }}array[]);
+	//MATCH(%&{{ source }}%,".*?{{ build_element(content='('~regex~')') }}.*?",{{ outvar }},1);
+	MATCH(%&{{ source }}%,".*?{{ build_element(content='('~regex~')') }}.*?",{{ outvar }}array[]);
+	SET({{ outvar }},%{{ outvar }}array[1]%);
+{* endmacro *}
+
+{!! EXTRAI O CONTEÚDO DE UM ELEMENTO DA LISTA INFORMADO BASEADO NO GRUPO DA REGEX DEFINIDA (DEFINA GRUPO) !!}
+{* macro extract(content, regex, outvar) *}
+	//MATCH("{{ content }}","{{ regex }}",{{ outvar }},1,"");
+	UNSET({{ outvar }}array[]);
+	MATCH("{{ content }}","{{ regex }}",{{ outvar }}array[]);
+	SET({{ outvar }},%{{ outvar }}array[1]%)
+{* endmacro *}

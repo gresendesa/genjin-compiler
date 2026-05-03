@@ -1,0 +1,11 @@
+{* macro explode(string, array, delimiter=',') *}
+  
+  STRINGEXPLODE("{{ string }}",{{ array }},"{{ delimiter }}");
+  
+{* endmacro *}
+
+{* macro replaceall(string_var, searchfor, replacewith='') *}
+  
+  STRINGREPLACEALL("{{ string_var }}","{{ searchfor }}","{{ replacewith }}");
+  
+{* endmacro *}

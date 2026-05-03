@@ -1,0 +1,444 @@
+{* import 'Macrosoft.TAXON.UI' as UI *}
+
+
+/**
+	'BACK_TEXT': 'back',
+	'CANCEL_TEXT': 'cancel',
+	'SUBMIT_TEXT': 'done',
+	'RESET_TEXT': 'reset',
+	'PANEL_LIST_VALUE_INPUT_TEXT': 'add',
+	'PANEL_LIST_BLOCK_INPUT_TEXT': 'choose block',
+	'PANEL_LIST_HAND_INPUT_TEXT': 'hold and enter',
+	'CANCEL_TEXT_COLOR': '§7§n',
+	'BACK_TEXT_COLOR': '§7§n',
+	'SUBMIT_TEXT_COLOR': '§a§l§n',
+	'RESET_TEXT_COLOR': '§4§n',
+	'BREADCRUMB_SEPARATOR': ' > ',
+	'BREADCRUMB_SEPARATOR_COLOR': '§8',
+	'BREADCRUMB_BOUNDARY_COLOR': '§8§l',
+	'BREADCRUMB_LEFT_BOUNDARY': '[',
+	'BREADCRUMB_RIGHT_BOUNDARY': ']',
+	'BREADCRUMB_ACTIVE_LEVEL_COLOR': '§f§l',
+	'BREADCRUMB_PREVIOUS_LEVEL_COLOR': '§7',
+	'BREADCRUMB_PRESENCE': True,
+	'BUILD_STAMP_PRESENCE': False,
+	'ICON_PRESENCE': True,
+	'BACK_PRESENCE':  False,
+	'CANCEL_PRESENCE': False,
+	'SUBMIT_PRESENCE': False,
+	'BUILD_STAMP_COLOR': '§8',
+	
+	'GENERIC_ICON': '☀',
+	'GENERIC_ICON_COLOR': '§3',
+	'GENERIC_TEXT_COLOR': '§f',
+	
+	'MENU_VALIDATOR_WARN_PREFIX': '§e⚠ ',
+	'MENU_VALIDATOR_WARN_COLOR': '§6§l',
+	
+	'INPUT_VALUE_WARN_PREFIX': '§4✗ ',
+	'INPUT_VALUE_WARN_COLOR': '§c',
+	'INPUT_VALUE_PREVIEW_PREFIX_TEXT': '',
+	'INPUT_VALUE_PREVIEW_SUFFIX_TEXT': '',
+	'INPUT_VALUE_PREVIEW_COLOR': '§7',
+	'INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR': '§8',
+	'INPUT_VALUE_PREVIEW_PRESENCE': True,
+	
+	'INPUT_CHECKBOX_CHECKED_ICON': '☑',
+	'INPUT_CHECKBOX_UNCHECKED_ICON': '☐',
+	'INPUT_RADIO_CHECKED_ICON': '☒',
+	'INPUT_RADIO_UNCHECKED_ICON': '☐',
+	'INPUT_VALUE_ICON': '★',
+	'INPUT_SWITCH_ICON': '★',
+	'INPUT_VALUE_LABEL_COLOR': '§a',
+	
+	'INPUT_VALUE_FILLED_COLOR': '§f',
+	'INPUT_VALUE_UNFILLED_COLOR': '§7§m',
+	'INPUT_VALUE_FILLED_ICON_COLOR': '§a',
+	'INPUT_VALUE_UNFILLED_ICON_COLOR': '§f',
+	
+	'INPUT_CHECKBOX_CHECKED_COLOR': '§f',
+	'INPUT_CHECKBOX_UNCHECKED_COLOR': '§7§m',
+	'INPUT_CHECKBOX_CHECKED_ICON_COLOR': '§a',
+	'INPUT_CHECKBOX_UNCHECKED_ICON_COLOR': '§f',
+	
+	'INPUT_RADIO_CHECKED_COLOR': '§f',
+	'INPUT_RADIO_UNCHECKED_COLOR': '§7§m',
+	'INPUT_RADIO_CHECKED_ICON_COLOR': '§a',
+	'INPUT_RADIO_UNCHECKED_ICON_COLOR': '§f',
+	
+	'INPUT_SWITCH_CHECKED_COLOR': '§f',
+	'INPUT_SWITCH_UNCHECKED_COLOR': '§7',
+	'INPUT_SWITCH_CHECKED_ICON_COLOR': '§a',
+	'INPUT_SWITCH_UNCHECKED_ICON_COLOR': '§f',
+	
+	'PANEL_LIST_COLOR': '§7',
+	'PANEL_LIST_ICON': '♺',
+	'PANEL_LIST_ICON_COLOR': '§c',
+	
+	'PANEL_LIST_VALUE_INPUT_COLOR': '§a§n',
+	'PANEL_LIST_VALUE_INPUT_ICON': '⊕',
+	'PANEL_LIST_VALUE_INPUT_ICON_COLOR': '§3',
+	'PANEL_LIST_VALUE_INPUT_PROMPT': '$$?',
+	
+	'PANEL_LIST_BLOCK_INPUT_COLOR': '§a§n',
+	'PANEL_LIST_BLOCK_INPUT_ICON': '⊕',
+	'PANEL_LIST_BLOCK_INPUT_ICON_COLOR': '§3',
+	'PANEL_LIST_BLOCK_INPUT_PROMPT': '$$i',
+	
+	'PANEL_LIST_HAND_INPUT_COLOR': '§a§n',
+	'PANEL_LIST_HAND_INPUT_ICON': '⊕',
+	'PANEL_LIST_HAND_INPUT_ICON_COLOR': '§3',
+	'PANEL_LIST_HAND_INPUT_SELECTOR_KEY': 'KEY_RETURN',
+	'PANEL_LIST_HAND_INPUT_SOURCE': '%ITEM%',
+	
+	'MENU_ICON': '⇒',
+	'PANEL_ICON': '⊞',
+	'BACK_ICON': '⇐',
+	'SUBMIT_ICON': '▶',
+	'RESET_ICON': '↺',
+	'RESET_ICON_COLOR': '§e',
+	'BACK_ICON_COLOR': '§a',
+	'SUBMIT_ICON_COLOR': '§3',
+	'CANCEL_ICON': 'Ⅹ',
+	'CANCEL_ICON_COLOR': '§c',
+	'ICON_SEPARATOR': ' ',
+	'MENU_ICON_COLOR': '§3',
+	'STOP_ON_CANCEL': True,
+	'MENU_TEXT_COLOR': '§f',
+	'PANEL_ICON_COLOR': '§3',
+	'PANEL_TEXT_COLOR': '§f',
+	'GLOBAL_DICT_STORAGE_NAME': 'menu_'~this.csid|replace('-','_')|replace('.','_')|replace_especial_alphabetic_chars|lower,
+	
+	'RESET_COMMAND': '!reset'
+**/
+
+{* set TEMA_FEDERAL = {} *}
+{{
+	UI.SETTINGS.wrap(TEMA_FEDERAL, {
+		'BACK_TEXT': 'voltar',
+		'CANCEL_TEXT': 'cancelar',
+		'SUBMIT_TEXT': 'Iniciar!',
+		'ICON_SEPARATOR': '',
+		'INPUT_CHECKBOX_CHECKED_ICON': '● ',
+		'INPUT_CHECKBOX_UNCHECKED_ICON': '● ',
+		'INPUT_RADIO_CHECKED_ICON': '● ',
+		'INPUT_RADIO_UNCHECKED_ICON': '● ',
+		'INPUT_VALUE_ICON': 'ᐳ ',
+		'GENERIC_ICON': '',
+		'MENU_ICON': '',
+		'PANEL_ICON': '',
+		'BACK_ICON': '',
+		'SUBMIT_ICON': '',
+		'RESET_ICON': '',
+		'CANCEL_ICON': '',
+		'PANEL_LIST_VALUE_INPUT_ICON': '',
+		'PANEL_LIST_BLOCK_INPUT_ICON': '',
+		'PANEL_LIST_HAND_INPUT_ICON': '',
+		
+		'INPUT_CHECKBOX_CHECKED_COLOR': '§f',
+		'INPUT_CHECKBOX_UNCHECKED_COLOR': '§7',
+		'INPUT_CHECKBOX_CHECKED_ICON_COLOR': '§a',
+		'INPUT_CHECKBOX_UNCHECKED_ICON_COLOR': '§c',
+		
+		'INPUT_RADIO_CHECKED_COLOR': '§f',
+		'INPUT_RADIO_UNCHECKED_COLOR': '§7',
+		'INPUT_RADIO_CHECKED_ICON_COLOR': '§a',
+		'INPUT_RADIO_UNCHECKED_ICON_COLOR': '§c',
+		
+		'CANCEL_TEXT_COLOR': '§7',
+		'BACK_TEXT_COLOR': '§a',
+		'SUBMIT_TEXT_COLOR': '§a§l',
+		'RESET_TEXT_COLOR': '§e',
+		'PANEL_LIST_ICON': '',
+		
+		'PANEL_LIST_VALUE_INPUT_COLOR': '§f',
+		'PANEL_LIST_BLOCK_INPUT_COLOR': '§f',
+		'PANEL_LIST_HAND_INPUT_COLOR': '§f',
+		
+		'INPUT_VALUE_FILLED_COLOR': '§f',
+		'INPUT_VALUE_UNFILLED_COLOR': '§7',
+		'INPUT_VALUE_FILLED_ICON_COLOR': '§f',
+		'INPUT_VALUE_UNFILLED_ICON_COLOR': '§7',
+		
+	})
+}}
+
+{* set TEMA_LOMEXICANO = {} *}
+{{
+	UI.SETTINGS.wrap(TEMA_LOMEXICANO, {
+		'BACK_TEXT': 'Voltar',
+		'CANCEL_TEXT': 'Sair',
+		'SUBMIT_TEXT': 'Continuar',
+		'RESET_TEXT': 'Redefinir',
+		'PANEL_LIST_VALUE_INPUT_TEXT': 'adicionar texto',
+		'PANEL_LIST_BLOCK_INPUT_TEXT': 'adicionar bloco',
+		'PANEL_LIST_HAND_INPUT_TEXT': 'segurar item',
+		'CANCEL_TEXT_COLOR': '§c',
+		'BACK_TEXT_COLOR': '§a',
+		'SUBMIT_TEXT_COLOR': '§a',
+		'RESET_TEXT_COLOR': '§e',
+		'BREADCRUMB_SEPARATOR': ' > ',
+		'BREADCRUMB_SEPARATOR_COLOR': '§8',
+		'BREADCRUMB_BOUNDARY_COLOR': '§8§l',
+		'BREADCRUMB_LEFT_BOUNDARY': '[',
+		'BREADCRUMB_RIGHT_BOUNDARY': ']',
+		'BREADCRUMB_ACTIVE_LEVEL_COLOR': '§f§l',
+		'BREADCRUMB_PREVIOUS_LEVEL_COLOR': '§7',
+		'BREADCRUMB_PRESENCE': False,
+		'BUILD_STAMP_PRESENCE': False,
+		'ICON_PRESENCE': True,
+		'BACK_PRESENCE':  False,
+		'CANCEL_PRESENCE': False,
+		'SUBMIT_PRESENCE': False,
+		'BUILD_STAMP_COLOR': '§8',
+		
+		'GENERIC_ICON': '->',
+		'GENERIC_ICON_COLOR': '§2',
+		'GENERIC_TEXT_COLOR': '§f',
+		
+		'MENU_VALIDATOR_WARN_PREFIX': '§e⚠ ',
+		'MENU_VALIDATOR_WARN_COLOR': '§6§l',
+		
+		'INPUT_VALUE_WARN_PREFIX': '§4✗ ',
+		'INPUT_VALUE_WARN_COLOR': '§c',
+		'INPUT_VALUE_PREVIEW_PREFIX_TEXT': '',
+		'INPUT_VALUE_PREVIEW_SUFFIX_TEXT': '',
+		'INPUT_VALUE_PREVIEW_COLOR': '§7',
+		'INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR': '§8',
+		'INPUT_VALUE_PREVIEW_PRESENCE': True,
+		
+		'INPUT_CHECKBOX_CHECKED_ICON': ' • ',
+		'INPUT_CHECKBOX_UNCHECKED_ICON': ' • ',
+		'INPUT_RADIO_CHECKED_ICON': ' • ',
+		'INPUT_RADIO_UNCHECKED_ICON': ' • ',
+		'INPUT_VALUE_ICON': '->',
+		'INPUT_SWITCH_ICON': '->',
+		'INPUT_VALUE_LABEL_COLOR': '§e',
+		
+		'INPUT_VALUE_FILLED_COLOR': '§f',
+		'INPUT_VALUE_UNFILLED_COLOR': '§f',
+		'INPUT_VALUE_FILLED_ICON_COLOR': '§6',
+		'INPUT_VALUE_UNFILLED_ICON_COLOR': '§f',
+		
+		'INPUT_CHECKBOX_CHECKED_COLOR': '§f',
+		'INPUT_CHECKBOX_UNCHECKED_COLOR': '§7',
+		'INPUT_CHECKBOX_CHECKED_ICON_COLOR': '§a',
+		'INPUT_CHECKBOX_UNCHECKED_ICON_COLOR': '§c',
+		
+		'INPUT_RADIO_CHECKED_COLOR': '§f',
+		'INPUT_RADIO_UNCHECKED_COLOR': '§7',
+		'INPUT_RADIO_CHECKED_ICON_COLOR': '§a',
+		'INPUT_RADIO_UNCHECKED_ICON_COLOR': '§c',
+		
+		'INPUT_SWITCH_CHECKED_COLOR': '§f',
+		'INPUT_SWITCH_UNCHECKED_COLOR': '§7',
+		'INPUT_SWITCH_CHECKED_ICON_COLOR': '§a',
+		'INPUT_SWITCH_UNCHECKED_ICON_COLOR': '§c',
+		
+		'PANEL_LIST_COLOR': '§7',
+		'PANEL_LIST_ICON': ' -',
+		'PANEL_LIST_ICON_COLOR': '§c',
+		
+		'PANEL_LIST_VALUE_INPUT_COLOR': '§e',
+		'PANEL_LIST_VALUE_INPUT_ICON': ' +',
+		'PANEL_LIST_VALUE_INPUT_ICON_COLOR': '§6',
+		'PANEL_LIST_VALUE_INPUT_PROMPT': '$$?',
+		
+		'PANEL_LIST_BLOCK_INPUT_COLOR': '§e',
+		'PANEL_LIST_BLOCK_INPUT_ICON': ' +',
+		'PANEL_LIST_BLOCK_INPUT_ICON_COLOR': '§6',
+		'PANEL_LIST_BLOCK_INPUT_PROMPT': '$$i',
+		
+		'PANEL_LIST_HAND_INPUT_COLOR': '§e',
+		'PANEL_LIST_HAND_INPUT_ICON': ' +',
+		'PANEL_LIST_HAND_INPUT_ICON_COLOR': '§6',
+		'PANEL_LIST_HAND_INPUT_SELECTOR_KEY': 'KEY_RETURN',
+		'PANEL_LIST_HAND_INPUT_SOURCE': '%ITEM%',
+		
+		'MENU_ICON': '->',
+		'PANEL_ICON': '->',
+		'BACK_ICON': '<-',
+		'SUBMIT_ICON': '->',
+		'RESET_ICON': '->',
+		'RESET_ICON_COLOR': '§6',
+		'BACK_ICON_COLOR': '§2',
+		'SUBMIT_ICON_COLOR': '§2',
+		'CANCEL_ICON': '->',
+		'CANCEL_ICON_COLOR': '§4',
+		'ICON_SEPARATOR': ' ',
+		'MENU_ICON_COLOR': '§6',
+		'STOP_ON_CANCEL': True,
+		'MENU_TEXT_COLOR': '§e§n',
+		'PANEL_ICON_COLOR': '§6',
+		'PANEL_TEXT_COLOR': '§e§n',
+	})
+}}
+
+
+
+{* set TEMA_JEFFHINOTO = {} *}
+{{
+	UI.SETTINGS.wrap(TEMA_JEFFHINOTO, {
+		'BACK_TEXT': 'Voltar',
+		'CANCEL_TEXT': '                    ( Fechar )',
+		'SUBMIT_TEXT': 'Salvar e Iniciar',
+		'RESET_TEXT': 'Resetar',
+		'PANEL_LIST_VALUE_INPUT_TEXT': 'adicionar texto',
+		'PANEL_LIST_BLOCK_INPUT_TEXT': 'adicionar bloco',
+		'PANEL_LIST_HAND_INPUT_TEXT': 'segurar item',
+		'CANCEL_TEXT_COLOR': '§4',
+		'BACK_TEXT_COLOR': '§a§l',
+		'SUBMIT_TEXT_COLOR': '§a§l',
+		'RESET_TEXT_COLOR': '§c',
+		'BREADCRUMB_SEPARATOR': ' > ',
+		'BREADCRUMB_SEPARATOR_COLOR': '§8',
+		'BREADCRUMB_BOUNDARY_COLOR': '§8§l',
+		'BREADCRUMB_LEFT_BOUNDARY': '[',
+		'BREADCRUMB_RIGHT_BOUNDARY': ']',
+		'BREADCRUMB_ACTIVE_LEVEL_COLOR': '§f§l',
+		'BREADCRUMB_PREVIOUS_LEVEL_COLOR': '§7',
+		'BREADCRUMB_PRESENCE': True,
+		'BUILD_STAMP_PRESENCE': False,
+		'ICON_PRESENCE': True,
+		'BACK_PRESENCE':  False,
+		'CANCEL_PRESENCE': False,
+		'SUBMIT_PRESENCE': False,
+		'BUILD_STAMP_COLOR': '§8',
+		
+		'GENERIC_ICON': '✭ ',
+		'GENERIC_ICON_COLOR': '§6',
+		'GENERIC_TEXT_COLOR': '§f',
+		
+		'MENU_VALIDATOR_WARN_PREFIX': '§e⚠ ',
+		'MENU_VALIDATOR_WARN_COLOR': '§6§l',
+		
+		'INPUT_VALUE_WARN_PREFIX': '§4✗ ',
+		'INPUT_VALUE_WARN_COLOR': '§c',
+		'INPUT_VALUE_PREVIEW_PREFIX_TEXT': '',
+		'INPUT_VALUE_PREVIEW_SUFFIX_TEXT': '',
+		'INPUT_VALUE_PREVIEW_COLOR': '§a',
+		'INPUT_VALUE_PREVIEW_PREFIX_SUFFIX_COLOR': '§a',
+		'INPUT_VALUE_PREVIEW_PRESENCE': True,
+		
+		'INPUT_CHECKBOX_CHECKED_ICON': '➢ ',
+		'INPUT_CHECKBOX_UNCHECKED_ICON': '    ',
+		'INPUT_RADIO_CHECKED_ICON': '➢ ',
+		'INPUT_RADIO_UNCHECKED_ICON': '    ',
+		'INPUT_VALUE_ICON': '✎ ' ,
+		'INPUT_SWITCH_ICON': '->',
+		'INPUT_VALUE_LABEL_COLOR': '§e',
+		
+		'INPUT_VALUE_FILLED_COLOR': '§f',
+		'INPUT_VALUE_UNFILLED_COLOR': '§7',
+		'INPUT_VALUE_FILLED_ICON_COLOR': '§f',
+		'INPUT_VALUE_UNFILLED_ICON_COLOR': '§7',
+		
+		'INPUT_CHECKBOX_CHECKED_COLOR': '§a',
+		'INPUT_CHECKBOX_UNCHECKED_COLOR': '§8',
+		'INPUT_CHECKBOX_CHECKED_ICON_COLOR': '§7',
+		'INPUT_CHECKBOX_UNCHECKED_ICON_COLOR': '§7',
+		
+		'INPUT_RADIO_CHECKED_COLOR': '§a',
+		'INPUT_RADIO_UNCHECKED_COLOR': '§7',
+		'INPUT_RADIO_CHECKED_ICON_COLOR': '§7',
+		'INPUT_RADIO_UNCHECKED_ICON_COLOR': '§7',
+		
+		'INPUT_SWITCH_CHECKED_COLOR': '§a',
+		'INPUT_SWITCH_UNCHECKED_COLOR': '§7',
+		'INPUT_SWITCH_CHECKED_ICON_COLOR': '§7',
+		'INPUT_SWITCH_UNCHECKED_ICON_COLOR': '§7',
+		
+		'PANEL_LIST_COLOR': '§7',
+		'PANEL_LIST_ICON': '  ',
+		'PANEL_LIST_ICON_COLOR': '§c',
+		
+		'PANEL_LIST_VALUE_INPUT_COLOR': '§f§l',
+		'PANEL_LIST_VALUE_INPUT_ICON': '➢ ',
+		'PANEL_LIST_VALUE_INPUT_ICON_COLOR': '§7',
+		'PANEL_LIST_VALUE_INPUT_PROMPT': '$$?',
+		
+		'PANEL_LIST_BLOCK_INPUT_COLOR': '§f§l',
+		'PANEL_LIST_BLOCK_INPUT_ICON': '➢ ',
+		'PANEL_LIST_BLOCK_INPUT_ICON_COLOR': '§7',
+		'PANEL_LIST_BLOCK_INPUT_PROMPT': '$$i',
+		
+		'PANEL_LIST_HAND_INPUT_COLOR': '§f§l',
+		'PANEL_LIST_HAND_INPUT_ICON': '➢ ',
+		'PANEL_LIST_HAND_INPUT_ICON_COLOR': '§7',
+		'PANEL_LIST_HAND_INPUT_SELECTOR_KEY': 'KEY_RETURN',
+		'PANEL_LIST_HAND_INPUT_SOURCE': '%ITEM%',
+		
+		'MENU_ICON': '➢ ',
+		'PANEL_ICON': '➢ ',
+		'BACK_ICON': '',
+		'SUBMIT_ICON': '✔',
+		'RESET_ICON': '✗ ',
+		'RESET_ICON_COLOR': '§4',
+		'BACK_ICON_COLOR': '§7',
+		'SUBMIT_ICON_COLOR': '§2',
+		'CANCEL_ICON': '  ',
+		'CANCEL_ICON_COLOR': '§4',
+		'ICON_SEPARATOR': ' ',
+		'MENU_ICON_COLOR': '§7',
+		'STOP_ON_CANCEL': True,
+		'MENU_TEXT_COLOR': '§f',
+		'PANEL_ICON_COLOR': '§7',
+		'PANEL_TEXT_COLOR': '§f',
+	})
+}}
+
+{* macro mymacro() *}
+	
+	{*
+		set mymenu = {
+			'type': UI.TYPE.MENU,
+			'name': 'principal',
+			'short': 'Configure sua macro',
+			'breadcrumb': 'Início',
+			'options': [
+				
+				{'type': UI.TYPE.BUTTON.SUBMIT},
+				{'type': UI.TYPE.BUTTON.CANCEL},
+				{'type': UI.TYPE.BUTTON.RESET},
+				
+				{'type': UI.TYPE.LINE.BLANK},
+				
+				{'type': UI.TYPE.INPUT.VALUE, 'text': 'Home', 'name': 'home', 'label': 'digite a home', 'default':'lenha'},
+				
+				{'type': UI.TYPE.LINE.DUMMY, 'text': '§0_§8__§7__§7§l_§f§l_____§7§l_§7__§8__§0_'},
+				
+				{'type': UI.TYPE.INPUT.RADIO, 'text': 'Sou vip', 'name': 'vip', 'value': 'sim', 'default': True},
+				{'type': UI.TYPE.INPUT.RADIO, 'text': 'Não sou vip', 'name': 'vip', 'value': 'não'},
+				
+				{'type': UI.TYPE.LINE.DUMMY, 'text': '§0_§8__§7__§7§l_§f§l_____§7§l_§7__§8__§0_'},
+				
+				{'type': UI.TYPE.INPUT.CHECKBOX, 'text': 'Pedra', 'name': 'itens', 'value': 'stone'},
+				{'type': UI.TYPE.INPUT.CHECKBOX, 'text': 'Terra', 'name': 'itens', 'value': 'dirt'},
+				{'type': UI.TYPE.INPUT.CHECKBOX, 'text': 'Lava', 'name': 'itens', 'value': 'lava'},
+				
+				{
+					'type': UI.TYPE.PANEL.LIST,
+					'text': 'Lista',
+					'name': 'minhalista',
+					'breadcrumb': 'Adicione itens à lista',
+					'short': ': )',
+					'default': ['item0','item1'],
+					'options': [
+						{'type': UI.TYPE.BUTTON.BACK},
+						{'type': UI.TYPE.INPUT.LIST.VALUE, 'label': 'type something'}
+					]
+				},
+			],
+			'outvars': {
+				'home': '&minhahome',
+				'vip': '&souvip',
+				'itens': '&meusitens',
+				'minhalista': '&lista'
+			}
+		}
+	*}
+	
+	{{ UI.build(menu_option=mymenu, settings=TEMA_FEDERAL) }}
+	{{ UI.DATA.load(mymenu) }}
+{* endmacro *}
+
