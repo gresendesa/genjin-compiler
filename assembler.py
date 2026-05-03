@@ -250,13 +250,15 @@ def main() -> None:
             keep_trailing_newline=True,
         )
         env.globals.update({
+            "dev": "Federal", #Hardcoded para facilitar debug
+            "build": '3E26•E30•Federal', #Hardcoded para facilitar debug
+            "this": {'code': '...', 'csid': 'csid', 'type': 'Main'}, #Hardcoded para facilitar debug
             "nid": Cortex.get_next_number,
-            "raise":Cortex.throw
+            "raise": Cortex.throw,
         })
-
         env.filters.update({
-            "call_macro_by_name": call_macro_by_name,
-            "json": to_json,
+            "macro": call_macro_by_name,
+            "to_json": to_json,
             "findall": findall,
             "place": place,
             "replace_especial_alphabetic_chars": replace_especial_alphabetic_chars,
