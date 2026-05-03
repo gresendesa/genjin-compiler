@@ -1,0 +1,12 @@
+
+{* macro unregister(id,event='onChat') *}
+  UNREGISTEREVENTMACRO("{{ id }}","{{ event }}");
+{* endmacro *}
+
+
+{* macro register(id,event='onChat',overwrite=False) *}
+  {* if overwrite *}
+    {{ unregister(id=id,event=event) }}
+  {* endif *}
+  REGISTEREVENTMACRO("{{ id }}","{{ event }}");
+{* endmacro *}

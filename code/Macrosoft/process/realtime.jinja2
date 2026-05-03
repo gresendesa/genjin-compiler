@@ -1,0 +1,56 @@
+{* import "Macrosoft.cortex.common" as CORTEX *}
+{* import "Macrosoft.process.actions" as ACTIONS *}
+{* import "Macrosoft.process.CTRL" as CTRL *}
+
+{* macro pause(pname,outvar,msg='',timeout=100,emergency_key=CTRL.emergency_key) *}
+
+  {* if msg|length *}
+    {{ CORTEX.send(pname,"pause " ~ msg) }}
+  {* else *}
+    {{ CORTEX.send(pname,"pause") }}
+  {* endif *}
+  
+  UNSET({{ outvar }});
+  DO({{ timeout }});
+    
+    {* if this.protocol == 'CTRL' *}
+      {{ CORTEX.loop() }}
+    {* endif *}
+
+    {{ CORTEX.read_status(pname,outvar) }}
+    IF({{ outvar }}=="paused");
+      BREAK;
+    ELSE;
+      WAIT(1t);
+    ENDIF;
+    
+  UNTIL({{ emergency_key }});
+
+{* endmacro *}
+
+{* macro start(id,pname,args,bool_outvar='success',paused=False,timeout=100,attempts=1,debug=False,emergency_key=CTRL.emergency_key) *}
+  
+  {* set target_status = 'playing' *}
+  {* set paused_flag = '' *}
+  {* if paused *}
+    {* set target_status = 'paused' *}
+    {* set paused_flag = 'pause' *}
+  {* endif *}
+  
+  {!! THIS STABLISHES CONNECTION !!}
+  {{ 
+    ACTIONS.stablish_connection(
+      id=id,
+      pname=pname,
+      args=args,
+      target_status=target_status,
+      paused_flag=paused_flag,
+      timeout=timeout,
+      attempts=attempts,
+      debug=debug,
+      success_outvar=bool_outvar,
+      emergency_key=emergency_key
+    )
+  }}
+
+{* endmacro *}

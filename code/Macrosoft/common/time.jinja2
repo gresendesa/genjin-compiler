@@ -1,0 +1,19 @@
+{* macro stamp(
+    sourcevar='&time', 
+    outvar='#daytimestamp'
+  ) 
+*}
+  
+  {* set pfx = range(1,999999)|random *}
+  {* set groupsvar = '#time_groups_'~pfx *}
+  {* set hourvar = '#hour_'~pfx *}
+  {* set minutevar = '#minute_'~pfx *}
+  {* set secondvar = '#second_'~pfx *}
+
+  MATCH(%{{ sourcevar }}%,"([0-9]{2}):([0-9]{2}):([0-9]{2})",{{ groupsvar }}[]);
+  SET({{ hourvar }},%{{ groupsvar }}[1]%);
+  SET({{ minutevar }},%{{ groupsvar }}[2]%);
+  SET({{ secondvar }},%{{ groupsvar }}[3]%);
+  {{ outvar }}=(%{{ hourvar }}%*3600)+(%{{ minutevar }}%*60)+%{{ secondvar }}%;
+
+{* endmacro *}

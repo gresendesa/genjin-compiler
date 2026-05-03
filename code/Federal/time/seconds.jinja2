@@ -1,0 +1,62 @@
+{* macro diff(datetime,outvar='#seconds_diff',timepattern='2([0-9]+)-([0-9]+)-([0-9]+)\s([0-9]+):([0-9]+):([0-9]+)') *}
+  MATCH("{{ datetime }}","{{ timepattern }}",{#y0___,#m0___,#d0___,#h0___,#min0___,#s0___});
+  MATCH("%DATETIME%","{{ timepattern }}",{#y1___,#m1___,#d1___,#h1___,#min1___,#s1___});
+  {{ outvar }}=((#y1___-#y0___)*31536000)+((#m1___-#m0___)*2635200)+((#d1___-#d0___)*86400)+((#h1___-#h0___)*3600)+((#min1___-#min0___)*60)+(#s1___-#s0___);
+{* endmacro *}
+
+{* macro translate(seconds,outvar,d='dia(s)',h='h',min='min',s='seg') *}
+  
+  SET(#left___,{{ seconds }});
+  
+  #d___=#left___/86400;
+  #left___=#left___-#d___*86400;
+  
+  #h___=#left___/3600;
+  #left___=#left___-#h___*3600;
+  
+  #min___=#left___/60;
+  #left___=#left___-#min___*60;
+  
+  #s___=#left___+0;
+  
+  UNSET({{ outvar }});
+  IF(#d___);
+    SET({{ outvar }},"%{{ outvar }}%%#d___% {{ d }} ");
+  ENDIF;
+  IF(#h___);
+    SET({{ outvar }},"%{{ outvar }}%%#h___%{{ h }} ");
+  ENDIF;
+  IF(#min___);
+    SET({{ outvar }},"%{{ outvar }}%%#min___%{{ min }} ");
+  ELSE;
+    SET({{ outvar }},"%{{ outvar }}%%#s___%{{ s }}");
+  ENDIF;
+  
+{* endmacro *}
+
+{* macro translate_old(seconds,outvar,y='ano(s)',m='mês(s)',d='dia(s)',h='h',min='min',s='seg') *}
+  #y0___={{ seconds }}/31536000;
+  #m0___=(({{ seconds }})-(#y0___*31536000))/2635200;
+  #d0___=(({{ seconds }})-(#y0___*31536000)-(#m0___*2635200))/86400;
+  #h0___=(({{ seconds }})-(#y0___*31536000)-(#m0___*2635200)-(#d0___*86400))/3600;
+  #min0___=(({{ seconds }})-(#y0___*31536000)-(#m0___*2635200)-(#d0___*86400)-(#h0___*3600))/60;
+  #s0___=(({{ seconds }})-(#y0___*31536000)-(#m0___*2635200)-(#d0___*86400)-(#h0___*3600)-(#min0___*60));
+  UNSET({{ outvar }});
+  IF(#y0___);
+    SET({{ outvar }},"%{{ outvar }}%%#y0___% {{ y }} ");
+  ENDIF;
+  IF(#m0___);
+    SET({{ outvar }},"%{{ outvar }}%%#m0___% {{ m }} ");
+  ENDIF;
+  IF(#d0___);
+    SET({{ outvar }},"%{{ outvar }}%%#d0___% {{ d }} ");
+  ENDIF;
+  IF(#h0___);
+    SET({{ outvar }},"%{{ outvar }}%%#h0___%{{ h }} ");
+  ENDIF;
+  IF(#min0___);
+    SET({{ outvar }},"%{{ outvar }}%%#min0___%{{ min }} ");
+  ENDIF;
+  SET({{ outvar }},"%{{ outvar }}%%#s0___%{{ s }}");
+  
+{* endmacro *}

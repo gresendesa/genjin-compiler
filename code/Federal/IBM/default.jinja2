@@ -1,0 +1,16 @@
+{* macro parse_request(request_var='&ibm_request_', target_outvar='&target_file_', syn_message_outvar='&pim_syn_message_', args_outvar='&ibm_args_', snippets_outvar='&request_snippets_') *}
+  UNSET({{ args_outvar }}[]);
+	MATCH(%{{ request_var }}%,"^([^\\(]+)(?:\\((.*)\\))?",{{ snippets_outvar }}[]);
+	MATCH(%{{ snippets_outvar }}[2]%,"([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?¬?([^¬]*)?",{{ args_outvar }}[]);
+	UNSET({{ syn_message_outvar }});
+	MATCH(%{{ snippets_outvar }}[1]%,"([^:]+):?(.*)?",{{ '{'~target_outvar~','~syn_message_outvar~'}' }});
+{* endmacro *}
+
+{* macro constants() *}
+	SET(&ibm_syn_closeafter_msg_,"syn_closeafter");
+{* endmacro *}
+
+{* macro reset() *}
+	UNSET(#ibm_ok_);
+	UNSET(#ibm_success_);
+{* endmacro *}

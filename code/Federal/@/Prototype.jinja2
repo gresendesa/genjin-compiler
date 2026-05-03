@@ -1,0 +1,187 @@
+
+/**
+	* A solução é composta de 1. um gerenciador e 2. módulos padronizados.
+	* A ideia é que macros sejam especializadas em certas atividades e que retornem,
+	* no fim de sua execução, o resultado da execução. Essas correspondem aos módulos
+	* especializados.
+	* O gerenciador seria responsável por receber o resultado de uma execução e
+	* decidir, a partir disso, qual o módulo seria executado em seguida.
+	* A decisão estaria baseada na configuração feita pelo utilizador antes
+	* de o sistema iniciar sua execução.
+	*
+	*   ┌─────┐
+	*   │módulo    ┌─────────────────┐
+	*   │     ├────┤  gerenciador    │        ┌─────┐
+	*   └─────┘    │                 │        │módulo
+	*           ┌──┤                 ├────────┤     │
+	*           │  │                 │        └─────┘
+	*           │  └──────────────┬──┘
+	*          ┌┴────┐            └──┐
+	*          │módulo          ┌────┴┐
+	*          │     │          │módulo
+	*          └─────┘          │     │
+	*                           └─────┘
+	*
+**/
+
+{* import 'Federal.INTEL.JZON' as JZON *}
+{* import 'Federal.data_structures.dict' as DICT *}
+
+
+{* set json_separator = '⤚►' *}
+
+{*
+	set TYPES = {
+		'TEXT': 'text',
+		'NUMBER': 'number',
+		'JSON': 'json'
+	}
+*}
+
+{* import 'Macrosoft.CTRL.CTRL_engine' as CTRL *}
+{* import 'Macrosoft.TASK.components' as TASK *}
+{* import 'Macrosoft.TASK.extension' as EXTENSION *}
+
+
+
+{*
+	set DEFAULT_RETURNS = {
+		'success': 0,
+		'general_error': 1,
+	}
+*}
+
+/*
+	NOME: gera informações para um prototype
+	DESCRIÇÃO: esta macro captura o desenvolvedor da extensão
+	e os eventos aceitos pela extensão e atribui a uma variável
+	'outvar'
+	O parâmetro 'outputs' recebe uma lista JSON de objetos com os seguintes atributos:
+	- id: o identificador
+	- type: pode ser 'number', 'text', 'json'
+	- short: um nome curto que deverá aparecer em configurações
+	- description: a descrição sobre este retorno, em texto livre
+	O parâmetro 'description' recebe uma string contendo a descrição do protótipo
+	O parâmetro 'inputs' recebe uma lista de objetos contendo os inputs que devem ser recebidos:
+	- id: o identificador
+	- type: pode ser 'number', 'text', 'json'
+	- short: um nome curto que deverá aparecer em configurações
+	- description: a descrição sobre esta entrada, em texto livre
+	O parâmetro 'disclamer' recebe uma string que deve indicar por quem o protótipo foi feito
+*/
+{* macro generate_prototype_info(name, outvar='&info'~nid(), description=this.name, alias=None, inputs=[], outputs=[], details=[], disclamer='§3by §b'~dev) *}
+	
+	{*
+		set info = {
+			'description': description,
+			'inputs': inputs,
+			'outputs': outputs,
+			'disclamer': disclamer,
+			'name': name
+		}
+	*}
+	
+	{* set final_alias = alias if alias != None else name *}
+	
+	{* set event_details = {} *}
+	{* set foo = event_details.update({name: final_alias~EXTENSION.alias_separator~details|join(',')}) *}
+	
+	{* set extension_event = DICT.left_item_border~name~DICT.right_item_border~'→'~DICT.left_item_border~event_details[name]~DICT.right_item_border *}
+	
+	SET({{ outvar }},"{{ disclamer~','~extension_event~json_separator~info|tojson|replace('"','\\"')|replace('%\\u0026','%&')|replace('%@\\u0026','%@&') }}");
+	
+{* endmacro *}
+
+{* macro parse_prototype_info(json, name_var, description_var, disclamer_var, inputs_array_var, outputs_array_var) *}
+	
+	{* set r = nid() *}
+	
+	MATCH("{{ json }}",".*?{{ json_separator }}(.*)",&json{{ r }},1);
+	
+	UNSET(&rawoutputs{{ r }});
+	UNSET(&rawinputs{{ r }});
+	UNSET({{ name_var }});
+	UNSET({{ disclamer_var }});
+	UNSET({{ description_var }});
+	UNSET({{ outputs_array_var }});
+	UNSET({{ inputs_array_var }});
+	
+	{{ JZON.key(json='%&json'~r~'%', key='name', outvar=name_var) }}
+	{{ JZON.key(json='%&json'~r~'%', key='disclamer', outvar=disclamer_var) }}
+	{{ JZON.key(json='%&json'~r~'%', key='description', outvar=description_var) }}
+	{{ JZON.key(json='%&json'~r~'%', key='outputs', outvar='&rawoutputs'~r) }}
+	{{ JZON.key(json='%&json'~r~'%', key='inputs', outvar='&rawinputs'~r) }}
+	
+	{{ JZON.array(json='%&rawoutputs'~r~'%', outvar_array=outputs_array_var) }}
+	{{ JZON.array(json='%&rawinputs'~r~'%', outvar_array=inputs_array_var) }}
+	
+{* endmacro *}
+
+{* macro parse_input_or_output(json, id_var, type_var, short_var, description_var) *}
+	UNSET({{ id_var }});
+	UNSET({{ type_var }});
+	UNSET({{ short_var }});
+	UNSET({{ description_var }});
+	{{ JZON.key(json=json, key='id', outvar=id_var) }}
+	{{ JZON.key(json=json, key='type', outvar=type_var) }}
+	{{ JZON.key(json=json, key='short', outvar=short_var) }}
+	{{ JZON.key(json=json, key='description', outvar=description_var) }}
+{* endmacro *}
+
+{* macro create(loop=None, outputs=[], inputs=[], on_off=None, extensions=[], before=None, after=None, delay=0, unsafe=None, task=this.name, disclamer='by '~dev, alias=None, details=['§cA script','called '~this.name]) *}
+	
+	{* macro info(CORTEX) *}
+		
+		{* set r = nid() *}
+		
+		{{
+			generate_prototype_info(
+				name=task,
+				disclamer=disclamer,
+				outvar='&info'~r,
+				alias=alias,
+				outputs=outputs,
+				inputs=inputs,
+				details=details,
+				description='agora sim'
+			)
+		}}
+		
+		{{ CORTEX.pause('%&info'~r~'%') }}
+	{* endmacro *}
+	
+	{* macro task_inner(project) *}
+		
+		{*
+			set tasks = [
+				{
+					'name': task,
+					'delay': delay,
+					'unsafe': unsafe,
+					'trigger_package': {
+						'main': [] if loop == None else [{'active': True, 'fetch_code': loop}],
+						'opening': [] if before == None else [{'active': True, 'fetch_code': before}],
+						'ending': [] if after == None else [{'active': True, 'fetch_code': after}]
+					}
+				},
+				{
+					'name': 'info',
+					'delay': 0,
+					'unsafe': None,
+					'trigger_package': {
+						'main': [{'active': True, 'fetch_code': info}],
+						'opening': [],
+						'ending': []
+					}
+				}
+			]
+		*}
+		
+		{{ TASK.inner(tasks=tasks, project=project) }}
+		
+	{* endmacro *}
+	
+	{{ CTRL.generate_code(inner=task_inner, on_off=on_off, extensions=extensions, entrypoint=task, pname=this.csid, name=this.name, csid=this.csid) }}
+	
+{* endmacro *}
+

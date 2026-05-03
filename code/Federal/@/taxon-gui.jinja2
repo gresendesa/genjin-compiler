@@ -1,0 +1,488 @@
+/*
+	
+	
+	AUTORES: Federal, Bezouro, Jeff, Tony e DaviMinerador
+	
+	ÍNDICE
+	HERE <- indice
+	GOTO -> op_movimentar
+	GOTO -> op_verificar
+	GOTO -> op_verificar_com_data
+	GOTO -> op_listar
+	GOTO -> op_contar
+	GOTO -> op_contar_itens
+	GOTO -> op_dropar
+	GOTO -> op_craftar
+	GOTO -> op_contar_pilha
+	GOTO -> op_hotswap
+	GOTO -> itera_gui
+	GOTO -> main
+	GOTO -> op_craftar_unidade
+	GOTO -> op_craftar
+	===== Operar Containers GUI =====
+	
+	Objetivo:
+	
+	Listar operações primitivas comuns com GUIs
+	- Transferir iten entre slots
+	* Para específicos
+	* Descarregar para lugar vazio (com shift)
+	- Dropar itens do inventário
+	- Verificar se tem um item no inventário
+	- Contar itens do inventário
+	
+	Generalizações:
+	
+	
+	O que vamos fazer?
+	
+	
+	Como vamos fazer?
+	
+	
+	## Observações
+	
+	As operações terãs seus parâmetros padronizados. Todas receberão
+	- slot
+	- regex de id (string)
+	- outvar (nome de uma variável)
+*/
+
+
+/*
+	Abre qualquer tipo de GUI
+*/
+{* macro abre_gui(tipo='INVENTORY') *}
+	wait(5t)
+	DO;
+		{* if tipo == 'GUICHEST' *}
+			KEY(USE);
+		{* else *}
+			GUI("{{ tipo }}");
+		{* endif *}
+		wait(5t);
+	UNTIL(GUI="{{ tipo }}");
+{* endmacro *}
+
+{* macro run_delay(delay) *}
+	
+	{* if delay != None and delay != 0 *}
+		WAIT({{ delay }}t);
+	{* endif *}
+	
+{* endmacro *}
+
+/*
+	OPERA GENERICAMENTE QUALQUER GUI HERE <- itera_gui
+	Esta macro cria um loop que itera uma GUI de 'slot_inicio' a 'slot_fim'
+	Essa macro requer uma macro 'operação' que realize um trabalho a cada loop
+	
+*/
+{* macro itera_gui(operação, regex_id=None, outvar=None, errorvar=None, slot_inicio=9, slot_fim=44, resetar_outvar=True, delay=None, slot_target=None, quantidade=None) *}
+	
+	{* if outvar != None and resetar_outvar *}
+		UNSET({{ outvar }});
+		//HERE <- jeff
+	{* endif *}
+	
+	{* if errorvar != None *}
+		UNSET({{ errorvar }});
+		//HERE <- jeff
+	{* endif *}
+	
+	{* set rand = nid() *}
+	
+	FOR(#slot{{ rand }},{{ slot_inicio }},{{ slot_fim }});
+		
+		{* if this.protocol == 'CTRL' *}
+			{* import 'Macrosoft.cortex.common' as CORTEX *}
+			{{ CORTEX.loop() }}
+		{* endif *}
+		
+		IFMATCHES("%ITEM%","^[0-9]+$");//1.5.2
+			GETSLOTITEM(%#slot{{ rand }}%,#id{{ rand }},#stacksizevar{{ rand }},#datavar{{ rand }});
+			MATCH("%#id{{ rand }}%:%#datavar{{ rand }}%","([0-9]+):([0-9]+)",{{ '{&id'~rand~',&datavar'~rand~'}' }});
+		ELSE;//1,8
+			GETSLOTITEM(%#slot{{ rand }}%,&id{{ rand }},#stacksizevar{{ rand }},&datavar{{ rand }});
+		ENDIF;
+		
+		{{ operação(slot='%#slot'~rand~'%', id='%&id'~rand~'%', stacksize='%#stacksizevar'~rand~'%', data='%&datavar'~rand~'%', regex_id=regex_id, outvar=outvar, errorvar=errorvar, slot_target=slot_target, quantidade=quantidade, slot_inicio=slot_inicio, slot_fim=slot_fim, delay=delay) }}
+		
+	NEXT;
+	
+{* endmacro *}
+
+
+/*
+	OPERA GENERICAMENTE QUALQUER GUI HERE <- itera_gui_intel
+	Esta macro cria um loop que itera uma GUI de 'slot_inicio' a 'slot_fim'
+	Essa macro requer uma macro 'operação' que realize um trabalho a cada loop
+	
+*/
+{* macro itera_gui_intel(operação, regex_id=None, outvar=None, errorvar=None, slot_inicio=9, slot_fim=44, resetar_outvar=True, delay=None, slot_target=None, quantidade=None) *}
+	
+	{* if outvar != None and resetar_outvar *}
+		UNSET({{ outvar }});
+		//HERE <- jeff
+	{* endif *}
+	
+	{* if errorvar != None *}
+		UNSET({{ errorvar }});
+		//HERE <- jeff
+	{* endif *}
+	
+	{* set rand = nid() *}
+	
+	FOR(#slot{{ rand }},{{ slot_inicio }},{{ slot_fim }});
+		
+		{* if this.protocol == 'CTRL' *}
+			{* import 'Macrosoft.cortex.common' as CORTEX *}
+			{{ CORTEX.loop() }}
+		{* endif *}
+		
+		
+		{* import 'Federal.INTEL.insights' as INSIGHTS *}
+		
+		IFMATCHES("%ITEM%","^[0-9]+$");//1.5.2
+			{{ INSIGHTS.getslotinfo('%#slot'~rand~'%','#id'~rand,'#stacksizevar'~rand,'#datavar'~rand,'#durability'~rand,'&tooltip'~rand~'[]') }}
+			//GETSLOTITEM(%#slot{{ rand }}%,#id{{ rand }},#stacksizevar{{ rand }},#datavar{{ rand }});
+			MATCH("%#id{{ rand }}%:%#datavar{{ rand }}%","([0-9]+):([0-9]+)",{{ '{&id'~rand~',&datavar'~rand~'}' }});
+		ELSE;//1,8
+			{{ INSIGHTS.getslotinfo('%#slot'~rand~'%','&id'~rand,'#stacksizevar'~rand,'&datavar'~rand,'#durability'~rand,'&tooltip'~rand~'[]') }}
+			//GETSLOTITEM(%#slot{{ rand }}%,&id{{ rand }},#stacksizevar{{ rand }},&datavar{{ rand }});
+		ENDIF;
+		//#durability é adicionado. O tooltip é passado como um nome. A razão é que não existe forma de passar o "valor" de um array.
+		{{ operação(slot='%#slot'~rand~'%', id='%&id'~rand~'%', stacksize='%#stacksizevar'~rand~'%', data='%&datavar'~rand~'%', regex_id=regex_id, outvar=outvar, errorvar=errorvar, slot_target=slot_target, quantidade=quantidade, slot_inicio=slot_inicio, slot_fim=slot_fim, delay=delay, durability='%#durability'~rand~'%', tooltip='&tooltip'~rand) }}
+		
+	NEXT;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE VERIFICAR HERE <- op_mover */
+/* TENTA MOVER TODOS OS ITENS DA REGEX_ID, CASO NAO TENHA SUCESSO, RETORNA OUTVAR=TRUE */
+{* macro op_mover(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	{* set rand = nid() *}
+	ifmatches("{{ id }}","{{ regex_id }}");
+		//LOG("entrei: {{ regex_id }} matches with {{ id }}");
+		set(#stack{{ rand }},{{ stacksize }})
+		slotclick({{ slot }},l,true);
+		getslotitem({{ slot }},#i{{ rand }},#s{{ rand }});
+		if(#s{{ rand }}!=0);
+			set({{ outvar }});//Aki marca-se erro e quebra-se o loop
+		endif;
+	endif;
+	
+{* endmacro *}
+
+
+
+/* OPERAÇÃO DE VERIFICAR HERE <- op_apanhar */
+/*
+	GOTO -> op_descarregar
+	TENTA MOVER A QUANTIDADE ESPERADA DE SLOT DE ITENS, E RETORNA A QUANTIDADE DE SLOTS MOVIDOS
+	RETORNA QUANTIDADE NEGATIVA SE O ÚLTIMO SLOT VERIFICADO NÃO PUDER TER SIDO MOVIDO COMPLETAMENTE
+*/
+{* macro op_apanhar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	{* set rand = nid() *}
+	//LOG("slot_inicio: {{ slot_inicio }} slot_fim: {{ slot_fim }}");
+	IF({{ slot }}=={{ slot_inicio }});
+		UNSET(#quant{{ rand }});//Reseta a variável que acumula a quantidade
+	ENDIF;
+	UNSET({{ errorvar }});//Adicionei isso em 30 de agosto de 2020. Provavelmente, antes disso, estava causando os bugs
+	IFMATCHES("{{ id }}","{{ regex_id }}");
+		SET(#stack{{ rand }},{{ stacksize }});
+		SLOTCLICK({{ slot }},l,true);
+		{{ run_delay(delay=delay) }}
+		GETSLOTITEM({{ slot }},#i{{ rand }},#newstacksize{{ rand }});
+		IF(#stack{{ rand }}>#newstacksize{{ rand }});//Só incrementa a quantidade de movidos, se o número atual é menor que o anterior
+			INC(#quant{{ rand }},1);
+		ENDIF;
+		SET({{ outvar }},%#quant{{ rand }}%);
+		IF(#newstacksize{{ rand }}!=0);//Indica que após tentar mover, o slot continua ocupado
+			SET({{ errorvar }});
+			BREAK;
+		ENDIF;
+		IF(({{ quantidade }}>0)&&(#quant{{ rand }}>={{ quantidade }}));
+			BREAK;
+		ENDIF;
+	endif;
+	
+{* endmacro *}
+
+{* macro op_teste(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	LOG("§7slot:§c{{ slot }} §7id:§c{{ id }} §7data:§c{{ data }} §7regex_id:§c{{ regex_id }} §7outvar:§c{{ outvar }} §7errorvar:§c{{ errorvar }} §7slot_target:§c{{ slot_target }}");
+{* endmacro *}
+
+
+//HERE <- op_hotswap
+{* macro op_hotswap(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	{* set r = nid() *}
+	{* import 'Federal.INTEL.insights' as INSIGHTS *}
+	{* import 'Federal.@.shared' as SHARED *}
+	
+	IFMATCHES("{{ id }}","{{ regex_id }}");
+		SET({{ outvar }},{{ slot }});
+		HOTSWAP({{ slot }},{{ slot_target }});
+		BREAK;
+	ENDIF;
+{* endmacro *}
+
+/* OPERAÇÃO DE VERIFICAR HERE <- op_movimentar */
+{* macro op_movimentar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	ifmatches("{{ id }}","{{ regex_id }}");
+		{* if slot_target == None *}
+			slotclick({{ slot }},l,true);
+		{* else *}
+			slotclick({{ slot }});
+			slotclick({{ slot_target }});
+			break;
+		{* endif *}
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE VERIFICAR HERE <- op_movimentar_com_data */
+{* macro op_movimentar_com_data(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	ifmatches("{{ id }}:{{ data }}","{{ regex_id }}");
+		{* if slot_target == None *}
+			slotclick({{ slot }},l,true);
+		{* else *}
+			slotclick({{ slot }});
+			slotclick({{ slot_target }});
+			break;
+		{* endif *}
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE VERIFICAR HERE <- op_verificar */
+{* macro op_verificar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		set({{ outvar }},{{ slot }});
+		break;
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE VERIFICAR HERE <- op_verificar_com_data */
+{* macro op_verificar_com_data(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}:{{ data }}","{{ regex_id }}");
+		set({{ outvar }},{{ slot }});
+		break;
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO PARA PROCURAR SLOTS COM +1 ITEM HERE <- op_buscar_pilha */
+{* macro op_buscar_pilha(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		IF({{ stacksize }}>1);
+			set({{ outvar }},{{ slot }});
+			break;
+		ENDIF;
+	endif;
+	
+{* endmacro *}
+
+/*CAQUITA DO JEFF, ESPERO Q FUNCIONE :) */
+
+/*
+	OPERAÇÃO PARA CONTAR SLOTS COM +1 ITEM HERE <- op_contar_pilha
+	DESCRIÇÃO: esta operação retorna em 'outvar' a quantidade
+	de slots de um item específico que estão cheios em seu máximo.
+	
+	todo: resolver a besteira que vc fez, Jeff!
+	Corrigido por Federal!
+*/
+{* macro op_contar_pilha(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	{* set rand = nid() *}
+	
+	GETSLOTITEM({{ slot }},#id_var{{ rand }});
+	GETITEMINFO(%#id_var{{ rand }}%,&namevar{{ rand }},#maxstacksize{{ rand }});
+	ifmatches("{{ id }}","{{ regex_id }}");
+		IF(#maxstacksize{{ rand }}=={{ stacksize }});
+			inc({{ outvar }},1);
+		ENDIF;
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE LISTAR HERE <- op_listar */
+{* macro op_listar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	{* set rand = nid() *}
+	GETITEMINFO({{ id }},&item{{ rand }});
+	LOG("§8[§f{{ slot }}§8] §7==§c> §a%&item{{ rand }}%");
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE CONTAR HERE <- op_contar */
+{* macro op_contar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		inc({{ outvar }});
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE CONTAR POR UNIDADE HERE <- op_craftar_unidade */
+{* macro op_craftar_unidade(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		slotclick({{ slot }});
+		wait({{ delay}}t)
+		slotclick({{ slot_target }},r);
+		wait({{ delay}}t)
+		slotclick({{ slot }});
+		wait({{ delay}}t)
+		break;
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE CONTAR HERE <- op_contar_itens Feito por Federal para contar itens ao invés de slots*/
+{* macro op_contar_itens(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		inc({{ outvar }},{{ stacksize }});
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE DROPAR HERE <- op_dropar */
+{* macro op_dropar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		slotclick({{ slot }});
+		slotclick(-999);
+		inc({{ outvar }});
+	endif;
+	
+{* endmacro *}
+
+/* OPERAÇÃO DE CRAFTAR HERE <- op_craftar */
+{* macro op_craftar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	ifmatches("{{ id }}","{{ regex_id }}");
+		SLOTCLICK({{ slot }});
+		{{ run_delay(delay=delay) }}
+		SLOTCLICK({{ slot_target }});
+		{{ run_delay(delay=delay) }}
+		SET({{ outvar }}); //Indica que o item foi encontrado e movido
+		BREAK;
+	endif;
+	
+{* endmacro *}
+
+
+/* OPERAÇÃO DE DESCARREGAR O INV NO BAÚ
+	'outvar' representa erro se estiver como true
+	1. (se stacksize > 1) joga o item, da posição P, tipo T pra o baú
+	(se stacksize <= 1) volte para 1.
+	1.a se a posição P ficar vazia, vá para a 2.
+	1.b se a posição P ainda permanecer com itens, significa baú cheio
+	portanto pare e defina erro
+	2. procura a primeira posição D com o item tipo T no baú (com stacksize > 1)
+	3. após encontrá-lo (no baú), clica com o botão esquerdo no item
+	4. move o item para o inventário clicando com o botão direito na posição P
+	5. devolve o item para o baú clicando com o botão esquerdo na posição D
+*/
+{* macro op_descarregar_bau_duplo(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	{* set rand = nid() *}
+	
+	IF({{ stacksize }}>1)
+		IFMATCHES("{{ id }}","{{ regex_id }}");//Se verdadeiro é do tipo T
+			GETSLOTITEM({{ slot }},#id{{ rand }});//Guardo o id do item antes de movê-lo
+			SLOTCLICK({{ slot }},l,true);//1.
+			GETSLOTITEM({{ slot }},#id_resultado{{ rand }});//verifico o que sobrou no slot
+			IF(#id_resultado{{ rand }}==0);//Está vazio, então prossiga
+				SET(#posicao_d{{ rand }},-1);
+				{{ itera_gui(operação=op_buscar_pilha,slot_inicio=0, slot_fim=53, regex_id='^%#id'~rand~'%$', outvar="#posicao_d"~rand) }}
+				SLOTCLICK(%#posicao_d{{ rand }}%,l,false);
+				SLOTCLICK({{ slot }},r,false);
+				SLOTCLICK(%#posicao_d{{ rand }}%,l,false);
+			ELSE;
+				SET({{ outvar }});//Marca erro
+				BREAK;
+			ENDIF;
+		ENDIF;
+	ENDIF;
+	
+{* endmacro *}
+
+
+/*
+	DESCARREGA OS ITENS
+	RETORNA EM OUTVAR A QUANTIDADE DE ITENS MOVIDOS
+	RETORNA EM ERRORVAR TRUE CASO O ÚLTIMO SLOT NÃO PUDER TER SIDO MOVIDO COMPLETAMENTE
+	HERE <- op_descarregar
+	GOTO -> op_apanhar
+*/
+{* macro op_descarregar(slot, id, stacksize, data, regex_id, outvar, errorvar, slot_target, quantidade, slot_inicio, slot_fim, delay) *}
+	
+	{* set rand = nid() *}
+	IF({{ slot }}=={{ slot_inicio }});
+		UNSET(#quant{{ rand }});//Reseta a variável que acumula a quantidade
+	ENDIF;
+	
+	UNSET({{ errorvar }});//Adicionei isso em 30 de agosto de 2020. Provavelmente, antes disso, estava causando os bugs
+	
+	IF({{ stacksize }}>1)
+		IFMATCHES("{{ id }}","{{ regex_id }}");//Se verdadeiro é do tipo T
+			GETSLOTITEM({{ slot }},#id{{ rand }},#stack{{ rand }});//Guardo o id do item antes de movê-lo
+			SLOTCLICK({{ slot }},l,true);//1.
+			{{ run_delay(delay=delay) }}
+			GETSLOTITEM({{ slot }},#i{{ rand }},#newstack{{ rand }});//verifico o que sobrou no slot
+			
+			IF(#stack{{ rand }}>#newstack{{ rand }});//Só incrementa a quantidade de movidos, se o número atual é menor que o anterior
+				INC(#quant{{ rand }},1);
+			ENDIF;
+			SET({{ outvar }},%#quant{{ rand }}%);
+			IF(#newstack{{ rand }}!=0);//Indica que após tentar mover, o slot continua ocupado
+				SET({{ errorvar }});
+				BREAK;
+			ENDIF;
+			
+			SET(#posicao_d{{ rand }},-1);
+			{{ itera_gui(operação=op_buscar_pilha, slot_inicio=0, slot_fim=53, regex_id='^%#id'~rand~'%$', outvar="#posicao_d"~rand) }}
+			SLOTCLICK(%#posicao_d{{ rand }}%,l,false);
+			{{ run_delay(delay=delay) }}
+			SLOTCLICK({{ slot }},r,false);
+			{{ run_delay(delay=delay) }}
+			SLOTCLICK(%#posicao_d{{ rand }}%,l,false);
+			{{ run_delay(delay=delay) }}
+			
+			IF(({{ quantidade }}>0)&&(#quant{{ rand }}>={{ quantidade }}));
+				BREAK;
+			ENDIF;
+			
+		ENDIF;
+	ENDIF;
+	
+{* endmacro *}
+
+
+{* macro gera_regex(ids=[], data_padrão=None) -*}
+	
+	{* if data_padrão!= None -*}
+		
+		{{ '^'+ids|join(':'+data_padrão+'$|^')+':'+data_padrão+'$' }}
+		
+	{*- else -*}
+		
+		{{ '^'+ids|join('$|^')+'$' }}
+		
+	{*- endif *}
+	
+	
+{*- endmacro *}
+
+$${
+	
+	
+}$$

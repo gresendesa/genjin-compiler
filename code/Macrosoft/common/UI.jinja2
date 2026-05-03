@@ -1,0 +1,94 @@
+{!! MENU COM OPÇÕES !!}
+{* macro menu(
+	items=[],
+	outvar='&option',
+	label='Use as setas para selecionar uma opção e pressione ENTER §a§lMacrosoft§7® §o2020',
+	strip=True,
+	field='Option',
+	safe=False
+)
+*}
+CHATOPACITY(1,0);
+UNSET({{ outvar }});
+{* if not safe *}
+	PROMPT({{ outvar }},"$$[{{ field }}[{{ items|join(',')|replace('[','')|replace(']','')|replace(';','')|replace('$','') }}]]","{{ label }}");
+{* else *}
+  {* set rendervar = '&render'~nid() *}
+  SET({{ rendervar }},"{{ items|join(',')|replace('[','')|replace(']','')|replace(';','')|replace('$','') }}");
+  REPLACE({{ rendervar }},"$","?");
+  REPLACE({{ rendervar }},"|","?");
+  REPLACE({{ rendervar }},"[","?");
+  REPLACE({{ rendervar }},"]","?");
+	PROMPT({{ outvar }},"$$[Option[%{{ rendervar }}%]]","{{ label }}");
+{* endif *}
+{* if strip *}
+	STRIP({{ outvar }},%{{ outvar }}%);
+{* endif *}
+CHATOPACITY(100,0);
+{* endmacro *}
+
+{!! MENU COM OPÇÕES COM COMANDO VINCULADO !!}
+{* macro menu_option_command(
+	items,
+	outvar='&option',
+	label='Use as setas para selecionar um desenvolvedor e pressione ENTER §a§lMacrosoft§7® §o2020'
+)
+*}
+
+{{ menu(items|map(attribute='option'), outvar, label, strip=False) }}
+{* for i in items *}
+	{* if loop.index0==0 *}
+		IF({{ outvar }}=="{{ i.option }}");
+			{* else *}
+				ELSEIF({{ outvar }}=="{{ i.option }}");
+					{* endif *}
+					{{ i.command }}
+					{* endfor *}
+					{* if items|length>0 *}
+						ENDIF;
+					{* endif *}
+					
+					{* endmacro *}
+					
+					{!! INPUT COM USUÁRIO !!}
+					{* macro input(
+						label,
+						outvar,
+						validation,
+						on_invalid,
+						is_text=False,
+						successflagvar='input_sucess___'
+					)
+					*}
+					
+					{* if validation is defined *}
+						UNSET({{ successflagvar }});
+						DO;
+							{* else *}
+								SET({{ successflagvar }});
+							{* endif *}
+							
+							PROMPT({{ outvar }},"$$?","{{ label }}",true,%{{ outvar }}%);
+							
+							{* if validation is defined *}
+								{* if is_text *}
+									IFMATCHES(%{{ outvar }}%,"{{ validation }}");
+										{* else *}
+											IF({{ outvar }}{{ validation }});
+												{* endif *}
+												SET({{ successflagvar }});
+												{* if on_invalid is defined *}
+													ELSE;
+														IF(KEY_ESCAPE);
+															UNSET({{ outvar }});
+														ELSE;
+															{{ on_invalid }}
+														ENDIF;
+													ENDIF;
+												{* else *}
+													ENDIF;
+												{* endif *}
+												UNTIL(({{ successflagvar }})||(KEY_ESCAPE));
+												{* endif *}
+												
+												{* endmacro *}

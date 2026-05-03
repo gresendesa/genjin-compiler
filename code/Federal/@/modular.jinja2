@@ -1,0 +1,827 @@
+
+{* import 'Federal.IBM.default' as IBM *}
+{* import 'Federal.IBM.PIM' as PIM *}
+
+/*
+    == INDICE ==
+  GOTO -> ibm_pim
+  GOTO -> socket
+  GOTO -> states
+  GOTO -> modular 
+  GOTO -> 2021abstraction
+  GOTO -> 2021plugs_abstraction
+*/
+
+/*=========================================
+
+IBM & PIM HERE <- ibm_pim
+
+==========================================*/
+
+{* set ibm_constants = IBM.constants *}
+{* set ibm_reset = IBM.reset *}
+{* set ibm_provider_stop = PIM.stop *}
+{* set ibm_provider_start = PIM.start *}
+{* set ibm_requester = PIM.requester *}
+
+
+/*=========================================
+
+MODULAR SOCKET HERE <- socket
+
+==========================================*/
+
+/*
+  NAME: Modular socket INTERACT
+  DESCRIPTION: It is a snippet that interacts in real time with other modular programs
+*/
+{* macro modular_socket_interact() *}
+
+  &interact_pattern_="ON\(([^\)]+)\) (WRITE|NOTWRITE)\(([^\)]*)\) AND WAIT (UNTIL|WHILE)\(([^\)]*)\)";
+  UNSET(break_);
+  IFMATCHES(%&interact_%,"%&interact_pattern_%");
+    MATCH(%&interact_%,"%&interact_pattern_%",{&interact_socket_,&interact_writeness_,&interact_write_content_,&interact_wait_criteria_,&interact_wait_value_});
+    //LOG("[interact]%&interact_socket_%  %&interact_writeness_%  %&interact_write_content_%  %&interact_wait_criteria_%  %&interact_wait_value_%");
+    IF((modular_verbose_interact_) || (@modular_verbose_interact_));
+      MATCH(%&interact_socket_%,"@&([a-z_]+)[0-9]+",{&socket_alias_});
+      LOG("§6§l%&script_name_% §n§8TO§r§7%&socket_alias_% §n§8%&interact_writeness_%§r§7%&interact_write_content_% §n§8WAIT§r§7%&interact_wait_criteria_% %&interact_wait_value_%");
+    ENDIF;
+    IF(&interact_socket_);
+      SET(&interact_message_,%%&interact_socket_%%);
+      IF(&interact_message_);
+        IFMATCHES(%&interact_writeness_%,"^WRITE$");
+          SET(%&interact_socket_%,%&interact_write_content_%);
+        ENDIF;
+        DO;
+  
+          IF((modular_verbose_interact_) || (@modular_verbose_interact_));
+            MATCH(%&interact_socket_%,"@&([a-z_]+)[0-9]+",{&socket_alias_});
+            LOG("§6§l%&script_name_% §n§8TO§r§7%&socket_alias_% §n§8%&interact_writeness_%§r§7%&interact_write_content_% §n§8WAIT§r§7%&interact_wait_criteria_% %&interact_wait_value_%");
+          ENDIF;
+  
+          SET(&interact_message_,%%&interact_socket_%%);
+          SET(&parent_socket_msg_,"%%&socket_%%");
+          IFMATCHES(%&parent_socket_msg_%,"^kill:.*?|^pause:.*?");
+            SET(break_);
+            BREAK;
+          ELSE;
+            IF((KEY_DELETE) || (break_));
+              SET(break_);
+              BREAK;
+            ELSE;
+              UNSET(break_);
+            ENDIF;
+          ENDIF;
+          WAIT(77ms);
+        UNTIL(((&interact_message_==%&interact_wait_value_%) && (&interact_wait_criteria_=="UNTIL")) || ((&interact_message_!=%&interact_wait_value_%) && (&interact_wait_criteria_=="WHILE")));
+        IFMATCHES(%&interact_write_content_%,"^kill:");
+          UNSET(%&interact_socket_%);
+        ENDIF;
+      //ELSE;
+        //LOG("[interact] socket is empty");
+      ENDIF;
+    ENDIF;
+  
+    IF((modular_verbose_interact_) || (@modular_verbose_interact_));
+      LOG("§6§l%&script_name_% §n§8RESULT§r§7%&interact_message_%");
+    ENDIF;
+  
+    IF((modular_log_) || (@modular_log_));
+      LOGTO("modular.txt","(INTERACT) %DATETIME% %&script_name_% (%#id_%) FROM%&interact_% RESULT%&interact_message_%");
+    ENDIF;
+  
+  //ELSE;
+    //LOG("[interact] sintax error");
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NAME: Modular socket WAIT
+  DESCRIPTION: It is a snippet that wait for a criteria to be satisfied
+*/
+{* macro modular_socket_wait() *}
+
+  MATCH(%&wait_%,"FOR ([a-z0-9&@_]*) (UNTIL|WHILE) ([\w]*)",{&wait_socket_name_,&wait_criteria_,&wait_value_});
+      
+  IF(&wait_socket_name_);
+    DO;
+      SET(&wait_message_,%%&wait_socket_name_%%);
+      SET(&socket_msg_,"%%&socket_%%");
+      IFMATCHES(%&socket_msg_%,"^kill:.*?|^pause:.*?");
+        SET(break_);
+        BREAK;
+      ELSE;
+        IF((KEY_DELETE) || (break_));
+          SET(break_);
+          BREAK;
+        ELSE;
+          UNSET(break_);
+        ENDIF;
+      ENDIF;
+      WAIT(10ms);
+    UNTIL(((&wait_message_==%&wait_value_%) && (&wait_criteria_=="UNTIL")) || ((&wait_message_!=%&wait_value_%) && (&wait_criteria_=="WHILE")));
+  ENDIF;
+
+{* endmacro *}
+
+/*=========================================
+
+MODULAR DEFAULT STATES HERE <- states
+
+==========================================*/
+
+/*
+  NAME: Modular state ONKILL
+  DESCRIPTION: It is a default state executed just before the macro killling
+*/
+{* macro modular_state_onkill() *}
+
+  REPLACE(&socket_message_,"kill:","");
+  IF((modular_verbose_) || (@modular_verbose_));
+    LOG("§8§o%&script_name_% §7§lKill: §r§7%&socket_message_%");
+  ENDIF;
+  &next_="exit";
+  
+{* endmacro *}
+
+/*
+  NAME: Modular state ONPAUSE
+  DESCRIPTION: It is a default state executed just before the macro is paused
+*/
+{* macro modular_state_onpause() *}
+
+  IF((modular_verbose_) || (@modular_verbose_));
+    LOG("§8§o%&script_name_% §7§lPause: §r§7%&socket_message_%");
+  ENDIF;
+  &next_="paused(%&last_%)";
+  
+{* endmacro *}
+
+/*
+  NAME: Modular state ONRESUME
+  DESCRIPTION: It is a default state executed just before the macro is resumed
+*/
+{* macro modular_state_onresume() *}
+
+  IF((modular_verbose_) || (@modular_verbose_));
+    LOG("§8§o%&script_name_% §7§lResume: §r§7%&socket_message_%");
+  ENDIF;
+  SET("%&socket_%","resumed");
+  &next_="%&args_[1]%";
+  
+{* endmacro *}
+
+/*
+  NAME: Modular state CONSUME
+  DESCRIPTION: It is a default state for consuming a service from another process
+*/
+{* macro modular_state_consume() *}
+
+  MATCH(%&args_[1]%,"([^=]+)(?:=>(.*))?",&cmd_snippets_[]);
+  &origin_state_=%&last_%;
+  MATCH(%&cmd_snippets_[1]%,"([^:]+):?(.*)?",{&socket_standby_,&entryp_});
+  &callback_=%&cmd_snippets_[2]%;
+  SET(&standby_socket_msg_,%%&socket_standby_%%);
+  IF(&standby_socket_msg_=="paused");
+    SET("%&socket_standby_%","resume:%&args_[2]%,%&args_[3]%,%&args_[4]%,%&args_[5]%,%&args_[6]%,%&args_[7]%,%&args_[8]%,%&args_[9]%,%&entryp_%");
+    DO;
+      SET(&channel_content_,%%&socket_standby_%%);
+
+      IFMATCHES(%&channel_content_%,"^kill:.*?|^pause:.*?");
+        BREAK;
+      ELSE;
+        IF(KEY_DELETE);
+          BREAK;
+        ENDIF;
+      ENDIF;
+
+      WAIT(10ms);
+    WHILE(&channel_content_!="resumed");
+    DO;
+      SET(&channel_content_,%%&socket_standby_%%);
+      IF((&channel_content_!="paused") && (&channel_content_!="resumed") && (&channel_content_!="ACK"));
+        &captured_msg_=%&channel_content_%;
+        SET("%&socket_standby_%","ACK");
+      ENDIF;
+
+      IFMATCHES(%&channel_content_%,"^kill:.*?|^pause:.*?");
+        BREAK;
+      ELSE;
+        IF(KEY_DELETE);
+          BREAK;
+        ENDIF;
+      ENDIF;
+
+      WAIT(10ms);
+    WHILE(&channel_content_!="paused");
+    &next_="%&callback_%(%&captured_msg_%,%&origin_state_%,%&socket_standby_%)";
+  ELSE;
+    LOG("§8§o%&script_name_% §6§lWarning:§r§eSTANDBY socket §c%&socket_standby_%§e contains '%&standby_socket_msg_%' instead of 'paused'");
+    &next_="%&callback_%(,%&origin_state_%,%&socket_standby_%)";
+  ENDIF;
+    
+{* endmacro *}
+
+/*
+  NAME: Modular state PAUSED
+  DESCRIPTION: It is a default state for pausing execution
+*/
+{* macro modular_state_paused() *}
+
+  &resume_callback_=%&args_[1]%;
+  UNSET(break_);
+  DO;
+    SET(&socket_message_,"%%&socket_%%");
+    IFMATCHES("%&socket_message_%","^resume:.*?|^kill:.*?|^pause:.*?");
+      SET(break_);
+      IFMATCHES("%&socket_message_%","^resume:.*");
+        REPLACE(&socket_message_,"resume:","");
+        &next_="onresume(%&resume_callback_%)";
+        IF(&standby_=="standby");
+          MATCH(%&socket_message_%,"([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",&inputs_[]);
+          MATCH(%&socket_message_%,"([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",#inputs_[]);
+          &next_="onresume(%&entrypoint_%)";
+          IF(&inputs_[9]);
+            &next_="onresume(%&inputs_[9]%)";
+          ENDIF;
+          //LOG("resume: entrypoint:%&entrypoint_% INPUTS: 1:%&inputs_[1]% 2:%&inputs_[2]% 3:%&inputs_[3]% 4:%&inputs_[4]% 5:%&inputs_[5]% 6:%&inputs_[6]% 7:%&inputs_[7]% 8:%&inputs_[8]% 9:%&inputs_[9]%");
+        ENDIF;
+      ENDIF;
+    ELSE;
+      WAIT(10ms);
+    ENDIF;
+  UNTIL((KEY_DELETE) || (break_));
+  
+{* endmacro *}
+
+/*
+  NAME: Modular state PLUGIN
+  DESCRIPTION: It is a default state for communicating with IBM plugs
+*/
+{* macro modular_state_plugin() *}
+  
+  //&args_[1] = plugin required:service required
+  //&args_[2] = callback state
+  //&args_[3-8] = args
+
+  MATCH(%&args_[1]%,"([^=]+)(?:=>(.*))?",{&service_request_,&plugin_callback_});
+  MATCH(%&service_request_%,"([^:]+):?(.*)?",{&plugin_ref_,&service_name_});
+
+  UNSET(&plugin_ref_snippets_[]);
+  MATCH(%&plugin_ref_%,"([^@]+)@?(.*)?",&plugin_ref_snippets_[]);
+
+  SET(&plugin_name_,%&plugin_ref_snippets_[1]%);
+  SET(&plugin_socket_,%&plugin_ref_snippets_[2]%);
+  UNSET(plugin_standby_);
+  IF(&plugin_socket_);
+    SET(plugin_standby_);
+  ENDIF;
+
+  IF(plugin_standby_);
+
+    LOG("§8§l[PLUGIN] §6Starting §8STANDBY §f%&service_name_%§8@§7%&plugin_name_%");
+
+    FOR(#i,1,4);
+      IF(#i==1);
+        &interact_="ON(%&plugin_socket_%) NOTWRITE() AND WAIT UNTIL(paused)";
+      ELSEIF(#i==2);
+        &interact_="ON(%&plugin_socket_%) WRITE(resume:%&service_name_%,%&args_[2]%,%&args_[3]%,%&args_[4]%,%&args_[5]%,%&args_[6]%,%&args_[7]%,%&args_[8]%,%&plugin_name_%) AND WAIT UNTIL(resumed)";
+      ELSEIF(#i==3);
+        &interact_="ON(%&plugin_socket_%) NOTWRITE() AND WAIT WHILE(resumed)";
+      ELSEIF(#i==4);
+        SET(&ibm_response_,%&interact_message_%);
+        SET(#ibm_success_,1);
+        &interact_="ON(%&plugin_socket_%) WRITE(pause: Ok. Good job) AND WAIT UNTIL(paused)";
+      ENDIF;
+      //{% "socket.interact.txt" %}
+      {{ modular_socket_interact() }}
+    NEXT;
+
+  ELSE;
+
+    LOG("§8§l[PLUGIN] §6Starting §f%&service_name_%§8@§7%&plugin_name_%");
+
+    &ibm_request_="%&plugin_name_%:%&service_name_%(%&args_[2]%¬%&args_[3]%¬%&args_[4]%¬%&args_[5]%¬%&args_[6]%¬%&args_[7]%¬%&args_[8]%)";
+
+    //{% "../ibm/requester.txt" %}
+    {{ ibm_requester() }}
+
+  ENDIF;
+
+  IF(#ibm_success_);
+    LOG("§8§l[PLUGIN] §6OK. §aDone. §6Msg: §f%&ibm_response_%");
+    INC(#agent_activate_counter);
+  ELSE;
+    LOG("§8§l[PLUGIN] §4Woops. Something went wrong");
+  ENDIF;
+
+  &next_="%&last_%(%&ibm_response_%,%&service_name_%,%#ibm_success_%)";
+  IF(&plugin_callback_);
+    &next_="%&plugin_callback_%(%&ibm_response_%,%&service_name_%,%#ibm_success_%)";
+  ENDIF;
+      
+{* endmacro *}
+
+/*
+  NAME: Modular state READ_SOCKET
+  DESCRIPTION: It is a default state for reading socket
+*/
+{* macro modular_state_read_socket() *}
+
+  &socket_input_=%&args_[1]%;
+  &callback_=%&args_[2]%;
+  SET(%&socket_%,%&socket_input_%);
+  UNSET(break_);
+  DO(100);
+    SET(&socket_message_,"%%&socket_%%");
+    IFMATCHES("%&socket_message_%","^kill:.*?|^pause:.*?");
+      SET(break_);
+    ELSEIF(&socket_message_!=%&socket_input_%);
+      IF((modular_verbose_) || (@modular_verbose_));
+        LOG("§8§o%&script_name_% §7§lSocket§8§lReading: §r§7%&socket_message_%");
+      ENDIF;
+      &next_="%&callback_%(%&socket_message_%)";
+      SET(break_);
+    ELSE;
+      WAIT(10ms);
+    ENDIF;
+  UNTIL((KEY_DELETE) || (break_));
+  IF((!KEY_DELETE) && (!break_));
+    &next_="%&callback_%(timeout_)";
+    LOG("§8§o%&script_name_% §7§lSocket§8§lReading§7§lTimeout§8§lReached");
+  ENDIF;
+  
+{* endmacro *}
+
+/*
+  NAME: Modular state START
+  DESCRIPTION: It is a default state for starting a proccess
+*/
+{* macro modular_state_start() *}
+
+  MATCH(%&args_[1]%,"([^=]+)(?:=>(.*))?",&cmd_snippets_[]);
+  MATCH(%&cmd_snippets_[1]%,"([^:]+):?(DEBUG)?",&file_name_snippets_[]);
+  &file_name_=%&file_name_snippets_[1]%;
+  &debug_str_=%&file_name_snippets_[2]%;
+  &origin_state_=%&last_%;
+  &global_flag_="@&%&file_name_%_%#id_%";
+  MATCH(%&cmd_snippets_[2]%,"([^:]+):?(SYNC|ASYNC|STANDBY)?",&callback_snippets_[]);
+  &callback_="%&callback_snippets_[1]%";
+  SET("%&global_flag_%",%&default_status_%);
+  &standby_flag_="";
+  IFMATCHES(%&callback_snippets_[2]%,"^STANDBY$");
+    &standby_flag_="standby";
+  ENDIF;
+  #debug_flag_=0;
+  IF(&debug_str_!="");
+    #debug_flag_=1;
+  ENDIF;
+
+  UNSET(&channel_name_);
+  IFMATCHES(%&callback_snippets_[2]%,"^(ASYNC|STANDBY)$");
+
+    &channel_name_=%&global_flag_%;
+    
+  ENDIF;
+
+  UNSET(&pim_syn_message_);
+
+  IFMATCHES(%&callback_snippets_[2]%,"^(ASYNC|STANDBY)$");
+
+    &pim_syn_message_="%&global_flag_%";
+    
+  ENDIF;
+
+  IF(standalone_);
+    &ibm_request_="%&standalone_filename_%:%&pim_syn_message_%(%&args_[2]%¬%&args_[3]%¬%&args_[4]%¬%&args_[5]%¬%&args_[6]%¬%&args_[7]%¬%&args_[8]%¬%&args_[9]%¬%&file_name_%¬%&channel_name_%¬%&standby_flag_%¬%#debug_flag_%)";
+  ELSE;
+    &ibm_request_="%&file_name_%.exe:%&pim_syn_message_%(%&args_[2]%¬%&args_[3]%¬%&args_[4]%¬%&args_[5]%¬%&args_[6]%¬%&args_[7]%¬%&args_[8]%¬%&args_[9]%¬¬%&channel_name_%¬%&standby_flag_%¬%#debug_flag_%)";
+  ENDIF;
+
+  //{% "../ibm/requester.txt" %}
+  {{ ibm_requester() }}
+
+  IFMATCHES(%&callback_snippets_[2]%,"^(ASYNC|STANDBY)$");
+  	
+    &socketflag_="%&global_flag_%%&pim_ack_message_%";
+    SET(&scontent_,%%&socketflag_%%);
+    IF(&scontent_=="");
+    	SET(%&socketflag_%," ");
+    ENDIF;
+
+    &next_="%&callback_%(%&socketflag_%,%&origin_state_%,%&file_name_%,%#ibm_success_%)";
+
+  ELSE;
+
+    &next_="%&callback_%(%&ibm_response_%,%&origin_state_%,%&file_name_%,%#ibm_success_%)";
+    
+  ENDIF;
+
+  UNSET(%&global_flag_%);
+
+{* endmacro *}
+
+/*=========================================
+
+MODULAR HERE <- modular
+
+==========================================*/
+
+/*
+  NAME: Modular initial (safe)
+  DESCRIPTION: It defines the header for Modular program
+*/
+{* macro modular_initial_safe() *}
+  
+  UNSET(finish_);
+  UNSET(&last_);
+  UNSET(&return_);
+  UNSET(&stack_[]);
+  &standby_=%&inputs_[11]%;
+  #debug_=%#inputs_[12]%;
+  &entrypoint_=%&current_%;
+  &default_status_="running_";
+  
+  // ---------------------------------------------------
+  //| If #debug_ is defined, debug variables are set
+  // ---------------------------------------------------
+  IF(#debug_==1);
+    SET(modular_debug_);
+    SET(modular_verbose_);
+  ENDIF;
+  
+  // -----------------------------------------------------------------------------------
+  //| It sends #id through channel defined on &pim_syn_message_ and creates the &socket_
+  // -----------------------------------------------------------------------------------
+  IF(&pim_syn_message_);
+    &socket_="%&pim_syn_message_%%#id_%";
+    SET("%&pim_syn_message_%","%&socket_%");
+    &ibm_return_="ok";
+    //{% "../ibm/provider_stop.txt" %} 
+    {{ ibm_provider_stop() }}
+    
+  ENDIF;
+  
+  // ---------------------------------------------------
+  //| It routes flow to paused if &standby_ is defined
+  // ---------------------------------------------------
+  IF(&standby_=="standby");
+    SET(standby_);
+    SET("%&socket_%","paused");
+    &current_="paused";
+  ENDIF;
+  
+  // ---------------------------------------------------
+  //| It starts the main loop
+  // ---------------------------------------------------
+  DO;
+    SET(&socket_message_,"%%&socket_%%");
+    IFMATCHES("%&socket_message_%","^kill:.*");
+      UNSET("%&socket_%");
+      SET(kill_);
+      IF(&last_!="paused");
+        &current_="onkill";
+      ELSE;
+        &current_="exit";
+      ENDIF;
+    ELSE;
+      IFMATCHES("%&socket_message_%","^pause:.*");
+        SET("%&socket_%","paused");
+        &current_="onpause";
+      ENDIF;
+      IF((&standby_=="standby") && (kill_==0) && ((&current_=="") || (&current_=="exit") || (finish_)));
+        SET("%&socket_%","paused");
+        &current_="paused";
+      ENDIF;
+    ENDIF;
+  
+    IF(KEY_DELETE);
+      SET(finish_);
+      LOG("§7DELETE §7§o%&script_name_%");
+    ENDIF;
+  
+    IF((&current_=="") || (&current_=="exit") || (finish_));
+      SET(finish_);
+      SET(&ibm_return_,"");
+      IF(&current_=="exit");
+        SET(&ibm_return_,"%&args_[1]%");
+      ENDIF;
+      //{% "../ibm/provider_stop.txt" %}
+      {{ ibm_provider_stop() }}
+    
+{* endmacro *}
+
+/*
+  NAME: Modular initial (unsafe)
+  DESCRIPTION: It defines the header for Modular program
+*/
+{* macro modular_initial(unsafe=None) *}
+  
+  {* if unsafe != None *}
+    UNSAFE({{ unsafe }});
+  {* endif *}
+    //{% "initial.safe.txt" %}
+    {{ modular_initial_safe() }}
+  
+{* endmacro *}
+
+/*
+  NAME: Modular inputs
+  DESCRIPTION: It defines how script process inputs
+*/
+{* macro modular_inputs() *}
+
+  RANDOM(#id_,0,999999999);
+  &pim_ack_message_="%#id_%";
+  //{% "../ibm/provider_start.txt" %}
+  {{ ibm_provider_start() }}
+  
+{* endmacro *}
+
+/*
+  NAME: Modular loop
+  DESCRIPTION: It should be inserted into any loop on modular program.
+               This is able to block program execution.
+*/
+{* macro modular_loop() *}
+
+  SET(&socket_msg__,"%%&socket_%%");
+  IFMATCHES(%&socket_msg__%,"^kill:.*?|^pause:.*?");
+    SET(break_);
+    BREAK;
+  ELSE;
+    IF((KEY_DELETE) || (break_));
+      SET(break_);
+      BREAK;
+    ELSE;
+      UNSET(break_);
+    ENDIF;
+  ENDIF;
+  WAIT(10ms);
+  
+{* endmacro *}
+
+/*
+  NAME: Modular parser (safe)
+  DESCRIPTION: It defines the tail for Modular programs.
+*/
+{* macro modular_parser_safe(not_found_state) *}
+
+  /*ELSEIF(&current_=="onkill");
+    REPLACE(&socket_message_,"kill:","");
+    IF((modular_verbose_) || (@modular_verbose_));
+      LOG("§8§o%&script_name_% §7§lKill: §r§7%&socket_message_%");
+    ENDIF;
+    &next_="exit";
+
+  ELSEIF(&current_=="onresume");
+    IF((modular_verbose_) || (@modular_verbose_));
+      LOG("§8§o%&script_name_% §7§lResume: §r§7%&socket_message_%");
+    ENDIF;
+    SET("%&socket_%","resumed");
+    &next_="%&args_[1]%";
+
+  ELSEIF(&current_=="onpause");
+    IF((modular_verbose_) || (@modular_verbose_));
+      LOG("§8§o%&script_name_% §7§lPause: §r§7%&socket_message_%");
+    ENDIF;
+    &next_="paused(%&last_%)";
+
+  ELSEIF(&current_=="paused");
+  
+    //{% "state.paused.txt" %}
+    
+  ELSEIF(&current_=="read_socket");
+    
+    //{% "state.read_socket.txt" %}
+
+  ELSEIF(&current_=="consume");
+
+    //{% "state.consume.txt" %}
+
+  ELSEIF(&current_=="start");
+
+     //{% "state.start.txt" %}*/
+
+  ELSE;
+    //SET(finish_);
+    //PLAYSOUND(note.bassattack);
+    //PLAYSOUND(block.note.bass);
+    //LOG("§8§o%&script_name_% §4§lError §r§eState §c%&current_%§e not found! Program aborted.");
+    
+    {{ not_found_state() }}
+    
+  ENDIF;
+
+  &last_=%&current_%;
+  MATCH(%&next_%,"^([^\\(]*)(?:\\((.*)\\))?",&next_snippets_[]);
+  &command_=%&next_snippets_[1]%;
+  &args_str_=%&next_snippets_[2]%;
+  IF(&return_!="");
+    &args_str_=%&return_%;
+  ENDIF;
+  MATCH(%&args_str_%,"([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",&args_[]);
+  MATCH(%&args_str_%,"([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",#args_[]);
+
+  IFMATCHES(%&command_%,"&back");
+    MATCH(%&command_%,"^.*(?=&)",&next_);
+    PUSH(&stack_,%&last_%);
+    &current_=%&next_%;
+  ELSE;
+    &next_=%&command_%;
+    ARRAYSIZE(&stack_,#stacksize_);
+    IF(#stacksize_>0);
+      POP(&stack_,&current_);   
+    ELSE;
+      &current_=%&next_%;
+    ENDIF;
+  ENDIF;
+
+  IF((modular_log_) || (@modular_log_));
+    STRIP(&stripargs_,"%&args_[1]% %&args_[2]% %&args_[3]% %&args_[4]% %&args_[5]% %&args_[6]% %&args_[7]% %&args_[8]% %&args_[9]%");
+    LOGTO("modular.txt","(MAIN) %DATETIME% %&script_name_% (%#id_%) FROM:%&last_% TO:%&next_% ARGS:%&stripargs_%");
+  ENDIF;
+
+  IF((modular_debug_) || (@modular_debug_));
+    LOG("§2§l%&script_name_% §n§8FROM§r§7%&last_% §n§8TO§r§7%&next_% §n§8ARGS§r§7%&stripargs_%");
+  ENDIF;
+
+  &next_="";
+  &return_="";
+  UNSET(break_);
+  WAIT(10ms);
+  
+  UNTIL(finish_);
+  UNSET("%&socket_%");
+  UNSET("%&global_flag_%");
+
+{* endmacro *}
+
+/*
+  NAME: Modular parser (unsafe)
+  DESCRIPTION: It defines the tail for Modular programs.
+*/
+{* macro modular_parser(not_found_state, unsafe=None) *}
+
+    //{% "parser.safe.txt" %}
+    {{ modular_parser_safe(not_found_state) }}
+  {* if unsafe != None *}
+    ENDUNSAFE;
+  {* endif *}
+  
+{* endmacro *}
+
+
+/*=========================================
+
+MODULAR ABSTRACTION FOR ROCKET 2021 HERE <- 2021abstraction
+
+==========================================*/
+
+/*
+  NAME: Modular buid state 
+  DESCRIPTION: It builds state based on string or object
+*/
+{* macro build_state(name, state, statevar='&current_') *}
+  
+  ELSEIF({{ statevar }}=="{{ name }}");
+    {* if state is callable *}
+      {{ state() }}
+    {* elif state is string *}
+      {{ state|macro() }}
+    {* endif *}
+    
+{* endmacro *}
+
+{* macro state_name_default_hook(name) -*}
+  {{ name }}
+{*- endmacro *}
+
+{* macro default_not_found_state() *}
+  
+  SET(finish_);
+  PLAYSOUND(note.bassattack);
+  PLAYSOUND(block.note.bass);
+  LOG("§8§o%&script_name_% §4§lError §r§eState §c%&current_%§e not found! Program aborted.");
+    
+{* endmacro *}
+
+/*
+  NAME: Modular generate
+  DESCRIPTION: It generates a whole modular program based in its states
+*/
+{* macro generate(bootstrap=None, states=[], not_found_state=default_not_found_state, unsafe=None, include=['onkill', 'onresume', 'onpause', 'paused', 'read_socket', 'consume', 'start', 'plugin'], exclude=[], state_name_hook=state_name_default_hook, statevar='&current_', header=modular_initial, tail=modular_parser, inputs=modular_inputs) *}
+  
+  
+  {* if inputs is callable *}
+    {{ inputs() }}
+  {* endif *}
+  
+  {* set filtered_default_states = [] *}
+  
+  //It exclude desired items from defaut_states
+  {* for item in include *}
+    {* if item not in exclude  *}
+      {* set aux = filtered_default_states.append(item) *}
+    {* endif *}
+  {* endfor *}
+  
+  {* if bootstrap is callable *}
+    
+    {{ bootstrap() }}
+    
+  {* endif *}
+  
+  {{ header(unsafe=unsafe) }}
+  
+  {* for state in states *}
+    
+    {* if state is callable *}
+      {* set name = state.name *}
+    {* elif state is string *}
+      {* set name = state *}
+    {* endif *}
+    {{ build_state(name=state_name_hook(name), state=state, statevar=statevar) }}
+  
+  {* endfor *}
+  
+  {* for state in filtered_default_states *}
+    
+    {{ build_state(name=state, state='modular_state_'~state, statevar=statevar) }}
+  
+  {* endfor *}
+
+  {{ tail(not_found_state=not_found_state, unsafe=unsafe) }}
+  
+{* endmacro *}
+
+
+/*=========================================
+
+PLUGS ABSTRACTION FOR ROCKET 2021 HERE <- 2021plugs_abstraction
+
+==========================================*/
+
+/*
+  NAME: Plugs generator
+  DESCRIPTION: It generates the plugs
+*/
+{* macro plug(services, state_name_hook=state_name_default_hook, exclude=['onkill', 'onresume', 'onpause', 'consume', 'paused', 'read_socket', 'start', 'plugin']) *}
+
+  {* macro plug_preamble(unsafe) *}
+    {{ ibm_provider_start() }}
+    &service_="%&pim_syn_message_%";
+    IF(&service_=="");
+	    LOG("§8§l[Plugin] §r§7service is §4empty!");
+	    SET(&ibm_return_,"empty");
+  {* endmacro *}
+
+  {* macro info() *}
+    {* set names = [] *}
+    {* for service in services *}
+      {* set foo = names.append(service.name) *}
+    {* endfor *}
+    SET(&ibm_return_,"{{ dev }},{{ names|join(',') }}");
+  {* endmacro *}
+  
+  {* macro not_found() *}
+    LOG("§8§l[Plugin] §r§7service §l%&service_% §r§4not found!");
+    SET(&ibm_return_,"not_found");
+  {* endmacro *}
+  
+  {* macro plug_ending(not_found_state=not_found, unsafe=None) *}
+    
+    ELSE;
+      {{ not_found_state() }}
+    ENDIF;
+    
+    {{ ibm_provider_stop() }}
+
+  {* endmacro *}
+
+  {{ 
+    generate(
+      states=[info]+services,
+      exclude=exclude,
+      not_found_state=not_found,
+      statevar='&service_',
+      header=plug_preamble,
+      tail=plug_ending,
+      inputs=None
+    ) 
+  }}
+
+{* endmacro *}
+
+$${
+
+  {* macro mymacro() *}
+  {* endmacro *}
+  {* macro mymacro2() *}
+  {* endmacro *}
+
+  {{ plug(services=[mymacro, mymacro2]) }}
+  {!! generate(states=[mymacro, mymacro2]) !!}
+  
+}$$

@@ -1,0 +1,270 @@
+{* import "Macrosoft.cortex.common" as CORTEX *}
+{* import "Macrosoft.process.interruption" as INTERRUPTION *}
+{* import "Federal.text.chat" as CHAT *}
+
+{!! ISSO SEGURA A POSIÇÃO PARA NÃO MOVER-SE DURANTE O TELEPORTE !!}
+{* macro hold_position(direction=direction) *}
+  KEYUP(FORWARD);
+  KEYUP(BACK);
+  KEYUP(LEFT);
+  KEYUP(RIGHT);
+  LOOK({{ direction }});
+  UNSPRINT();
+  KEYDOWN(SNEAK);
+{* endmacro *}
+
+{!! ISSO DESFAZ O hold_position !!}
+{* macro release_position() *}
+  KEYUP(SNEAK);
+{* endmacro *}
+
+{!! ISSO PRECEDE TODAS AS FUNÇÕES PRINCIPAIS DE TELEPORT !!}
+{* macro preface() *}
+  
+  UNSET(time_out);
+  UNSET(abort);
+  UNSET(wront_input);
+  MATCH("%XPOS%!%YPOS%!%ZPOS%","([0-9-]+)!([0-9-]+)!([0-9-]+)",{#originx,#originy,#originz});
+  IF(&inputs_[1]);
+    SET(&chat_commands,%&inputs_[1]%);
+    SET(&reference,%&inputs_[2]%);
+  ELSE;
+    SET(wront_input);
+  ENDIF;
+
+{* endmacro *}
+
+{!! ISSO INJETA OS COMANDOS NO CHAT PARA REALIZAR O TP !!}
+{* macro inject_commands(commands) *}
+
+  SET(&temp_commands,"{{ commands }}");
+  DO;
+    MATCH(%&temp_commands%,"([^&]+)?&?(.*)",{&command,&temp_commands});
+    IF(&command);
+      ECHO(%&command%);
+      SET(&teleport_last_command,%&command%);
+      LOG("§e'§3Teleport§e' §8§l%&command%");
+      IF(&temp_commands);
+        DO(20);
+        	WAIT(1t);
+        	{{ CORTEX.loop() }}
+        LOOP;
+      ENDIF;
+    ENDIF;
+    {{ CORTEX.loop() }}
+  UNTIL(!&temp_commands);
+  LOG("§e'§3Teleport§e' §8§lteleport commands done!");
+
+{* endmacro *}
+
+{* macro start_travelling(x,z,hit_target,approach,direction) *}
+
+  LOG("§e'§3Teleport§e' §8§lwaiting for travelling to start!");
+  //-----------------------------------
+  // Waits for coordinates changing
+  //-----------------------------------
+  UNSET(#loop_counter);
+  DO(60);
+    {{ hold_position(direction=direction) }}
+    INC(#loop_counter);
+  
+  	IFMATCHES(%#loop_counter%,"10|20|30|40|50|60");
+  	  LOG("§e'§3Teleport§e' Waiting... §8%#loop_counter%/60");
+  	ENDIF;
+  
+    DO(20);
+      {{ hold_position(direction=direction) }}
+    	WAIT(1t);
+    	{{ CORTEX.loop() }}
+    LOOP;
+    {{ CORTEX.loop() }}
+    
+  WHILE((#originx==%XPOS%)&&(#originy==%YPOS%)&&(#originz==%ZPOS%));
+
+  IF(interrupt);
+    SET(abort);
+  ELSE;
+    IF(#loop_counter<60);
+      LOG("§e'§3Teleport§e' §8§lOK. Travelling!");
+    ELSE;
+      SET(time_out);
+    ENDIF;
+  ENDIF;
+
+{* endmacro *}
+
+{!! ISSO CALCULA A DISTÂNCIA PARA O DESTINO !!}
+{* macro coordinate_distance(x,z,outvar='#totaldiff',auxstr='diff___') *}
+
+  #x{{ auxstr }}={{ x }}-%XPOS%;
+  #z{{ auxstr }}={{ z }}-%ZPOS%;
+  MATCH("%#x{{ auxstr }}%","\-?([0-9]+).*",{#xabs{{ auxstr }}});
+  MATCH("%#z{{ auxstr }}%","\-?([0-9]+).*",{#zabs{{ auxstr }}});
+  {{ outvar }}=%#xabs{{ auxstr }}%+%#zabs{{ auxstr }}%;
+  
+{* endmacro *}
+
+{!! ISSO TELEPORTA O PLAYER PARA UMA COORDENADA ESPECÍFICA !!}
+{* macro to_coordinate(commands,coordinates,outvar='&result',direction='NORTH') *}
+  
+  {{ preface() }}
+  
+  UNSET(timeout);
+  IF(!wrong_input);
+    
+    SET(&input_pattern,"([0-9-]+)&([0-9-]+)&([0-9-]+)");
+    IFMATCHES({{ coordinates }},%&input_pattern%);
+      MATCH({{ coordinates }},%&input_pattern%,{#target_coordx,#target_coordy,#target_coordz});
+      LOG("§e'§3Coordinate Teleport§e' §8§lDestination §8X§7%#target_coordx% §8Y§7%#target_coordy% §8Z§7%#target_coordz%");
+    ELSE;
+      SET(wrong_input);
+    ENDIF;
+
+    IF(!wrong_input);
+      {{ inject_commands(commands=commands) }}
+        
+      {{ coordinate_distance(x='%#target_coordx%',z='%#target_coordz%',outvar='#totaldiff') }}
+      IF(#totaldiff<=2);
+        LOG("§e'§3Coordinate Teleport§e' §8§lalready on the coordinates §r(%#totaldiff%)");
+      ELSE;
+        {{ start_travelling(direction=direction) }}
+      ENDIF;
+    ENDIF;
+  ENDIF;
+
+  IF(wrong_input);
+    LOG("§e'§3Coordinate Teleport§e' §4§lWrong input!");
+  ELSEIF(time_out);
+    LOG("§e'§3Coordinate Teleport§e' §4§lTimeout §7§o[1]!");
+    SET(timeout);
+  ELSEIF(abort);
+    LOG("§e'§3Coordinate Teleport§e' §4§lAborted §7§o[1]!");
+  ELSE;
+    
+    //-----------------------------------
+    // Waits for coordinates
+    //-----------------------------------
+    UNSET(#loop_counter);
+    DO(60);
+      {{ hold_position(direction=direction) }}
+      DO(20);
+        {{ hold_position(direction=direction) }}
+      	WAIT(1t);
+      	{{ CORTEX.loop() }}
+      LOOP;
+      TOGGLE(j);
+
+      IF(j);
+        KEYUP(JUMP);
+      ELSE;
+        KEYDOWN(JUMP);
+      ENDIF;
+
+      INC(#loop_counter);
+
+      IFMATCHES(%#loop_counter%,"10|20|30|40|50|60");
+        LOG("§e'§3Coordinate Teleport§e' Waiting... §8%#loop_counter%/60");
+        IF((#totaldiff<=2) && (#target_coordy<%YPOS%));//Inserts again the last command if the macro teleports to the surface
+          ECHO(%&teleport_last_command%);
+          LOG("§e'§3Coordinate Teleport§e' §f(X,Z) §ematches. But §fY §eis too high. §f§l%&teleport_last_command% §einserted §eagain...");
+        ENDIF;
+      ENDIF;
+
+      {{ coordinate_distance(x='%#target_coordx%',z='%#target_coordz%',outvar='#totaldiff') }}
+
+      {{ CORTEX.loop() }}
+
+    UNTIL((#target_coordy==%YPOS%)&&(#totaldiff<=2));
+    KEYUP(JUMP);
+    
+    {{ release_position() }}
+    {{ INTERRUPTION.check('interrupt') }}
+    SET({{ outvar }},"issue");
+    IF(interrupt);
+      LOG("§e'§3Coordinate Teleport§e' §4§lAborted §7§o[2]!");
+    ELSEIF(#loop_counter>=60);
+      LOG("§e'§3Coordinate Teleport§e' §4§lTimeout §7§o[2]!");
+      SET(timeout);
+    ELSE;
+      LOG("§e'§3Coordinate Teleport§e' §8§lOk. Coordinates reached!");
+      SET({{ outvar }},"ok");
+    ENDIF;
+
+  ENDIF;
+  
+{* endmacro *}
+
+{!! ISSO TELEPORTA O PLAYER PARA UM LUGAR QUE TENHA O LOOK DESEJADO !!}
+{* macro to_visual(commands,hit_target,outvar='&result',direction='NORTH') *}
+  
+  {{ preface() }}
+  UNSET(timeout);
+
+  IF(!wrong_input);
+    {{ inject_commands(commands=commands) }}
+    {{ start_travelling(direction=direction) }}
+  ENDIF;
+
+  IF(wrong_input);
+    LOG("§e'§3Visual Teleport§e' §4§lWrong input!");
+  ELSEIF(time_out);
+    LOG("§e'§3Visual Teleport§e' §4§lTimeout §7§o[1]!");
+    SET(timeout);
+  ELSEIF(abort);
+    LOG("§e'§3Visual Teleport§e' §4§lAborted §7§o[1]!");
+  ELSE;
+
+    //-----------------------------------
+    // Waits for reference ahead
+    //-----------------------------------
+    UNSET(#loop_counter);
+    DO(60);
+      {{ hold_position(direction=direction) }}
+      IFMATCHES(%HITID%,"{{ hit_target }}");
+        BREAK;
+      ELSE;
+
+        TOGGLE(j);
+
+        IF(j);
+          KEYUP(JUMP);
+        ELSE;
+          KEYDOWN(JUMP);
+        ENDIF;
+
+        INC(#loop_counter);
+
+        IFMATCHES(%#loop_counter%,"10|20|30|40|50|60");
+          LOG("§e'§3Visual Teleport§e' Waiting... §8%#loop_counter%/60");
+        ENDIF;
+
+        DO(20);
+          {{ hold_position(direction=direction) }}
+        	WAIT(1t);
+        	{{ CORTEX.loop() }}
+        LOOP;
+            
+      ENDIF;
+
+      {{ CORTEX.loop() }}
+
+    UNTIL(interruption_);
+
+    KEYUP(JUMP);
+    
+    {{ release_position() }}
+    {{ INTERRUPTION.check('interrupt') }}
+    SET({{ outvar }},"issue");
+    IF(interrupt);
+      LOG("§e'§3Visual Teleport§e' §4§lAborted §7§o[2]!");
+    ELSEIF(#loop_counter>=60);
+      LOG("§e'§3Visual Teleport§e' §4§lTimeout §7§o[2]!");
+      SET(timeout);
+    ELSE;
+      LOG("§e'§3Visual Teleport§e' §8§lOk. Coordinates reached!");
+      SET({{ outvar }},"ok");
+    ENDIF;
+
+  ENDIF;
+  
+{* endmacro *}

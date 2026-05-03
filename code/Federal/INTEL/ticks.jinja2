@@ -1,0 +1,32 @@
+{* set rand = range(1,9999999)|random *}
+
+{* macro diff(timestamp1, timestamp2, outvar='#diff') *}
+  
+  {* if timestamp2 *}
+    TICKSDIFF({{ timestamp1 }},{{ timestamp2 }},{{ outvar }});
+  {* else *}
+    TICKSDIFF({{ timestamp1 }},{{ outvar }});
+  {* endif *}
+
+{* endmacro *}
+
+{*
+	macro parse(
+		ticks,
+		outvar_years='#years'~rand,
+		outvar_months='#months'~rand,
+		outvar_days='#days'~rand,
+		outvar_hours='#hours'~rand,
+		outvar_minutes='#minutes'~rand,
+		outvar_seconds='#seconds'~rand,
+		outvar_ticks='#ticks'~rand
+	)
+*}
+
+PARSETICKSPERIOD({{ ticks }},{{ outvar_years }},{{ outvar_months }},{{ outvar_days }},{{ outvar_hours }},{{ outvar_minutes }},{{ outvar_seconds }},{{ outvar_ticks }});
+
+{* endmacro *}
+
+{* macro timestamp(outvar='#timestamp') *}
+  TICKSTIMESTAMP({{ outvar }});
+{* endmacro *}

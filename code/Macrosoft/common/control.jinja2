@@ -1,0 +1,135 @@
+{* import 'Macrosoft.common.autopilot' as AUTOPILOT *}
+{* import 'Macrosoft.TASK.extension' as EXTENSION *}
+{* import 'Federal.data_structures.dict' as DICT *}
+
+{* set default_global_var = '@switch_'~this.csid|replace('-','_')|replace_especial_alphabetic_chars|lower~'_'~dev|replace('-','_')|lower *}
+{* set default_on_message = '§a[§a§lON§a] §7'~this.name *}
+{* set default_off_message = '§c[§c§lOFF§c] §7'~this.name  *}
+{* set default_restarted_suffix = '§8§lrestarted!' *}
+{* set default_delay_command = 'WAIT(1t);' *}
+
+{* macro switch_extensions(extensions=[], unregister=False) *}
+	{* set r = nid() *}
+	{* if extensions|length > 0 *}
+		{* if unregister *}
+			{* for ext in extensions *}
+				{{
+					EXTENSION.service.unregister(
+						name=ext.name
+					)
+				}}
+			{* endfor *}
+			
+		{* else *}
+			{* for ext in extensions *}
+				{{
+					EXTENSION.service.register(
+						name=ext.name if ext.name else 'extension',
+						id=ext.id,
+						outvar=ext.outvar if ext.outvar else '&info'~r,
+						success_outvar=ext.success_outvar if ext.success_outvar else 'success'~r,
+						arguments=ext.arguments if ext.arguments else [],
+						timeout=ext.timeout if ext.timeout else 120,
+						debug=ext.debug if ext.debug else False
+					)
+				}}
+				IF(!{{ ext.success_outvar if ext.success_outvar else 'success'~r }});
+					LOG("§4§l✗ §7§lUnable to register extension §f{{ ext.name }}");
+				ENDIF;
+			{* endfor *}
+			
+		{* endif *}
+	{* endif *}
+{* endmacro *}
+
+{* macro basic_switch(
+	on_message=default_on_message,
+	off_message=default_off_message,
+	restarted_suffix=default_restarted_suffix,
+	global_var=default_global_var,
+	commands_on_off=[],
+	autopilot=False,
+	autopilot_seconds_limit=15,
+	was_restarted_outvar='was_restarted_by_autopilot',
+	extensions=[]
+)
+*}
+
+{{ default_delay_command }} //Adicionado para resolver problemas de crash
+TOGGLE({{ global_var }});
+{* if autopilot *} //Com piloto automático
+	UNSET({{ was_restarted_outvar }});
+	{* set should_restart_var = 'should_restart_var'~range(1,9999999)|random *}
+	{{ AUTOPILOT.should_restart(booloutvar=should_restart_var, seconds_limit=autopilot_seconds_limit) }}
+	IF((!{{ global_var }})&&(!{{ should_restart_var }}));//Só desliga se a variável
+		{{ AUTOPILOT.remove() }}
+		{* if commands_on_off is iterable and commands_on_off is not string *}
+		  {* set _ = commands_on_off.append(default_delay_command) *}
+		{* endif *}
+		{* for command in commands_on_off *}
+			{{ command }}
+		{* endfor *}
+		{{ switch_extensions(extensions=extensions, unregister=True) }}
+		{* if off_message != None *}
+		  LOG("{{ off_message }}");
+		{* endif *}
+		STOP("{{ this.name }}");
+	ELSEIF({{ should_restart_var }});
+		SET({{ global_var }});
+		SET({{ was_restarted_outvar }});
+		{* if on_message != None *}
+      LOG("{{ on_message }} {{ restarted_suffix }}");
+    {* endif *}
+		{{ switch_extensions(extensions=extensions) }}
+	ELSE;
+	  {* if on_message != None *}
+		  LOG("{{ on_message }}");
+		{* endif *}
+		{{ AUTOPILOT.add() }}
+		{{ switch_extensions(extensions=extensions) }}
+	ENDIF;
+	
+{* else *} //Sem piloto automático
+	
+	IF(!{{ global_var }});
+	  {* if commands_on_off is iterable and commands_on_off is not string *}
+		  {* set _ = commands_on_off.append(default_delay_command) *}
+		{* endif *}
+		{* for command in commands_on_off *}
+			{{ command }}
+		{* endfor *}
+		{{ switch_extensions(extensions=extensions, unregister=True) }}
+		{* if off_message != None *}
+		  LOG("{{ off_message }}");
+		{* endif *}
+		STOP("{{ this.name }}");
+	ELSE;
+	  {* if on_message != None *}
+		  LOG("{{ on_message }}");
+		{* endif *}
+		{{ switch_extensions(extensions=extensions) }}
+	ENDIF;
+	
+{* endif *}
+
+{* endmacro *}
+
+{* set switch = basic_switch *}
+
+{* macro turn_off(global_var=default_global_var, off_message=default_off_message, autopilot=False,commands_on_off=[], extensions=[]) *}
+	UNSET({{ default_global_var }});
+	{{ default_delay_command }} //Adicionado para resolver problemas de crash
+	{* if autopilot *}
+		{{ AUTOPILOT.remove() }}
+	{* endif *}
+	{* for command in commands_on_off *}
+		{{ command }}
+	{* endfor *}
+	{{ switch_extensions(extensions=extensions, unregister=True) }}
+	{* if off_message != None *}
+	  LOG("{{ off_message }}");
+  {* endif *}
+	STOP("{{ this.name }}");
+{* endmacro *}
+
+

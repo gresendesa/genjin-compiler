@@ -1,0 +1,176 @@
+//Este template implementa o esquema de dicionários
+//Os dados são armazenados no seguinte formato
+//{key1}=>{value1}{key2}=>{value2}{key3}=>{value3}...
+//Única regra: não use os caracteres '⦃⦄'
+{* set left_item_border = '⦃' *}
+{* set right_item_border = '⦄' *}
+{* set key_value_glue = '→' *}
+
+{* set rid = range(1111111,9999999)|random *} //random id
+
+{!! DESTROY SOURCE !!}
+{* macro print(source, global=False, auxlabel='aux',l=left_item_border,r=right_item_border) *}
+	{* set varprefix = '@' if global else '' *}
+	SET(&dictcopy{{ rid }},%{{ varprefix~'&'~source }}%);
+	DO;
+		IFMATCHES("%&dictcopy{{ rid }}%","^{{ l }}[^{{ r }}]+{{ r }}→{{ l }}[^{{ r }}]*{{ r }}.*",&dictvalueaux{{ rid }});
+			UNSET(&dictgroups{{ rid }}[]);
+			MATCH(%&dictvalueaux{{ rid }}%,"^{{ l }}([^{{ r }}]+){{ r }}→{{ l }}([^{{ r }}]*){{ r }}(.*)",&dictgroups{{ rid }}[]);
+			LOG("§7%&dictgroups{{ rid }}[1]% §8→ §f%&dictgroups{{ rid }}[2]%");
+			SET(&dictcopy{{ rid }},%&dictgroups{{ rid }}[3]%)
+		ELSE;
+			BREAK;
+		ENDIF;
+	LOOP;
+{* endmacro *}
+
+{!! DESTROY SOURCE !!}
+{* macro destroy(source, global=False) *}
+	{* set varprefix = '@' if global else '' *}
+	UNSET({{ varprefix~'&'~source }});
+{* endmacro *}
+
+{!! IT UPDATES THE DATABASE !!}
+{* macro update(source, dict, global=False, auxlabel='aux',command='SET',replace=False,l=left_item_border,r=right_item_border) *}
+	{* set varprefix = '@' if global else '' *}
+	{* if replace *}
+	{* set container = [] *}
+	{* for key, value in dict.items()|sort(attribute='0') *}
+	{* set aux_container = container.append(l~key~r~'→'~l~value~r) *}
+	{* endfor *}
+	{{ command }}({{ varprefix~'&'~source }},"{{ container|join('') }}");
+	{* else *}
+	{* for key, value in dict.items()|sort(attribute='0') *}
+	SET(&dictcopy{{ rid }},%{{ varprefix~'&'~source }}%);
+	IFMATCHES("%&dictcopy{{ rid }}%",{{ '"('~l~key~r~'→'~l~'[^'~r~']*'~r~')"' }},&dictvalueaux{{ rid }},1);
+		REPLACE({{ varprefix~'&'~source }},%&dictvalueaux{{ rid }}%,"{{ l~key~r~'→'~l~value~r }}");
+	ELSE;
+		{{ command }}({{ varprefix~'&'~source }},"%&dictcopy{{ rid }}%{{ l~key~r~'→'~l~value~r }}");
+	ENDIF;
+	{* endfor *}
+	{* endif *}
+	
+{* endmacro *}
+
+{!! GET A RECORD BY KEY !!}
+{* macro remove(source, key, global=False, auxlabel='aux',l=left_item_border,r=right_item_border) *}
+	{* set varprefix = '@' if global else '' *}
+	IFMATCHES("%{{ varprefix~'&'~source }}%",{{ '"('~l~key~r~'→'~l~'[^'~r~']*'~r~')"' }},&dictvalueaux{{ rid }},1);
+		REPLACE({{ varprefix~'&'~source }},%&dictvalueaux{{ rid }}%,"");
+	ENDIF;
+{* endmacro *}
+
+{!! GET A VALUE BY KEY !!}
+{* macro get(source, key, outvar, global=False,l=left_item_border,r=right_item_border) *}
+	{* set varprefix = '@' if global else '' *}
+	UNSET({{ outvar }});
+	//MATCH("%{{ varprefix~'&'~source }}%",{{ '"'~l~key~r~'→'~l~'([^'~r~']*)?'~r~'"' }},{{ '{'~outvar~'}' }});
+	UNSET({{ outvar }}dictarray{{ rid }}[]);
+	MATCH("%{{ varprefix~'&'~source }}%",{{ '"'~l~key~r~'→'~l~'([^'~r~']*)?'~r~'"' }},{{ outvar }}dictarray{{ rid }}[]);
+	SET({{ outvar }},%{{ outvar }}dictarray{{ rid }}[1]%);
+{* endmacro *}
+
+{!! CHECK KEY EXISTS !!}
+{* macro key_exists(source, key, outvar, global=False,l=left_item_border,r=right_item_border) *}
+	{* set varprefix = '@' if global else '' *}
+	UNSET({{ outvar }});
+	IFMATCHES("%{{ varprefix~'&'~source }}%",{{ '"('~l~key~r~'→'~l~'[^'~r~']*'~r~')"' }});
+	  SET({{ outvar }});
+	ENDIF;
+{* endmacro *}
+
+{!! Id dumps all the content dict to a var  !!}
+{* macro read(source, outvar,global=False) *}
+	{* set varprefix = '@' if global else '' *}
+	SET({{ outvar }},"%{{ varprefix~'&'~source }}%");
+{* endmacro *}
+
+{!! Id write a raw dict (read from read()) into a source  !!}
+{* macro write_to(source, content,global=False) *}
+	{* set varprefix = '@' if global else '' *}
+	SET({{ varprefix~'&'~source }},"{{ content }}");
+{* endmacro *}
+
+{*
+	set testes = [
+		{
+			'operation':'update',
+		'input':{'nome':'Escadas Rolantes','id':'78:9','preco':'44.69'},
+		'expected':'',
+		'verify': False,
+		'replace': True
+		},
+		{
+			'operation':'get',
+			'input':'preco',
+			'expected':'44.69',
+			'verify': True,
+		},
+		{
+			'operation':'get',
+			'input':'nome',
+			'expected':'Escadas Rolantes',
+			'verify': True,
+		},
+		{
+			'operation':'get',
+			'input':'id',
+			'expected':'78:9',
+			'verify': True,
+		},
+		{
+			'operation':'update',
+		'input':{'preco':'890.9'},
+		'expected':'',
+		'verify': True,
+		'replace': False
+		},
+		{
+			'operation':'get',
+			'input':'preco',
+			'expected':'890.9',
+			'verify': True,
+		},
+		
+	]
+*}
+
+{* set temprid = 'source'~range(0000000,9999999)|random *}
+
+{* macro test_module(tests=testes, test_source=temprid) *}
+	
+	{* for teste in testes *}
+	
+  	{* if teste.operation == 'update' *}
+  	
+    	{{ update(source=test_source, dict=teste.input, replace=teste.replace) }}
+    	
+    	{* if teste.verify *}
+  	
+  	{* endif *}
+  	
+  	{* elif teste.operation == 'get' *}
+  	
+    	{{ get(source=test_source, key=teste.input, outvar='&value') }}
+    	{* if teste.verify *}
+      	IF(&value=="{{ teste.expected }}");
+      		LOG("§aOK - Sucesso em get.");
+      	ELSE;
+      		LOG("§cERROR - Obtive valor %&value% mas esperava {{ teste.expected }}");
+      	ENDIF;
+    	{* endif *}
+  	
+  	{* elif teste.operation == 'destroy' *}
+  	
+  	  {{ destroy(source=test_source) }}
+  	
+  	{* elif teste.operation == 'remove' *}
+  	
+  	{* else *}
+  	
+  	{* endif *}
+	
+	{* endfor *}
+	
+{* endmacro *}
+

@@ -1,0 +1,212 @@
+{!! ============================= PROCESS ==============================  !!}
+
+{* set id = '&resource_id__' *}
+
+{!! ============================= RESTART ==============================  !!}
+
+{* set start_forced = '&force_start__' *}
+
+{!! ============================= IO ==============================  !!}
+
+{* macro inform(msg,pname) *} {!! DEFINE UMA MENSAGEM NO CANAL DE STATUS !!}
+	{* if pname *}
+		{* if '%' in pname *}
+			SET(&channel___,"@&{{ pname }}_status___");
+			SET("%&channel___%","{{ msg }}");
+		{* else *}
+			SET("@&{{ pname }}_status___","{{ msg }}");
+		{* endif *}
+	{* else *}
+		SET(%&status___%,"{{ msg }}");
+	{* endif *}
+{* endmacro *}
+
+{* macro publish(msg,pname) *} {!! DEFINE UMA MENSAGEM DE SAÍDA NO CANAL OUT !!}
+	{* if pname *}
+		{* if '%' in pname *}
+			SET(&channel___,"@&{{ pname }}_");
+			SET("%&channel___%","{{ msg }}");
+		{* else *}
+			SET("@&{{ pname }}_","{{ msg }}");
+		{* endif *}
+	{* else *}
+		SET(%&out___%,"{{ msg }}");
+	{* endif *}
+{* endmacro *}
+
+{* macro receive(varname) *} {!! LÊ A MENSAGEM DO CANAL IN, REMOVE MENSAGEM E GUARDA EM UMA VARIÁVEL !!}
+	SET(&in__,%%&in___%%);
+	IF(&in__)
+		UNSET(%&in___%);
+	ENDIF;
+	SET({{ varname }},%&in__%);
+{* endmacro *}
+
+{* macro send(pname, msg) *} {!! ENVIA UMA MENSAGEM PROCESSO, NO CANAL CANAL IN DESSE PROCESSO !!}
+	{* if '%' in pname *}
+		SET(&channel___,"@&{{ pname }}__");
+		SET("%&channel___%","{{ msg }}");
+	{* else *}
+		SET(@&{{ pname }}__,"{{ msg }}");
+	{* endif *}
+{* endmacro *}
+
+{* macro read(pname, varname) *} {!! LÊ UMA MENSAGEM DO CANAL OUT DE UM PROCESSO, REMOVE A MENSAGEM E GUARDA EM UMA VARIÁVEL !!}
+	{* if '%' in pname *}
+		SET(&channel___,"@&{{ pname }}_");
+		SET({{ varname }},%%&channel___%%);
+	{* else *}
+		SET({{ varname }},%@&{{ pname }}_%);
+	{* endif *}
+	IF({{ varname }});
+		{* if '%' in pname *}
+			UNSET(%&channel___%);
+		{* else *}
+			UNSET(@&{{ pname }}_);
+		{* endif *}
+	ENDIF;
+{* endmacro *}
+
+{* macro read_status(pname, varname) *} {!! LÊ UMA MENSAGEM DO CANAL STATUS DE UM PROCESSO E GUARDA EM UMA VARIÁVEL !!}
+	{* if '%' in pname *}
+		SET(&channel___,"@&{{ pname }}_status___");
+		SET({{ varname }},%%&channel___%%);
+	{* else *}
+		SET({{ varname }},%@&{{ pname }}_status___%);
+	{* endif *}
+{* endmacro *}
+
+{* macro check(channel, varname) *} {!! Checa o conteúdo de algum canal do próprio processo e guarda em uma variável !!}
+	{* if channel == 'in' *}
+		SET({{ varname }},%%&in___%%);
+	{* elif channel == 'out' *}
+		SET({{ varname }},%%&out___%%);
+	{* elif channel == 'status' *}
+		SET({{ varname }},%%&status___%%);
+	{* endif *}
+{* endmacro *}
+
+{!! ============================= TRANSITION ==============================  !!}
+
+{* macro jump(task) *} {!! PULA PARA TASK !!}
+	SET(&transition_,"jump {{ task }}({{ varargs|join(',') }})");
+	SET(interrupt_);
+{* endmacro *}
+
+{* macro call(task) *} {!! CHAMA TASK !!}
+	SET(&transition_,"call {{ task }}({{ varargs|join(',') }})");
+	SET(interrupt_);
+{* endmacro *}
+
+{* macro return(value) *} {!! RETORNA UM VALOR !!}
+	SET(&transition_,"return {{ value }}");
+	SET(interrupt_);
+{* endmacro *}
+
+{* macro value(varname) *} {!! PEGA O VALOR RETORNADO !!}
+	SET({{ varname }},%&value__%);
+{* endmacro *}
+
+{* set value = '&value__' *} {!! PEGA A VARIÁVEL DO VALOR RETORNADO !!}
+
+{* macro last_task(varname) *} {!! PEGA O NOME DA ÚLTIMA TASK EXECUTADA !!}
+	SET({{ varname }},%&ltask__%);
+{* endmacro *}
+
+{* set last_task = '&ltask__' *} {!! INJETA DIRETAMENTE O NOME DA ÚLTIMA TASK EXECUTADA !!}
+
+{* macro get(pos,varname) *} {!! PEGA O VALOR DE UM ARGUMENTO E COLOCA EM UMA VARIÁVEL !!}
+	SET({{ varname }},%&args__[{{ pos }}]%);
+{* endmacro *}
+
+{* macro is_callback(varname) *} {!! PEGA O VALOR DA FLAG DE CALLBACK E COLOCA NA VARIÁVEL INFORMADA !!}
+	SET({{ varname }},%callback__%);
+{* endmacro *}
+
+{* set is_callback = 'callback__' *} {!! RETORNA O VALOR DA FLAG DE CALLBACK DIRETAMENTE !!}
+
+{!! ============================= EXCEPTIONS ==============================  !!}
+
+{* macro catch(varname) *} {!! ARMAZENA O VALOR DA EXCEÇÃO EM UMA VARIÁVEL INFORMADA !!}
+	SET({{ varname }},%&exception__%);
+	UNSET(&exception__);
+{* endmacro *}
+
+{* macro raise(message) *} {!! DEFINE O VALOR DA EXCEÇÃO PARA A PRÓXIMA TASK !!}
+	SET(&raise_,"{{ message }}");
+{* endmacro *}
+
+{* set exception = '&exception__' *} {!! RETORNA A VARIÁVEL QUE ARMAZENA A EXCEÇÃO DIRETAMENTE !!}
+
+{!! ============================= INTERRUPTIONS ==============================  !!}
+
+{* macro block() *} {!! INTERROMPE EXECUÇÃO DE DEMAIS AÇÕES !!}
+	BREAK;
+{* endmacro *}
+
+{* macro pause(msg) *} {!! PAUSA A EXECUÇÃO !!}
+	SET(pause___);
+	{* if msg *}
+		SET(%&out___%,"{{ msg }}");
+	{* endif *}
+{* endmacro *}
+
+{* macro stop(msg) *} {!! FINALIZA A EXECUÇÃO !!}
+	SET(stop___);
+	{* if msg *}
+		SET(%&out___%,"{{ msg }}");
+	{* endif *}
+{* endmacro *}
+
+{* macro force_pause(msg) *} {!! PAUSA A EXECUÇÃO SEM QUE O ENDPOINT SEJA CHAMADO !!}
+	SET(force_interruption_);
+	{{ pause(msg) }}
+{* endmacro *}
+
+{* macro force_stop(msg) *} {!! FINALIZA A EXECUÇÃO SEM QUE O ENDPOINT SEJA CHAMADO !!}
+	SET(force_interruption_);
+	{{ stop(msg) }}
+{* endmacro *}
+
+{* macro interrupt() *} {!! INTERROMPE O PROCESSO !!}
+	SET(interrupt_);
+{* endmacro *}
+
+{* set interruptions = "^stop ?(.*)?|^pause ?(.*)?|^play!?(\S*)? ?(.*)?" *}
+
+{* macro loop() *} {!! FORÇA A FINALIÇÃO DE LOOPS PELO PROTOCOLO !!}
+	SET(&in__,%%&in___%%);
+	IFMATCHES(%&in__%,"{{ interruptions }}");
+		BREAK;
+	ELSEIF((interrupt_) || (pause___) || (stop___) || (emergency_exit___));
+		BREAK;
+	ELSEIF({{ this.emergency_key }});
+		SET(emergency_exit___);
+		BREAK;
+	ENDIF;
+{* endmacro *}
+
+{!! ============================= DELAYS ==============================  !!}
+
+{* macro wait(ticks) *} {!! DEFINE UM WAIT CONTROLADO !!}
+	DO({{ ticks }});
+		{{ loop() }}
+		WAIT(1t);
+	LOOP;
+{* endmacro *}
+
+{!! ============================= ACESS POINTS ==============================  !!}
+
+{* macro entrypoint(task) *} {!! DEFINE O ENTRYPOINT DO PROCESSO !!}
+	SET(&entrypoint__,"{{ task }}");
+{* endmacro *}
+
+{* macro endpoint(task) *} {!! DEFINE O ENDPOINT DO PROCESSO !!}
+	SET(&endpoint__,"{{ task }}");
+{* endmacro *}
+
+{* macro skip_endpoint() *} {!! IGNORA O ENDPOINT DO PROCESSO NO LOOP ATUAL !!}
+	SET(force_interruption_);
+{* endmacro *}
+
+

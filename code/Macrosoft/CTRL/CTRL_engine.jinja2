@@ -1,0 +1,100 @@
+{* import 'Macrosoft.CTRL.compontents' as CTRL *}
+{* import 'Macrosoft.common.control' as CONTROL *}
+
+{* macro generate_code(inner,pname,on_off=None,extensions=[],name=this.name,csid=this.csid,entrypoint='main',emergency_key='KEY_DELETE',endpoint='',unsafe=None,production=True,debug=False,verbose=True) *}
+	
+	{*
+		set project = {
+			'name': name,
+			'csid': csid,
+			'pname': pname,
+			'unsafe': unsafe,
+			'production': production,
+			'debug': debug,
+			'verbose':verbose,
+			'emergency_key': emergency_key,
+			'entrypoint': entrypoint,
+			'endpoint': endpoint
+		}
+	*}
+
+  {* macro things_to_execute_on_off(project) *}
+    {* if on_off is callable *}
+      {{ on_off() }}
+    {* endif *}
+    {* set foo = project.update({'verbose': False}) *}
+	  {{ CTRL.finalize_section(project) }}
+  {* endmacro *}
+
+	$${
+	WAIT(1t);	
+	//============================================
+	//	Initializer part
+	//============================================
+	
+	{* if project.unsafe is not none *}
+		;UNSAFE({{ project.unsafe }});
+	{* endif *}
+	
+	{{ CTRL.initilizer_section(project) }}
+	IF(!&force_start__);
+    {{ 
+      CONTROL.switch(
+        on_message=None,
+        off_message='§8§l%&pname__% §c●',
+        commands_on_off=[things_to_execute_on_off(project)],
+        extensions=extensions
+      ) 
+    }}
+  ENDIF;
+  
+	DO;
+		
+		//============================================
+		//	Pause part
+		//============================================
+		{{ CTRL.pause_section(project) }}
+		
+		//============================================
+		//	Process content
+		//============================================
+		IF({{ CTRL.interruptions_not }});
+			{!! 
+				Este status foi removido daqui porque decidi que precisa
+				indicar o status playing.
+		  !!}
+			{!! CTRL.set_status("playing") !!}
+			
+			{!! block inner !!}
+			{{ inner(project) }}
+			{!! endblock !!}
+			
+		ENDIF;
+		
+		//============================================
+		//	Messenger content
+		//============================================
+		{{ CTRL.finalize_section(project) }}
+		
+	UNTIL({{ CTRL.interruptions_stop }});
+	
+	{* if project.unsafe is not none *}
+		ENDUNSAFE;
+	{* endif *}
+
+  {{ 
+    CONTROL.turn_off(
+      off_message='§8§l%&pname__% §c●',
+      commands_on_off=[things_to_execute_on_off(project)],
+      extensions=extensions
+    ) 
+  }}
+
+	{* if project.production *}
+		}$$
+	{* endif *}
+
+{* endmacro *}
+
+		
+		

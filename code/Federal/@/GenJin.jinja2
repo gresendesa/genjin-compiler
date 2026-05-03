@@ -1,0 +1,1147 @@
+/**
+	* TODO (em 19/10/2025)
+	* Tornar códigos únicos por nome e número.
+	* Tornar blocos únicos por nome.
+**/
+
+/**
+	* É MUITO importante distinguir entre tempo de compilação e tempo de execução
+	* As macros jinja são apenas tempo de compilação
+*/
+//--utils
+{* macro filter_list_objects(list_objects, attribute, value, jinja_out_var, attribute_of_attribute=None) *}
+	{* for obj in list_objects *}
+		{* if attribute_of_attribute is string *}
+			{* if obj[attribute][attribute_of_attribute] == value *}
+				{* set _ = jinja_out_var.append(obj) *}
+			{* endif *}
+		{* else *}
+		{* endif *}
+		{* if obj[attribute] == value *}
+			{* set _ = jinja_out_var.append(obj) *}
+		{* endif *}
+	{* endfor *}
+{* endmacro *}
+
+{* macro is_list(value, jinja_list_out_var) *}
+	{* if value is iterable and (value is not string and value is not mapping) *}
+		{* set _ = jinja_list_out_var.append(True) *}
+	{* else *}
+		{* set _ = jinja_list_out_var.append(False) *}
+	{* endif *}
+{* endmacro *}
+
+{* macro is_dict(value, jinja_list_out_var) *}
+	{* if value is iterable and value is mapping *}
+		{* set _ = jinja_list_out_var.append(True) *}
+	{* else *}
+		{* set _ = jinja_list_out_var.append(False) *}
+	{* endif *}
+{* endmacro *}
+
+
+//
+{*
+	set ATTRIBUTE = {
+		'NAME': 'name',
+		'DEFAULT': 'default',
+		'TYPE': 'type',
+		'VALUE': 'value',
+		'CARDINALITY': 'cardinality',
+		'EVALUATION': 'evaluation',
+		'EVALUATE_VAR': 'eval_var',
+		'CASES': 'cases',
+		'KEYWORD_ARGS': 'kwargs',
+		'LOOP_WHILE': 'loop_while',
+		'PASS_CODES': 'pass_codes',
+		'MACRO': 'macro',
+		'DESCRIPTION': 'description',
+		'PARAMETERS': 'parameters',
+		'VARIABLES': 'variables',
+		'PROCEDURES': 'procedures',
+		'PROCEDURE': 'procedure',
+		'VARIABLE': 'variable',
+		'BLOCK': 'block',
+		'OUTPUT_CODES': 'output_codes',
+		'OUTPUT_CODE': 'output_code',
+		'CODE': 'code',
+		'ID': 'id'
+	}
+*}
+
+{*
+	set STAGE = {
+		'BEFORE_PROCEDURE': 'before_procedure',
+		'AFTER_PROCEDURE': 'after_procedure'
+	}
+*}
+
+//-------------------------------
+
+{*
+	set TYPE = {
+		'LOGIC': 'logic',
+		'NUMBER': 'number',
+		'TEXT': 'text',
+		'OBJECT': 'object'
+	}
+*}
+
+{*
+	set CARDINALITY = {
+		'SINGULAR': 'singular',
+		'PLURAL': 'plural'
+	}
+*}
+
+{*
+	set EVALUATION = {
+		'LITERAL': 'literal',
+		'REFERENCE': 'reference'
+	}
+*}
+
+///------------------ procedures
+
+{* macro proc_a(outvar, baz) *}
+	LOG("----> Rodando o proc_a aqui <---- {{ outvar }} : {{ baz }}");
+{* endmacro *}
+
+{* macro proc_b(outvar, baz) *}
+	LOG("----> Rodando o proc_b aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_c(outvar, myarray) *}
+	LOG("----> Rodando o proc_c aqui <---- {{ outvar }} ::: {{ myarray }}");
+{* endmacro *}
+
+{* macro proc_d(outvar) *}
+	LOG("----> Rodando o proc_d aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_x(outvar) *}
+	LOG("----> Rodando o proc_x aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_e(outvar, custom_var, binba) *}
+	LOG("----> Rodando o proc_e aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_f(outvar) *}
+	LOG("----> Rodando o proc_f aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_custom_break(outvar) *}
+	LOG("----> Rodando o proc_custom_break aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_custom_exit(outvar) *}
+	LOG("----> Rodando o exit aqui <---- {{ outvar }}");
+{* endmacro *}
+
+{* macro proc_object(outvar, obj) *}
+	LOG("----> OBJ: {{ obj }} <---- {{ outvar }}");
+{* endmacro *}
+
+//===== ARGUMENTS ============
+
+{* macro macromod_variable_renderer(CORE, variable, jinja_out_var) *}
+	{* if variable[ATTRIBUTE.TYPE] == TYPE.LOGIC *}
+		{* set prefix = '' *}
+	{* elif variable[ATTRIBUTE.TYPE] == TYPE.NUMBER *}
+		{* set prefix = '#' *}
+	{* elif variable[ATTRIBUTE.TYPE] == TYPE.TEXT *}
+		{* set prefix = '&' *}
+	{* else *}
+		{{ raise("Variable '"~variable[ATTRIBUTE.NAME]~"' has type '"~variable[ATTRIBUTE.TYPE]~"' which is not allowed! Use just LOGIC, NUMBER or TEXT") }}
+	{* endif *}
+	{* set _ = jinja_out_var.update({ATTRIBUTE.NAME: prefix~variable[ATTRIBUTE.NAME]~variable[ATTRIBUTE.ID]}) *}
+{* endmacro *}
+
+{* macro macromod_set_variable(CORE, variable, value) *}
+	{* set mapping_var = {} *}
+	{{ CORE.language.render_variable_name(CORE=CORE, variable=variable, jinja_out_var=mapping_var) }}
+	{* set variable_name = mapping_var[ATTRIBUTE.NAME] *}
+	{* if variable[ATTRIBUTE.TYPE]==TYPE.TEXT *}
+		SET({{ variable_name }},"{{ value }}");
+	{* else *}
+		SET({{ variable_name }},{{ value }});
+	{* endif *}
+{* endmacro *}
+
+{* macro macromod_get_variable_value(CORE, variable, jinja_out_var) *}
+	{* set mapping_var = {} *}
+	{{ CORE.language.render_variable_name(CORE=CORE, variable=variable, jinja_out_var=mapping_var) }}
+	{* set value_of_variable = '%'~mapping_var[ATTRIBUTE.NAME]~'%' *}
+	{* set _ = jinja_out_var.update({ATTRIBUTE.VALUE: value_of_variable}) *}
+{* endmacro *}
+
+{* macro macromod_decision_structure_variable_value_equality_renderer(CORE, macro, variable, value, close_structure=True) *}
+	
+	{* set outvar_variable_dict = {} *}
+	{{ CORE.language.render_variable_name(CORE=CORE, variable=variable, jinja_out_var=outvar_variable_dict) }}
+	{* set variable_name_rendered = outvar_variable_dict[ATTRIBUTE.NAME] *}
+	
+	{* if variable[ATTRIBUTE.TYPE]==TYPE.TEXT *}
+		{{ 'IF('~variable_name_rendered~'=="'~value~'");' }}
+	{* else *}
+		{{ 'IF('~variable_name_rendered~'=='~value~');' }}
+	{* endif *}
+	{{ macro(CORE) }}
+	{* if close_structure *}
+		{{ 'ENDIF;' }}
+	{* endif *}
+	
+{* endmacro *}
+
+{* macro macromod_decision_structure_variable_value_disjunction_renderer(CORE, macro, variable, values, close_structure=True) *}
+	
+	{* set outvar_variable_dict = {} *}
+	{{ CORE.language.render_variable_name(CORE=CORE, variable=variable, jinja_out_var=outvar_variable_dict) }}
+	{* set variable_name_rendered = outvar_variable_dict[ATTRIBUTE.NAME] *}
+	
+	{* set conditions = [] *}
+	{* for value in values *}
+		{* if variable[ATTRIBUTE.TYPE]==TYPE.TEXT *}
+			{* set _ = conditions.append('('~variable_name_rendered~'=="'~value~'")') *}
+		{* else *}
+			{* set _ = conditions.append('('~variable_name_rendered~'=='~value~')') *}
+		{* endif *}
+	{* endfor *}
+	
+	{* if conditions|length > 0 *}
+		{* if conditions|length > 1 *}
+			{{ 'IF('~conditions|join('||')~');' }}
+		{* else *}
+			{{ 'IF'~conditions|join('||')~';' }}
+		{* endif *}
+		{{ macro(CORE) }}
+		{* if close_structure *}
+			{{ 'ENDIF;' }}
+		{* endif *}
+	{* else *}
+		{!! Se por algum motivo a lista de valores estiver vazia, não renderiza nada !!}
+	{* endif *}
+	
+{* endmacro *}
+
+{* macro macromod_render_conditional_loop(CORE, macro, variable, codes) *}
+	
+	{* set outvar_variable_dict = {} *}
+	{{ CORE.language.render_variable_name(CORE=CORE, variable=variable, jinja_out_var=outvar_variable_dict) }}
+	{* set variable_name_rendered = outvar_variable_dict[ATTRIBUTE.NAME] *}
+	
+	{* set codes_é_list = [] *}
+	{{ is_list(codes, codes_é_list) }}
+	
+	{* if codes_é_list[0] and codes | length > 0 *}
+		{* set codes_rendered = [] *}
+		{* set prefix = '(' *}
+		{* set suffix = ')' *}
+		{* if codes | length == 1 *}
+			{* set prefix = '' *}
+			{* set suffix = '' *}
+		{* endif *}
+		{* for code in codes *}
+			{* if variable[ATTRIBUTE.TYPE]==TYPE.TEXT *}
+				{* set _ = codes_rendered.append(prefix~variable_name_rendered~'=="'~code~'"'~suffix) *}
+			{* else *}
+				{* set _ = codes_rendered.append(prefix~variable_name_rendered~'=='~code~suffix) *}
+			{* endif *}
+		{* endfor *}
+		DO;
+			{{ macro() }}
+		WHILE({{ codes_rendered | join('||') }});
+	{* else *}
+		{{ macro() }}
+	{* endif *}
+	
+{* endmacro *}
+
+{*
+	set MACROMOD = {
+		'render_variable_name': macromod_variable_renderer,
+		'render_decision_structure_variable_value_equality': macromod_decision_structure_variable_value_equality_renderer,
+		'render_decision_structure_variable_value_disjunction': macromod_decision_structure_variable_value_disjunction_renderer,
+		'set_variable': macromod_set_variable,
+		'get_variable_value': macromod_get_variable_value,
+		'render_conditional_loop': macromod_render_conditional_loop
+	}
+*}
+
+{*
+	set output_code = {
+		'SUCCESS': {
+			ATTRIBUTE.NAME: 'SUCCESS',
+			ATTRIBUTE.CODE: 0,
+			ATTRIBUTE.DESCRIPTION: 'Indica que o procedimento foi executado com sucesso'
+		},
+		'TIMEOUT': {
+			ATTRIBUTE.NAME: 'TIMEOUT',
+			ATTRIBUTE.CODE: 1,
+			ATTRIBUTE.DESCRIPTION: 'Indica que o procedimento foi abortado porque tomou muito tempo antes de concluir'
+		},
+		'FAIL': {
+			ATTRIBUTE.NAME: 'FAIL',
+			ATTRIBUTE.CODE: 2,
+			ATTRIBUTE.DESCRIPTION: 'Indica que uma falha aconteceu'
+		},
+		'UNKNOWN': {
+			ATTRIBUTE.NAME: 'UNKNOWN',
+			ATTRIBUTE.CODE: 3,
+			ATTRIBUTE.DESCRIPTION: 'Indica que algo desconhecido ocorreu'
+		},
+		'BIGBANG': {
+			ATTRIBUTE.NAME: 'BIGBANG',
+			ATTRIBUTE.CODE: 7790,
+			ATTRIBUTE.DESCRIPTION: 'O universo explodiu!'
+		}
+	}
+*}
+
+
+{*
+	set program = {
+		ATTRIBUTE.NAME: 'myprog',
+		ATTRIBUTE.DESCRIPTION: 'My program that does foo and baz',
+		ATTRIBUTE.VARIABLES: [
+			{
+				ATTRIBUTE.NAME: 'foo0',
+				ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+				ATTRIBUTE.TYPE: TYPE.TEXT,
+				ATTRIBUTE.VALUE: 'teste'
+			},
+			{
+				ATTRIBUTE.NAME: 'foo1',
+				ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+				ATTRIBUTE.TYPE: TYPE.NUMBER,
+				ATTRIBUTE.VALUE: 10
+			},
+			{
+				ATTRIBUTE.NAME: 'foo2',
+				ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+				ATTRIBUTE.TYPE: TYPE.NUMBER,
+				ATTRIBUTE.VALUE: 55
+			},
+			{
+				ATTRIBUTE.NAME: 'muitos',
+				ATTRIBUTE.CARDINALITY: CARDINALITY.PLURAL,
+				ATTRIBUTE.TYPE: TYPE.TEXT
+			}
+		],
+		ATTRIBUTE.PROCEDURES: [
+			{
+				ATTRIBUTE.NAME: 'proc_a',
+				ATTRIBUTE.MACRO: 'proc_a',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto a',
+				ATTRIBUTE.PARAMETERS: [
+					{
+						ATTRIBUTE.NAME: 'baz',
+						ATTRIBUTE.DEFAULT: 3,
+						ATTRIBUTE.TYPE: TYPE.NUMBER,
+						ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					}
+				],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.FAIL,
+					output_code.TIMEOUT
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_object',
+				ATTRIBUTE.MACRO: 'proc_object',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto com object',
+				ATTRIBUTE.PARAMETERS: [
+					{
+						ATTRIBUTE.NAME: 'obj',
+						ATTRIBUTE.DEFAULT: {'teste': 'aboa'},
+						ATTRIBUTE.TYPE: TYPE.OBJECT,
+						ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					}
+				],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.BIGBANG
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_b',
+				ATTRIBUTE.MACRO: 'proc_b',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto b',
+				ATTRIBUTE.PARAMETERS: [],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.FAIL,
+					output_code.TIMEOUT,
+					output_code.UNKNOWN
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_c',
+				ATTRIBUTE.MACRO: 'proc_c',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto c',
+				ATTRIBUTE.PARAMETERS: [
+					{
+						ATTRIBUTE.NAME: 'myarray',
+						ATTRIBUTE.DEFAULT: None,
+						ATTRIBUTE.TYPE: TYPE.TEXT,
+						ATTRIBUTE.CARDINALITY: CARDINALITY.PLURAL,
+						ATTRIBUTE.EVALUATION: EVALUATION.REFERENCE
+					}
+				],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.FAIL,
+					output_code.TIMEOUT
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_x',
+				ATTRIBUTE.MACRO: 'proc_x',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto x',
+				ATTRIBUTE.PARAMETERS: [],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.BIGBANG
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_e',
+				ATTRIBUTE.MACRO: 'proc_e',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto e',
+				ATTRIBUTE.PARAMETERS: [
+					{
+						ATTRIBUTE.NAME: 'custom_var',
+						ATTRIBUTE.DEFAULT: None,
+						ATTRIBUTE.TYPE: TYPE.NUMBER,
+						ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					},
+					{
+						ATTRIBUTE.NAME: 'binba',
+						ATTRIBUTE.DEFAULT: None,
+						ATTRIBUTE.TYPE: TYPE.TEXT,
+						ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					},
+				],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.FAIL,
+					output_code.TIMEOUT
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_f',
+				ATTRIBUTE.MACRO: 'proc_f',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto f',
+				ATTRIBUTE.PARAMETERS: [],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.FAIL,
+					output_code.TIMEOUT
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_custom_exit',
+				ATTRIBUTE.MACRO: 'proc_custom_exit',
+				ATTRIBUTE.DESCRIPTION: 'Para o script',
+				ATTRIBUTE.PARAMETERS: [],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS
+				]
+			},
+			{
+				ATTRIBUTE.NAME: 'proc_custom_break',
+				ATTRIBUTE.MACRO: 'proc_custom_break',
+				ATTRIBUTE.DESCRIPTION: 'Sai do seletor atual',
+				ATTRIBUTE.PARAMETERS: [],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS
+				]
+			},
+		],
+		ATTRIBUTE.BLOCK: {
+			ATTRIBUTE.VARIABLE: 'foo1',
+			ATTRIBUTE.NAME: 'entrypoint',
+			ATTRIBUTE.DESCRIPTION: 'A macro de entrada',
+			ATTRIBUTE.PROCEDURE: {
+				ATTRIBUTE.NAME: 'proc_e',
+				ATTRIBUTE.KEYWORD_ARGS: {
+					'custom_var': {
+						ATTRIBUTE.VALUE: 'var99',
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					},
+					'binba': {
+						ATTRIBUTE.VALUE: 77,
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					}
+				}
+			},
+			ATTRIBUTE.LOOP_WHILE: ['SUCCESS'],
+			ATTRIBUTE.PASS_CODES: ['FAIL'],
+			ATTRIBUTE.CASES: [
+				{
+					ATTRIBUTE.OUTPUT_CODE: 'TIMEOUT',
+					ATTRIBUTE.BLOCK: {
+						ATTRIBUTE.VARIABLE: 'foo2',
+						ATTRIBUTE.NAME: 'Trata timeout',
+						ATTRIBUTE.DESCRIPTION: 'Dá um jeito para consertar o problema',
+						ATTRIBUTE.PROCEDURE: {
+							ATTRIBUTE.NAME: 'proc_a',
+							ATTRIBUTE.KEYWORD_ARGS: {
+								'baz': {
+									ATTRIBUTE.VALUE: 'foo2',
+									ATTRIBUTE.EVALUATION: EVALUATION.REFERENCE
+								}
+							}
+						},
+						ATTRIBUTE.PASS_CODES: ['SUCCESS', 'FAIL', 'TIMEOUT', 'BIGBANG'],
+						ATTRIBUTE.CASES: [
+							{
+								ATTRIBUTE.OUTPUT_CODE: 'UNKNOWN',
+								ATTRIBUTE.BLOCK:{
+									ATTRIBUTE.VARIABLE: 'foo2',
+									ATTRIBUTE.NAME: 'Trata erro desconhecido 1',
+									ATTRIBUTE.DESCRIPTION: 'Dá um jeito para consertar o problema',
+									ATTRIBUTE.PROCEDURE: {
+										ATTRIBUTE.NAME: 'proc_b',
+										ATTRIBUTE.KEYWORD_ARGS: None
+									},
+									ATTRIBUTE.PASS_CODES: ['SUCCESS', 'FAIL', 'TIMEOUT'],
+									ATTRIBUTE.CASES: [
+										{
+											ATTRIBUTE.OUTPUT_CODE: 'UNKNOWN',
+											ATTRIBUTE.BLOCK:{
+												ATTRIBUTE.VARIABLE: 'foo2',
+												ATTRIBUTE.NAME: 'Trata erro desconhecido 2',
+												ATTRIBUTE.DESCRIPTION: 'Dá um jeito para consertar o problema',
+												ATTRIBUTE.PROCEDURE: {
+													ATTRIBUTE.NAME: 'proc_c',
+													ATTRIBUTE.KEYWORD_ARGS: {
+														'myarray': {
+															ATTRIBUTE.VALUE: 'muitos',
+															ATTRIBUTE.EVALUATION: EVALUATION.REFERENCE
+														}
+													}
+												},
+												ATTRIBUTE.PASS_CODES: ['FAIL', 'TIMEOUT'],
+												ATTRIBUTE.CASES: [
+													{
+														ATTRIBUTE.OUTPUT_CODE: 'SUCCESS',
+														ATTRIBUTE.BLOCK:{
+															ATTRIBUTE.VARIABLE: 'foo2',
+															ATTRIBUTE.NAME: 'Trata erro desconhecido 3',
+															ATTRIBUTE.DESCRIPTION: 'Dá um jeito para consertar o problema',
+															ATTRIBUTE.PROCEDURE: {
+																ATTRIBUTE.NAME: 'proc_object',
+																ATTRIBUTE.KEYWORD_ARGS: {}
+															},
+															ATTRIBUTE.PASS_CODES: ['SUCCESS', 'BIGBANG'],
+															ATTRIBUTE.LOOP_WHILE: None,
+															ATTRIBUTE.CASES: [
+																
+															]
+														}
+													}
+												],
+												ATTRIBUTE.LOOP_WHILE: None
+											}
+										}
+									],
+									ATTRIBUTE.LOOP_WHILE: None
+								}
+							}
+						],
+						ATTRIBUTE.LOOP_WHILE: []
+					}
+				}
+			]
+		}
+	}
+*}
+
+{* macro CALL_PROCEDURE(CORE, procedure, outvar, arguments, block_name) *}
+	//Obtém o nome da variável
+	{* set outvar_variable_dict = {} *}
+	{{ CORE.language.render_variable_name(CORE=CORE, variable=outvar, jinja_out_var=outvar_variable_dict) }}
+	{* set value_arguments_old = {'CORE': CORE, 'outvar': outvar_variable_dict[ATTRIBUTE.NAME]} *}
+	{* set value_arguments = {'outvar': outvar_variable_dict[ATTRIBUTE.NAME]} *}
+	
+	{* if arguments is none *}
+		{* set arguments = [] *}
+	{* endif *}
+	
+	{* set procedure_parameters = procedure[ATTRIBUTE.PARAMETERS] *}
+	
+	{* set procedure_parameters_é_list = [] *}
+	{{ is_list(procedure_parameters, procedure_parameters_é_list) }}
+	
+	{* if procedure_parameters_é_list[0] and procedure_parameters|length > 0 *}
+		
+		{* for parameter in procedure_parameters *}
+			
+			{* set argument = arguments[parameter[ATTRIBUTE.NAME]] *}
+			
+			{* if parameter[ATTRIBUTE.NAME] not in arguments *}
+				{* if parameter[ATTRIBUTE.DEFAULT] is defined and parameter[ATTRIBUTE.DEFAULT] is not none *}
+					{*
+						set argument = {
+							ATTRIBUTE.VALUE: parameter[ATTRIBUTE.DEFAULT],
+							ATTRIBUTE.TYPE: parameter[ATTRIBUTE.TYPE],
+							ATTRIBUTE.EVALUATION: parameter[ATTRIBUTE.EVALUATION]
+						}
+					*}
+				{* else *}
+					{{ raise("Parameter '"~parameter[ATTRIBUTE.NAME]~"' of macro '"~procedure[ATTRIBUTE.NAME]~"' do not have a match in arguments given in block '"~block_name~"'") }}
+				{* endif *}
+			{* endif *}
+			
+			
+			/**
+				* Parâmetros: nome, tipo, cardinalidade, avaliação
+				*
+				* Argumentos: nome, tipo, avaliação
+				*
+				* Variáveis: nome, tipo, mutabilidade, cardinalidade
+				*
+				*
+				* Regras de passagem de argumentos por referência
+				* 0. O argumento deve ter sempre o tipo do parâmetro correspondente, senão, lança-se erro.✅
+				* 1. Quando o parâmetro é literal e o argumento é por referência, então obtém-se o valor da variável antes de passá-la
+				* 2. Quando o parâmetro é por referência e o argumento é literal, então lança-se um erro. Isso não é permitido.
+				* 3. Quando o parâmetro é literal e o argumento é literal, então passa-se o valor do argumento as-is.
+				* 4. Quando o parâmetro é por referência e o argumento é por referência, então passa-se o nome renderizado da variável
+				* 5. Quando o parâmetro tem a cardinalidade plural, então apenas argumento por referência de uma variável plural é admitida. Demais casos, lançar erro.
+				* 6. Quando a passagem é por referência, o tipo da variável deve ser sempre igual ao tipo do parâmetro, senão lança-se erro.
+			***/
+			
+			{* set value_to_pass = None *}
+			{* set variable = None *}
+			
+			//Avalia se o argumento passado é uma lista ou dicicionário
+			{* set results_value_is_list = [] *}
+			{{ is_list(argument[ATTRIBUTE.VALUE], results_value_is_list) }}
+			{* set results_value_is_dict = [] *}
+			{{ is_dict(argument[ATTRIBUTE.VALUE], results_value_is_dict) }}
+			
+			/**
+				* Aqui o renderizador garante que todas as condições para parâmetros do tipo OBJECT
+				* sejam satisfeitas. Isto é, avaliação=LITERAL, cardinalidade=SINGULAR
+			**/
+			{* if parameter[ATTRIBUTE.TYPE] == TYPE.OBJECT *}
+				{* if parameter[ATTRIBUTE.EVALUATION] != EVALUATION.LITERAL *}
+					{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' has evaluation as '"~parameter[ATTRIBUTE.EVALUATION]~"'. But transpiler expects evaluation as 'literal' because parameter type is '"~parameter[ATTRIBUTE.TYPE]~"'") }}
+				{* endif *}
+				{* if parameter[ATTRIBUTE.CARDINALITY] != CARDINALITY.SINGULAR *}
+					{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' has cardinality as '"~parameter[ATTRIBUTE.CARDINALITY]~"'. But transpiler expects cardinality as 'singular' because parameter type is '"~parameter[ATTRIBUTE.TYPE]~"'") }}
+				{* endif *}
+				
+				//Avalia se o argumento tipo é lista ou dicionário
+				{* if not results_value_is_list[0] and not results_value_is_dict[0] *}
+					{{ raise("In block '"~block_name~"', value passed to parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' must be list or dictionary bacause parameter type is '"~parameter[ATTRIBUTE.TYPE]~"'. Current value is '"~argument[ATTRIBUTE.VALUE]~"'") }}
+				{* endif *}
+				
+			{* else *}
+				//Avalia se o argumento NÃO é nem lista nem dicionário
+				{* if results_value_is_list[0] or results_value_is_dict[0] *}
+					{{ raise("In block '"~block_name~"', value passed to parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' must be string or number, not list or dicionary because type is '"~parameter[ATTRIBUTE.TYPE]~"'. Current value is '"~argument[ATTRIBUTE.VALUE]~"'") }}
+				{* endif *}
+			{* endif *}
+			
+			{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.REFERENCE *}
+				//Obtém uma instância da variável
+				{* set collection_variables = [] *}
+				{{ CORE.variable.find.by_name(name=argument[ATTRIBUTE.VALUE], jinja_collection_var=collection_variables) }}
+				{* if collection_variables|length == 0 *}
+					{{ raise("In block '"~block_name~"', variable '"~argument[ATTRIBUTE.VALUE]~"' is not defined!") }}
+				{* endif *}
+				{* set variable = collection_variables[0] *}
+				
+			{* endif *}
+			
+			{* if parameter[ATTRIBUTE.EVALUATION] == EVALUATION.LITERAL *}
+				{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.REFERENCE *}
+					//Obtém o valor da variável antes de passá-la
+					{* set values_variable = {} *}
+					{{ CORE.language.get_variable_value(CORE=CORE, variable=variable, jinja_out_var=values_variable) }}
+					{* set value_to_pass = values_variable[ATTRIBUTE.VALUE] *}
+				{* endif *}
+				{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.LITERAL *}
+					//Passa o valor do argumento as-is
+					{* set value_to_pass = argument[ATTRIBUTE.VALUE] *}
+				{* endif *}
+			{* elif parameter[ATTRIBUTE.EVALUATION] == EVALUATION.REFERENCE *}
+				{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.REFERENCE *}
+					//Obtem o nome da variável para passá-la
+					{* set outvar_variable_dict = {} *}
+					{{ CORE.language.render_variable_name(CORE=CORE, variable=variable, jinja_out_var=outvar_variable_dict) }}
+					{* set value_to_pass = outvar_variable_dict[ATTRIBUTE.NAME] *}
+				{* endif *}
+				{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.LITERAL *}
+					//Lançar erro. Não é permitido
+					{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' expects passage by reference, but argument passed is literal") }}
+				{* endif *}
+			{* endif *}
+			
+			{* if parameter[ATTRIBUTE.CARDINALITY] == CARDINALITY.PLURAL *}
+				//Apenas argumento por referência admitido
+				{* if (variable is none) or (variable[ATTRIBUTE.CARDINALITY] != CARDINALITY.PLURAL) *}
+				{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' has cardinality plural. So it expects passage by reference. But argument passed do not carry a plural variable") }}
+			{* endif *}
+			{* endif *}
+			
+			{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.REFERENCE *}
+				//O valor da variável deve ser sempre igual ao tipo do parâmetro
+				{* if variable[ATTRIBUTE.TYPE] != parameter[ATTRIBUTE.TYPE] *}
+					{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' expects type '"~parameter[ATTRIBUTE.TYPE]~"', but argument carries a variable of type '"~variable[ATTRIBUTE.TYPE]~"'") }}
+				{* endif *}
+			{* endif *}
+			
+			{* if value_to_pass is none *}
+				{{ raise("In block '"~block_name~"', unable to determine value to pass for parameter '"~parameter[ATTRIBUTE.NAME]~"'") }}
+			{* endif *}
+			
+			{* set _ = value_arguments.update({parameter[ATTRIBUTE.NAME]: value_to_pass}) *}
+			
+		{* endfor *}
+		
+	{* endif *}
+	
+	{* set results_is_list = [] *}
+	{{ is_list(procedure[ATTRIBUTE.MACRO], results_is_list) }}
+	
+	{* if results_is_list[0] *}
+		{* set library = procedure[ATTRIBUTE.MACRO][0] *}
+		{* set macro_name = procedure[ATTRIBUTE.MACRO][1] *}
+		{* import library as LIB *}
+		{{ LIB[macro_name](**value_arguments) }}
+	{* elif procedure[ATTRIBUTE.MACRO] is string *}
+		{{ procedure[ATTRIBUTE.MACRO]|macro(**value_arguments) }}
+	{* elif procedure[ATTRIBUTE.MACRO] is callable *}
+		{{ procedure[ATTRIBUTE.MACRO](**value_arguments) }}
+	{* else *}
+		raise('ATTRIBUTE.MACRO should be ["<library>","<macro>"] or string')
+	{* endif *}
+	
+{* endmacro *}
+
+{* macro get_block_procedure(CORE, block, procedure_list) *}
+	{* set block_name = block[ATTRIBUTE.NAME] *}
+	{* set procedure_name = block[ATTRIBUTE.PROCEDURE][ATTRIBUTE.NAME] *}
+	{* if procedure_name is string *}
+		{{ CORE.procedure.find.by_name(name=procedure_name, jinja_collection_var=procedure_list) }}
+		{* if procedure_list|length == 0 *}
+			{{ raise("Procedure '"~procedure_name~"' assigned to block '"~block_name~"' was not found!") }}
+		{* endif *}
+	{* endif *}
+{* endmacro *}
+
+{* macro get_unhandled_codes(CORE, block, unhandled_codes_var) *}
+	
+	//Pega o procedimento principal do bloco e obtém a lista de todos os nomes dos códigos de saída
+	{* set procedure_list = [] *}
+	{{ get_block_procedure(CORE=CORE, block=block, procedure_list=procedure_list) }}
+	{* set procedure = procedure_list | first *}
+	{* set procedure_output_codes = procedure[ATTRIBUTE.OUTPUT_CODES] | map(attribute=ATTRIBUTE.NAME) | list *}
+	
+	//Obtém os códigos de saída tratados localmente e atribui a locally_handled_codes
+	{* set locally_handled_codes = [] *}
+	{* if block[ATTRIBUTE.CASES] is iterable and block[ATTRIBUTE.CASES] is not string *}
+		//Inclui os códigos tratados via case
+		{* set _ = locally_handled_codes.extend(block[ATTRIBUTE.CASES] | map(attribute=ATTRIBUTE.OUTPUT_CODE) | list) *}
+	{* endif *}
+	{* if block[ATTRIBUTE.LOOP_WHILE] is iterable and block[ATTRIBUTE.LOOP_WHILE] is not string *}
+		//Inclui os códigos tratados via while loop
+		{* set _ = locally_handled_codes.extend(block[ATTRIBUTE.LOOP_WHILE]) *}
+	{* endif *}
+	
+	//Popula a lista de códigos não tratados.
+	//Os códigos que não estiverem dentro de locally_handled_codes são inseridos na lista de não tratados
+	{* for code_name in procedure_output_codes *}
+		{* if code_name not in locally_handled_codes *}
+			{* if code_name not in unhandled_codes_var *}
+				{* set _ = unhandled_codes_var.append(code_name) *}
+			{* endif *}
+		{* endif *}
+	{* endfor *}
+	
+{* endmacro *}
+
+{* macro get_unhandled_codes_recursively(CORE, block, inherited_variable_name, collection_dict) *}
+	/**
+		Recebe um bloco e a variável do bloco superior (None se não houver bloco anterior)
+		Definição de tratar código: estar inserido em while_loop ou estar coberto em case
+		
+		1. Itera cada caso do bloco:
+		2. Obtém o dicionário de blocos não tratados por variável: {'var1': ['SUCESSO', 'ERRO']: 'var3': ['DEMORA']}
+	**/
+	{* set variable_name = block[ATTRIBUTE.VARIABLE] if block[ATTRIBUTE.VARIABLE] else inherited_variable_name *}
+	
+	//Cria a lista de vazia para a variável se ainda não existir
+	{* if variable_name not in collection_dict *}
+		{* set _ = collection_dict.update({variable_name: []}) *}
+	{* endif *}
+	
+	{* set unhandled_codes_var = [] *}
+	{{ get_unhandled_codes(CORE=CORE, block=block, unhandled_codes_var=unhandled_codes_var) }}
+	{* for code in unhandled_codes_var *}
+		{* if code not in collection_dict[variable_name] *}
+			{* set _ = collection_dict[variable_name].append(code) *}
+		{* endif *}
+	{* endfor *}
+	
+	{* if block[ATTRIBUTE.CASES] is iterable and block[ATTRIBUTE.CASES] is not string *}
+		{* for case in block[ATTRIBUTE.CASES] *}
+			{* set case_block_variable = block[ATTRIBUTE.VARIABLE] if block[ATTRIBUTE.VARIABLE] else variable_name *}
+			{{ get_unhandled_codes_recursively(CORE=CORE, block=case[ATTRIBUTE.BLOCK], inherited_variable_name=case_block_variable, collection_dict=collection_dict) }}
+		{* endfor *}
+	{* endif *}
+{* endmacro *}
+
+{* macro checks_code_handling(CORE, block, variable_name, related_blocks) *}
+	/**
+		* Definição de tratar código: estar inserido em while_loop ou estar coberto em case
+		*
+		* #1. O bloco trata o código de saída (em case ou while_loop) do seu procedimento?
+		*    - SIM: OK.
+		*    - NÃO: O código está sendo passado?
+		*      - SIM: OK
+		*      - NÃO: lança exceção
+		* #2. O bloco trata o código de saída (em while_loop) não tratado de procedimentos inferiores que recebem a mesma variável?
+		*    - SIM: OK
+		*    - NÃO: O código tem blocos superiores com a mesma variável?
+		*      - SIM: OK
+		*      - NÃO: O código está sendo passado?
+		*        - SIM: OK
+		*        - NÃO: lança exceção
+	**/
+	
+	{* set procedure_list = [] *}
+	{{ get_block_procedure(CORE=CORE, block=block, procedure_list=procedure_list) }}
+	{* set procedure = procedure_list | first *}
+	/**
+		IMPLEMENTAÇÃO DA REGRA #1
+	**/
+	// 1. Pega todos os códigos de saída possíveis do procedure
+	{* set all_possible_output_codes = procedure[ATTRIBUTE.OUTPUT_CODES] | map(attribute=ATTRIBUTE.NAME) | list *}
+	
+	// 2. Pega os códigos que são explicitamente passados
+	{* set passed_codes = block[ATTRIBUTE.PASS_CODES] if ATTRIBUTE.PASS_CODES in block else [] *}
+	
+	// 3. Pega os códigos tratados localmente (no bloco atual)
+	{* set locally_handled_codes = [] *}
+	{* if block[ATTRIBUTE.CASES] is iterable and block[ATTRIBUTE.CASES] is not string *}
+		{* set _ = locally_handled_codes.extend(block[ATTRIBUTE.CASES] | map(attribute=ATTRIBUTE.OUTPUT_CODE) | list) *}
+	{* endif *}
+	{* if block[ATTRIBUTE.LOOP_WHILE] is iterable and block[ATTRIBUTE.LOOP_WHILE] is not string *}
+		{* set _ = locally_handled_codes.extend(block[ATTRIBUTE.LOOP_WHILE]) *}
+	{* endif *}
+	
+	// 4. VERIFICAÇÃO PRINCIPAL: Todo código deve ser tratado localmente OU passado explicitamente
+	{* for code_name in all_possible_output_codes *}
+		{* if code_name not in locally_handled_codes and code_name not in passed_codes *}
+			{{ raise("The code '"~code_name~"' from the block '"~block[ATTRIBUTE.NAME]~"' must be handled locally (in a case or loop_while) or explicitly passed up using 'pass_codes'.") }}
+		{* endif *}
+	{* endfor *}
+	
+	/**
+		IMPLEMENTAÇÃO DA REGRA #2
+	**/
+	{* set unhandled_variable_code_dict = {} *}
+	{{ get_unhandled_codes_recursively(CORE=CORE, block=block, inherited_variable_name=variable_name, collection_dict=unhandled_variable_code_dict) }}
+	
+	//Obtém os códigos do while loop locais
+	{* set while_loop_codes = [] *}
+	{* if block[ATTRIBUTE.LOOP_WHILE] is iterable and block[ATTRIBUTE.LOOP_WHILE] is not string *}
+		{* set _ = while_loop_codes.extend(block[ATTRIBUTE.LOOP_WHILE]) *}
+	{* endif *}
+	
+	{* set children_passed_codes = unhandled_variable_code_dict[variable_name] if variable_name in unhandled_variable_code_dict else [] *}
+	
+	{* set unhandled_codes = children_passed_codes | reject('in', while_loop_codes) | list *}
+	
+	//Se houver códigos passados, vamos ver se podem ser tratados por instâncias superiores ou se são passados
+	{* if unhandled_codes | length > 0 *}
+		// Verifica se há blocos superiores com a mesma variável
+		{* set blocos_superiores_com_mesma_variável = [] *}
+		{* for related_block in related_blocks *}
+			{* if related_block[ATTRIBUTE.VARIABLE] == variable_name *}
+				{* set _ = blocos_superiores_com_mesma_variável.append(related_block) *}
+			{* endif *}
+		{* endfor *}
+		
+		//Se entrar aqui, então o bloco tem códigos superiores com a mesma variável
+		{* if blocos_superiores_com_mesma_variável | length == 0 *}
+			//Apenas verifica se o código está sendo passado
+			{* set not_passed_codes = unhandled_codes | reject('in', passed_codes) | list *}
+			{* if not_passed_codes | length > 0 *}
+				{{ raise("The codes ['"~not_passed_codes | join("', '")~"'] passed to the block '"~block[ATTRIBUTE.NAME]~"' must be handled locally in loop_while or explicitly passed up using 'pass_codes'.") }}
+			{* endif *}
+		{* endif *}
+	{* endif *}
+	
+	
+{* endmacro *}
+
+{* macro RENDER_BLOCK(CORE, block, from_code, blockcrumb) *}
+	
+	{* if ATTRIBUTE.NAME not in block or block[ATTRIBUTE.NAME] is none *}
+		{{ raise("Check this out: some block needs the attribute '"~ATTRIBUTE.NAME~"' to be declared!") }}
+	{* endif *}
+	{* set block_name = block[ATTRIBUTE.NAME] *}
+	
+	{* if ATTRIBUTE.PROCEDURE not in block or block[ATTRIBUTE.PROCEDURE] is none *}
+		{{ raise("The block '"~block_name~"' needs the attribute '"~ATTRIBUTE.PROCEDURE~"' to be declared!") }}
+	{* endif *}
+	{* set procedure_name = block[ATTRIBUTE.PROCEDURE][ATTRIBUTE.NAME] *}
+	
+	{* set variable_name_container = [] *}
+	{* if ATTRIBUTE.VARIABLE in block and block[ATTRIBUTE.VARIABLE] is not none *}
+		{* set _ = variable_name_container.append(block[ATTRIBUTE.VARIABLE]) *}
+	{* else *}
+		{* for from_kode, parent_block in blockcrumb | reverse *}
+			{* if variable_name_container | length == 0 *}
+				{* if ATTRIBUTE.VARIABLE in parent_block and parent_block[ATTRIBUTE.VARIABLE] is not none *}
+					{* set _ = variable_name_container.append(parent_block[ATTRIBUTE.VARIABLE]) *}
+				{* endif *}
+			{* endif *}
+		{* endfor *}
+	{* endif *}
+	
+	{* if variable_name_container | length == 0 *}
+		{{ raise("The block '"~block_name~"' needs the attribute '"~ATTRIBUTE.VARIABLE~"' to be declared!") }}
+	{* else *}
+		{* set variable_name = variable_name_container[0] *}
+	{* endif *}
+	
+	{* set cases = block[ATTRIBUTE.CASES] *}
+	{* set loop_while_codes = block[ATTRIBUTE.LOOP_WHILE] if block[ATTRIBUTE.LOOP_WHILE] is iterable else [] *}
+	
+	{* set procedure = None *}
+	
+	{* if procedure_name is string *}
+		{* set match_procedures = [] *}
+		{{ CORE.procedure.find.by_name(name=procedure_name, jinja_collection_var=match_procedures) }}
+		{* if match_procedures|length == 0 *}
+			{{ raise("Procedure '"~procedure_name~"' assigned to block '"~block_name~"' was not found!") }}
+		{* endif *}
+		
+		{* set procedure = match_procedures[0] *}
+		{* set procedure_arguments = block[ATTRIBUTE.PROCEDURE][ATTRIBUTE.KEYWORD_ARGS] if block[ATTRIBUTE.PROCEDURE][ATTRIBUTE.KEYWORD_ARGS] is mapping else {} *}
+		{* if procedure_arguments is not mapping *}
+			//Acusa que argumentos não são dicionários: precisam ser
+			{{ raise("Arguments in block '"~block_name~"' must be a valid dictionary or None!") }}
+		{* endif *}
+		
+		{* set outter_blocks = blockcrumb | map(attribute=1) | list | reverse | list *}
+		{* set related_blocks = [block] *}
+		{* set _ = related_blocks.extend(outter_blocks) *}
+		{!! checks_code_handling(CORE=CORE, procedure=procedure, related_blocks=related_blocks) !!}
+		{{ checks_code_handling(CORE=CORE, block=block, variable_name=variable_name, related_blocks=related_blocks[1:]) }}
+		
+		{* set block_codes_names = procedure[ATTRIBUTE.OUTPUT_CODES] | map(attribute=ATTRIBUTE.NAME) | list *}
+		{* set case_handled_codes = cases | map(attribute=ATTRIBUTE.OUTPUT_CODE) | list *}
+		{* set pass_codes = block[ATTRIBUTE.PASS_CODES] *}
+		{* set handled_codes = [] *}
+		{* set _ = handled_codes.extend(case_handled_codes if case_handled_codes is iterable else []) *}
+		{* set _ = handled_codes.extend(loop_while_codes if loop_while_codes is iterable else []) *}
+		{* set unsuitable_pass_codes = pass_codes | select('in', handled_codes) | list *}
+		{* if unsuitable_pass_codes | length > 0 *}
+			{!! raise("You cannot pass codes ["~unsuitable_pass_codes|join(', ')~"] in block '"~block_name~"'. These codes have already been handled by cases or while_loop.") !!}
+		{* endif *}
+		
+		{* set unknown_pass_codes = pass_codes | reject('in', block_codes_names) | list *}
+		{* if unknown_pass_codes | length > 0 *}
+			{!! raise("Codes ["~unknown_pass_codes|join(', ')~"] in block '"~block_name~"' are not applicable on the context.") !!}
+		{* endif *}
+		
+	{* endif *}
+	
+	{* set match_variables = [] *}
+	{{ CORE.variable.find.by_name(name=variable_name, jinja_collection_var=match_variables) }}
+	{* if match_variables|length == 0 *}
+		{{ raise("Variable '"~variable_name~"' assigned to block '"~block_name~"' was not found!") }}
+	{* endif *}
+	
+	{* macro block_section() *}
+		
+		{{ CORE.logger(CORE=CORE, blockcrumb=blockcrumb, block=block, variable=match_variables[0], from_code=from_code, stage=STAGE.BEFORE_PROCEDURE) }}
+		
+		{* if procedure is not none *}
+			{{ CALL_PROCEDURE(CORE=CORE, procedure=procedure, outvar=match_variables[0], arguments=procedure_arguments, block_name=block_name) }}
+		{* endif *}
+		
+		{{ CORE.logger(CORE=CORE, blockcrumb=blockcrumb, block=block, variable=match_variables[0], from_code=from_code, stage=STAGE.AFTER_PROCEDURE) }}
+		
+		{* set updated_blockcrumb = [] *}
+		{* for b in blockcrumb *}
+			{* set _ = updated_blockcrumb.append(b) *}
+		{* endfor *}
+		{* set _ = updated_blockcrumb.append((from_code, block)) *}
+		
+		{* if block[ATTRIBUTE.CASES] is defined and block[ATTRIBUTE.CASES] is not none *}
+			{* for case in block[ATTRIBUTE.CASES] *}
+				{* set output_code_name = case[ATTRIBUTE.OUTPUT_CODE] *}
+				{* set inner_block = case[ATTRIBUTE.BLOCK] *}
+				
+				{* set codes = [] *}
+				{{ CORE.code.find.by_name(name=output_code_name, jinja_collection_var=codes) }}
+				{* if codes|length == 0 *}
+					{{ raise("Code '"~output_code_name~"' is not defined!") }}
+				{* endif *}
+				
+				{* set query_vars = [] *}
+				{{ CORE.variable.find.by_name(name=variable_name, jinja_collection_var=query_vars) }}
+				{* if query_vars|length == 0 *}
+					{{ raise("In block '"~block_name~"', variable '"~variable_name~"' is not defined!") }}
+				{* endif *}
+				
+				{* macro content(CORE) *}
+					{{ RENDER_BLOCK(CORE=CORE, block=inner_block, from_code=codes[0], blockcrumb=updated_blockcrumb) }}
+				{* endmacro *}
+				
+				{{ CORE.language.render_decision_structure_variable_value_equality(CORE=CORE, macro=content, variable=query_vars[0], value=codes[0][ATTRIBUTE.CODE]) }}
+				
+			{* endfor *}
+		{* endif *}
+		
+	{* endmacro *}
+	
+	{* set codes = [] *}
+	
+	{* set codes_é_list = [] *}
+	{{ is_list(block[ATTRIBUTE.LOOP_WHILE], codes_é_list) }}
+	
+	{* if codes_é_list[0] and block[ATTRIBUTE.LOOP_WHILE] | length > 0 *}
+		{* for code in block[ATTRIBUTE.LOOP_WHILE] *}
+			
+			{* set query_codes = [] *}
+			{{ CORE.code.find.by_name(name=code, jinja_collection_var=query_codes) }}
+			{* if query_codes|length == 0 *}
+				{{ raise("Code '"~code~"' is not defined!") }}
+			{* endif *}
+			
+			{* set _ = codes.append(query_codes[0][ATTRIBUTE.CODE]) *}
+		{* endfor *}
+	{* endif *}
+	
+	{{ CORE.language.render_conditional_loop(CORE, macro=block_section, variable=match_variables[0], codes=codes) }}
+	
+{* endmacro *}
+
+{* macro BLANK_LOGGER(CORE, blockcrumb, block, variable, from_code, stage) *}
+{* endmacro *}
+
+{* macro BLANK_EXECUTION(CORE) *}
+{* endmacro *}
+
+/**
+	* O gerador do programa
+***/
+{* macro build(prog, language_renderer, logger=BLANK_LOGGER, pre_execution=BLANK_EXECUTION, post_execution=BLANK_EXECUTION) *}
+	
+	{* for variable in prog[ATTRIBUTE.VARIABLES] *}
+		{* set _ = prog[ATTRIBUTE.VARIABLES][loop.index0].update({ATTRIBUTE.ID: nid()}) *}
+	{* endfor *}
+	
+	{* macro get_variables_by_name(name, jinja_collection_var) *}
+		{*
+			set _ = filter_list_objects(
+				list_objects=prog[ATTRIBUTE.VARIABLES],
+				attribute=ATTRIBUTE.NAME,
+				value=name,
+				jinja_out_var=jinja_collection_var
+			)
+		*}
+	{* endmacro *}
+	
+	{* macro get_procedures_by_name(name, jinja_collection_var) *}
+		{*
+			set _ = filter_list_objects(
+				list_objects=prog[ATTRIBUTE.PROCEDURES],
+				attribute=ATTRIBUTE.NAME,
+				value=name,
+				jinja_out_var=jinja_collection_var
+			)
+		*}
+	{* endmacro *}
+	
+	{* macro get_codes_by_name(name, jinja_collection_var) *}
+		{* set procedures = prog[ATTRIBUTE.PROCEDURES] *}
+		{* set codes = [] *}
+		{* for proc in procedures *}
+			{* for code in proc[ATTRIBUTE.OUTPUT_CODES] *}
+				{* set _ = codes.append(code) *}
+			{* endfor *}
+		{* endfor *}
+		{*
+			set _ = filter_list_objects(
+				list_objects=codes,
+				attribute=ATTRIBUTE.NAME,
+				value=name,
+				attribute_of_attribute=ATTRIBUTE.NAME,
+				jinja_out_var=jinja_collection_var
+			)
+		*}
+	{* endmacro *}
+	
+	{*
+		set VARIABLE_MANAGER = {
+			'find': {
+				'by_name': get_variables_by_name
+			}
+		}
+	*}
+	
+	{*
+		set PROCEDURE_MANAGER = {
+			'call': CALL_PROCEDURE,
+			'find': {
+				'by_name': get_procedures_by_name
+			}
+		}
+	*}
+	
+	{*
+		set CODE_MANAGER = {
+			'find': {
+				'by_name': get_codes_by_name
+			}
+		}
+	*}
+	
+	{*
+		set CORE = {
+			'variable': VARIABLE_MANAGER,
+			'procedure': PROCEDURE_MANAGER,
+			'code': CODE_MANAGER,
+			'language': language_renderer,
+			'logger': logger
+		}
+	*}
+	
+	{* for variable in prog[ATTRIBUTE.VARIABLES] *}
+		{* if variable[ATTRIBUTE.VALUE] *}
+			{{ CORE.language.set_variable(CORE=CORE, variable=variable, value=variable[ATTRIBUTE.VALUE]) }}
+		{* endif *}
+	{* endfor *}
+	{{ pre_execution(CORE=CORE) }}
+	{{
+		RENDER_BLOCK(
+			CORE=CORE,
+			block=prog[ATTRIBUTE.BLOCK],
+			from_code=None,
+			blockcrumb=[]
+		)
+	}}
+	{{ post_execution(CORE=CORE) }}
+	
+{* endmacro *}
+
+{!! build(prog=program, language_renderer=MACROMOD, logger=BLANK_LOGGER) !!}
+
+

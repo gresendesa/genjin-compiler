@@ -1,0 +1,194 @@
+{* import 'Federal.text.chat' as CHAT *}
+{* import 'Federal.INTEL.block' as BLOCK *}
+{* import 'Federal.sense.sensor' as SENSOR *}
+{* import 'Federal.text.transform' as TRANSFORM *}
+{* import 'Federal.INTEL.JZON' as JZON *}
+
+{* set r = nid() *}
+
+{*
+	set MATH_JOKER = {
+		'OPERATION': {
+			'sum': 0,
+			'multiplication': 1,
+			'subtraction': 2,
+			'division': 3,
+			'power': 4,
+			'log': 5,
+			
+			'equal_to': 60,
+			'greater_than': 70,
+			'lower_than': 80,
+			'not_equal_to': 90,
+			'not_greater_than': 100,
+			'not_lower_than': 101,
+		}
+	}
+*}
+
+{* macro containerswap(from_slot,to_slot,button="left",quantity=1,delay=0) *}
+	CONTAINERSWAP({{ from_slot }},{{ to_slot }},"{{ button }}",{{ quantity }},{{ delay }});
+{* endmacro *}
+
+{* macro calc_yaw_and_pitch_to(x,y,z,yawvar,pitchvar,distancevar) *}
+	CALCYAWANDPITCHTO({{ x }},{{ y }},{{ z }},{{ yawvar }},{{ pitchvar }},{{ distancevar }});
+{* endmacro *}
+
+{* macro get_player_variable(name, outvar) *}
+	GETPLAYERVARIABLE("{{ name }}",{{ outvar }});
+{* endmacro *}
+
+{* macro get_chest_name(outvar='&chestname') *}
+	GETCONTAINERCHESTNAME({{ outvar }});
+{* endmacro *}
+
+{* macro double_operation(num0=0, num1=0, outvar='&result', decimalLimit=0, multiply=False) *}
+	{* set shouldMultiply = 'false' *}
+	{* if multiply *}
+		{* set shouldMultiply = 'true' *}
+	{* endif *}
+	DOUBLEOPERATION({{ num0 }},{{ num1 }},{{ outvar }},{{ decimalLimit }},{{ shouldMultiply }});
+{* endmacro *}
+
+{* macro math_joker(num0=0, num1=0, operation=0, outvar='&result', decimalLimit=0) *}
+	MATHJOKER({{ num0 }},{{ num1 }},{{ operation }},{{ outvar }},{{ decimalLimit }});
+{* endmacro *}
+
+{* macro key(key, debug) *}
+	
+	{* if debug *}
+		IF((HASINTEL)&&(!CLOUDMC));
+			CAPTUREFOCUS();
+			KEY({{ key }});
+		ELSE;
+			{{ CHAT.print('INTEL module not installed','error') }}
+		ENDIF;
+	{* else *}
+		IF(!CLOUDMC);
+			CAPTUREFOCUS();
+		ENDIF;
+		KEY({{ key }});
+	{* endif *}
+	
+{* endmacro *}
+
+{* macro attack(debug=False) *}
+	
+	{{ key(key='ATTACK', debug=debug) }}
+	
+{* endmacro *}
+
+{* macro use(debug=False) *}
+	
+	{{ key(key='USE', debug=debug) }}
+	
+{* endmacro *}
+
+{* macro getslotinfo(slot,id_var='&id'~r,stacksize_var='#stack'~r,damage_var='#damage'~r,durability_var='#durability'~r,tooltip_array='&tooltip[]') *}
+	GETSLOTINFO({{ slot }},{{ id_var }},{{ stacksize_var }},{{ damage_var }},{{ durability_var }},{{ tooltip_array }});
+{* endmacro *}
+
+{* macro hotswap(origin_slot, target_hotbar_slot) *}
+	
+	HOTSWAP({{ origin_slot }},{{ target_hotbar_slot }});
+	
+{* endmacro *}
+
+{* macro jsonfy(dict, outvar) *}
+	{{ JZON.add_or_update_key(json='', path='', value=TRANSFORM.jsonfy(dict), outvar=outvar) }}
+{* endmacro *}
+
+{* macro request(url, method='GET', headers={}, body="", timeout=5000, data_var='&datavar', status_var='#statusvar') *}
+	{* set lista_headers = [] *}
+	{* for key, value in headers.items() *}
+		{* set _ = lista_headers.append(key~': '~value) *}
+	{* endfor *}
+	REQUEST("{{ method }}","{{ url }}","{{ body }}","{{ lista_headers | join(',') }}",{{ timeout }},{{ data_var }},{{ status_var }});
+{* endmacro *}
+
+{* macro get_running_macros(array_outvar) *}
+	GETRUNNINGMACROS({{ array_outvar }});
+{* endmacro *}
+
+{* macro fast_crop(x, y, z, seed_id_regex, delay='0t', minimum_age=0, flag=0) *}
+	/*
+		*  FLAGS
+		*   0 - colher e plantar
+		*   1 - colher
+		* 	2 - plantar
+	*/
+	FASTCROP({{ x }},{{ y }},{{ z }},{{ seed_id_regex }},{{ delay }},{{ flag }},{{ minimum_age }});
+{* endmacro *}
+
+{* macro safe_center() *}
+	
+	{* set rand = nid() *}
+	
+	DO;
+		{{ SENSOR.am_i_floating(outvar='floating'~rand) }}
+		
+		IF(!floating{{ rand }});
+			BREAK;
+		ELSE;
+			KEYDOWN(SNEAK);
+			KEYDOWN(FORWARD);
+			
+			{{ BLOCK.coordinates('#xover'~rand,'#yover'~rand,'#zover'~rand) }}
+			
+			FOR(#step{{ rand }},0,1);
+				
+				UNSET(#reltarget{{ rand }});
+				
+				SET(#over{{ rand }},%#zover{{ rand }}%);
+				IF(!#step{{ rand }});
+					SET(#over{{ rand }},%#xover{{ rand }}%);
+				ENDIF;
+				MATCH("%#over{{ rand }}%","-?([0-9]+)",#over_abs{{ rand }},1);
+				
+				IF(#over{{ rand }}<0);
+					IF(#over_abs{{ rand }}<=300);
+						SET(#reltarget{{ rand }},1);
+					ELSEIF(#over_abs{{ rand }}>=700);;
+						SET(#reltarget{{ rand }},-1);
+					ENDIF;
+				ELSE;
+					IF(#over_abs{{ rand }}<=300);
+						SET(#reltarget{{ rand }},-1);
+					ELSEIF(#over_abs{{ rand }}>=700);;
+						SET(#reltarget{{ rand }},1);
+					ENDIF;
+				ENDIF;
+				
+				#ztolook{{ rand }}=ZPOS+#reltarget{{ rand }};
+				IF(!#step{{ rand }});
+					#xtolook{{ rand }}=XPOS+#reltarget{{ rand }};
+				ENDIF;
+				
+			NEXT;
+			
+			CALCYAWTO(%#xtolook{{ rand }}%,%#ztolook{{ rand }}%,#yaw{{ rand }});
+			
+			INC(#yaw{{ rand }},180);
+			IF(#yaw{{ rand }}>=360);
+				DEC(#yaw{{ rand }},360);
+			ENDIF;
+			LOOK(%#yaw{{ rand }}%,67);
+			WAIT(1t);
+			RANDOM(#random{{ rand }},15,5);
+			DO(%#random{{ rand }}%);
+				WAIT(1t);
+				{{ SENSOR.am_i_floating(outvar='floating2'~rand) }}
+			UNTIL(!floating2{{ rand }});
+			
+		ENDIF;
+		
+	LOOP;
+	
+	KEYUP(FORWARD);
+	KEYUP(SNEAK);
+	
+	WAIT(2t);
+	{{ BLOCK.center() }}
+	WAIT(2t);
+	
+{* endmacro *}

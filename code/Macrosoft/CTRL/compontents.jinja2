@@ -1,0 +1,240 @@
+// =================================================
+//			CONSTANTS PROCESS
+// =================================================
+
+{* set interruptions_stop = '(stop___) || (emergency_exit___)' *}
+
+{* set interruptions_stop_not = '(!stop___) && (!emergency_exit___)' *}
+
+{* set interruptions = '(pause___) || (stop___) || (emergency_exit___)' *}
+
+{* set interruptions_not = '(!pause___) && (!stop___) && (!emergency_exit___)' *}
+
+{* set play_message_pattern = '^play!?(\S*)? ?(.*)?' *}
+{* set pause_message_pattern = '^pause ?(.*)?' *}
+{* set stop_message_pattern = '^stop ?(.*)?' *}
+
+// =================================================
+//			SNIPPETS PROCESS
+// =================================================
+
+{* macro get_status() *}
+	SET(&status__,%%&status___%%);
+{* endmacro *}
+
+{* macro get_in() *}
+	SET(&in__,%%&in___%%);
+{* endmacro *}
+
+{* macro get_out() *}
+	SET(&output__,%%&out___%%);
+{* endmacro *}
+
+{* macro clear_in() *}
+	UNSET(%&in___%);
+{* endmacro *}
+
+{* macro set_in(value) *}
+	SET(%&in___%,"{{ value }}");
+{* endmacro *}
+
+{* macro set_out(value) *}
+	SET(%&out___%,"{{ value }}");
+{* endmacro *}
+
+{* macro set_status(value) *}
+	SET(%&status___%,"{{ value }}");
+{* endmacro *}
+
+{* macro kill() *}
+	UNSET(%&status___%);
+	UNSET(%&in___%);
+	UNSET(%&out___%);
+{* endmacro *}
+
+
+{* macro set_cctitle(msg) *}
+	SET(&cloudscripttitle,"§8§l%&pname__% §7{{ msg }}")
+{* endmacro *}
+
+{* macro listen_emergency_exit(project) *}
+	IF({{ project.emergency_key }});
+		SET(emergency_exit___);
+	ENDIF;
+{* endmacro *}
+
+// =================================================
+//			PROCESS INITIALIZER SECTION
+// =================================================
+
+{* macro initilizer_section(project) *}
+
+	//Gets resource id
+	;SET(&resource_id__,"{{ project.csid }}");
+
+	//Force start snippet
+	SET(&force_start__,"$$[1]");
+	IFMATCHES(%&force_start__%,"^$|\$\$\[\d+\]");
+		UNSET(&force_start__);
+	ENDIF;
+
+	//Process name
+	SET(&pname__,"$$[2]");
+	IFMATCHES(%&pname__%,"^$|\$\$\[\d+\]");
+		SET(&pname__,"{{ project.pname }}");
+	ENDIF;
+
+	//Standby flag
+	SET(pause___);
+	SET(&standby___,"$$[3]");
+	IFMATCHES(%&standby___%,"^0+$|^$|\$\$\[\d+\]");
+		UNSET(pause___);
+	ENDIF;
+
+	//Hello message
+	SET(&hello__,"$$[4]");
+	IFMATCHES(%&hello__%,"^$|\$\$\[\d+\]");
+		UNSET(&hello__);
+	ENDIF;
+
+	RANDOM(#hash__,1000,9999);
+	SET(&phash__,"§7§l%&pname__%§8%#hash__%");
+
+	SET(&out___,"@&%&pname__%_");
+	SET(&in___,"@&%&pname__%__");
+	SET(&status___,"@&%&pname__%_status___");
+
+	{* if project.debug *}
+		LOG("%&phash__% §8stated! §7standby§8%pause___% §7pname§8%&pname__% §7hello§8%&hello__%");
+	{* endif *}
+
+	//==========CCTITLE=========//
+	{{ set_cctitle("§6booting§8%#hash__%") }}
+
+	//Here process checks if it is running, if so message STOP is sent and waits maximum 3 seconds for message processing
+	{{ get_status() }}
+	IF((!&force_start__) && (&status__));
+
+		{* if project.debug *}
+			LOG("%&phash__% §8process already running! §8status§c%&status__% §7Waiting §7to §7STOP");
+		{* elif project.verbose *}
+			PLAYSOUND(note.hat);
+    		PLAYSOUND(block.note.hat);
+			LOG("§8§l%&pname__% §e●");
+		{* else *}
+			//LOG("§e●");
+		{* endif *}
+
+		//==========CCTITLE=========//
+		{{ set_cctitle("§4kill -9") }}
+
+		{{ set_in("stop") }}
+		DO(10); //60t = 3s
+			WAIT(1t);
+			{{ get_status() }}
+			{{ listen_emergency_exit(project) }}
+		WHILE((&status__) && (!emergency_exit___));
+
+		UNSET(pause___);
+		SET(stop___);
+		SET(blocked___);
+
+		{* if project.debug *}
+			IF(&status__);
+				UNSET(%&in___%);
+				LOG("%&phash__% §8waiting §7STOP §c[time out]");
+			ELSE;
+				LOG("%&phash__% §8OK. Clear");
+			ENDIF;
+		{* endif *}
+
+	ELSE;
+
+		UNSET(%&in___%);
+		UNSET(%&out___%);
+	
+		{* if not project.debug *}
+			{* if project.verbose *}
+				IF(&force_start__);
+					LOG("§8§l%&pname__% §a✓");
+				ELSE;
+					PLAYSOUND(note.hat);
+    				PLAYSOUND(block.note.hat);
+					LOG("§8§l%&pname__% §a●");
+				ENDIF; 
+			{* endif *}
+		{* endif *}
+
+	ENDIF;
+
+{* endmacro *}
+
+// =================================================
+//			PROCESS PAUSE SECTION
+// =================================================
+
+{* macro pause_section(project) *}
+
+	IF(pause___);
+		{{ set_status("paused") }}
+
+		{* if project.debug *}
+			{{ get_out() }}
+			LOG("%&phash__% §8PAUSED §8§l%&output__%");
+		{* endif *}
+
+		//==========CCTITLE=========//
+		{{ set_cctitle("§5paused") }}
+
+		DO;
+			{{ listen_emergency_exit(project) }}
+			WAIT(1t);
+			{{ get_in() }}
+			IFMATCHES(%&in__%,"{{ stop_message_pattern }}",&msg__);
+				SET(stop___);
+			ELSE;
+				IFMATCHES(%&in__%,"{{ play_message_pattern }}",&msg__);
+					UNSET(pause___);
+				ENDIF;
+			ENDIF;
+		UNTIL((!pause___) || {{ interruptions_stop }});
+
+		{* if project.debug *}
+			LOG("%&phash__% §8NOT PAUSED §7stop§8%stop___% ");
+		{* endif *}
+
+	ENDIF;	
+    
+{* endmacro *}
+
+// =================================================
+//			PROCESS FINALIZE SECTION
+// =================================================
+
+{* macro finalize_section(project) *}
+	
+	//==========CCTITLE=========//
+	{{ set_cctitle("§cend") }}
+
+	IF(emergency_exit___);
+		LOG("§8§l%&pname__% §8DELETED")
+		{{ kill() }}
+	ELSEIF(stop___);
+
+		IF(!blocked___);
+			{* if project.debug *}
+				{{ get_out() }}
+				LOG("%&phash__% §aPROCESS §aFINISHED §8§l%&output__%");
+			{* elif project.verbose *}
+				LOG("§8§l%&pname__% §c●");
+			{* endif *}
+		ENDIF;
+
+		UNSET(%&status___%);
+		//UNSET(%&in___%);
+		//UNSET(%&out___%);
+	ELSE;
+		SET(pause___);
+	ENDIF;
+
+{* endmacro *}

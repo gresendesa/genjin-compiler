@@ -1,0 +1,1401 @@
+
+/*
+    TODO: resolver a anomalia do op_pegar. A operação pega itens indefinidamente.
+    
+    
+    OBJETIVO: Criar um mecanismo genérico para lidar com operações em MKB
+    
+    
+    1.MKB
+    Padrão de baús formado por uma parede de colunas de 5 baús de altura
+    *Baús duplos formam a coluna
+    Cada coluna é numerada de 0 a (N - 1), onde N é a quantidade de colunas
+    10 colunas = N
+    0 1 2 3 4 5 6 7 8 9
+    c c c c c c c c c c
+    Os baús de cada coluna são numerados de 0 a 4 onde o 0 é o baú do topo e o 4 é o baú do chão
+    
+    2.PLAYER:
+    O jogador fica de frente olhando perpendicularmente a parede de baús
+    a parede fica a 1 bloco de distancia
+    O jogador se movimenta horizontalmente em cima de uma passarela paralelamente a parede de baús
+    a passarela fica na mesma altura do baú 4 distanciando-se em 1 deste mesmo bau
+    O sentido que o jogador andará pode ser tanto pra direita quanto pra esquerda
+    isso será definido via parametro
+    O player só andará na passarela, isso significa que a trap acabou quando não tiver mais
+    blocos formando a passarela ou quando não tiver mais baús a frente
+    Toda vez que o player mudar de coluna ele precisa atualizar a home temporária
+    o comando de criação de home temporaria sera definido atraves de um parametro
+    ex: /sethome (home)
+    
+    3.Operações:
+    GET: pegar uma quantidade X de itens que corresponda ao REGEX R definido pelo usuário
+    LET: deixar uma quantidade X de itens que corresponda ao REGEX R definido pelo usuário
+    UNLOAD: fazer a limpeza do inventário de itens que correspondam ao REGEX R (exceto a hotbar)
+    mantendo o seu layout pre-definido
+    Quantidade não interfere nessa operação.
+    
+    
+    Observações:
+    ID sempre levará em consideração o valor DATA do item.
+    Ao iniciar a execução de uma operação o player continuará do ultimo baú
+    que ele parou
+    esse script não lida com teleportes!
+    Direção é para onde a macro irá olhar ex: norte, sul etc
+    Sentido será qual a rota a ser seguida ex: direita, esquerda etc
+    
+    
+    
+    DISCLAIMER:
+    FEDERAL POR MEIO DE VOZ DESCORDA PIAMENTE DO CONCEITO DE DIRECAO NA MACRO DE WALK.
+    
+    GOTO -> movimentacao
+    GOTO -> main
+    GOTO -> itera_mkb
+    GOTO -> percorrer
+    GOTO -> olha_bau
+    GOTO -> voltar
+    GOTO -> for_teste
+    GOTO -> jeffwalk
+    GOTO -> teste_walk
+    GOTO -> teste_olha_bau
+    
+    GOTO -> op_testar
+    GOTO -> op_deixar
+    GOTO -> op_pegar
+    GOTO -> op_descarregar
+    GOTO -> op_deixar_farmer
+    
+*/
+
+
+//HERE <- movimentacao
+/*
+    
+    DEFININDO SENTIDO EM FUNÇÃO DA DIREÇÃO:
+    
+    NORTE (N):
+    Esquerda: X diminui Z se mantém
+    Direita:  X aumenta Z se mantém
+    
+    LESTE (E):
+    Esquerda: Z diminui X se mantém
+    Direita:  Z aumenta X se mantém
+    
+    SUL (S):
+    Esquerda: X aumenta Z se mantém
+    Direita:  X diminui Z se mantém
+    
+    OESTE (W):
+    Esquerda: Z aumenta X se mantém
+    Direita:  Z diminui X se mantém
+    
+    
+*/
+
+/*
+    
+    TESTADO OK em 25 julho de 2021, às 18:12 do horário de Brazília
+    POR Federal e Jeff
+    
+*/
+
+{* import 'Macrosoft.TAXON.gui' as GUI *}
+{* from 'Macrosoft.TAXON.gui' import op_mover *}
+{* from 'Federal.@.old-repository-parts' import parts *}
+/*
+    bug: se ele passa da coordenada, ele continua indefinidamente (29/08/2021)
+*/
+
+{* set ids_baús = ['54','chest','146','trapped_chest','130','ender_chest'] *}
+//HERE <- jeffwalk
+{* macro jeffwalk(direção="%DIRECTION%", sentido="right", distância=1, variável_sucesso='success', blocos_proibidos=['0','air','31','grass','6','sapling','37','flower','38','rose','39','40','torch','50'], distância_cautelar=0) *}
+    
+    {* set rand = nid() *}
+    
+    {* macro gera_código_direção(para, dir, var_eixo_constante, var_eixo_variável, variações) *}
+        
+        #dir{{ rand }}={{ dir }};
+        {{ var_eixo_constante }}{{ rand }}=0;
+        //#destinoz=ZPOS;
+        {* if para == 'left' *}
+            {{ var_eixo_variável }}{{ rand }}={{ variações[1] }};
+        {* elif para == 'right' *}
+            {{ var_eixo_variável }}{{ rand }}={{ variações[0] }};
+        {* else *}
+            ifmatches("{{ para }}","right");
+                {{ var_eixo_variável }}{{ rand }}={{ variações[0] }};
+            else;
+                {{ var_eixo_variável }}{{ rand }}={{ variações[1] }};
+            endif;
+        {* endif *}
+        
+    {* endmacro *}
+    
+    {*
+        set configs = {
+            'N':{
+                'dir': 0,
+                'var_eixo_constante': '#variacaoz',
+                'var_eixo_variável': '#variacaox',
+                'variações': [1, -1]
+            },
+            'S':{
+                'dir': 180,
+                'var_eixo_constante': '#variacaoz',
+                'var_eixo_variável': '#variacaox',
+                'variações': [-1, 1]
+            },
+            'E':{
+                'dir': 90,
+                'var_eixo_constante': '#variacaox',
+                'var_eixo_variável': '#variacaoz',
+                'variações': [1, -1]
+            },
+            'W':{
+                'dir': 270,
+                'var_eixo_constante': '#variacaox',
+                'var_eixo_variável': '#variacaoz',
+                'variações': [-1, 1]
+            }
+        }
+    *}
+    
+    /*
+        Essa pequenina e intrincada macro, gera as flags que indicam se o avatar deve
+        andar para a direta e se o sinal da distância esperada é positiva.
+        esses parâmetros são definidos somente em função so sentido e dos valores passados como argumento
+    */
+    {* macro gerar_direita_positivo(sentido,rdireita,rpositiva,ldireita,lpositiva) *}
+        
+        {* if sentido == 'right' *}
+            SET(andar_direita{{ rand }});
+            {* if rpositiva *}
+                SET(distancia_positiva{{ rand }});
+            {* else *}
+                UNSET(distancia_positiva{{ rand }});
+            {* endif *}
+        {* elif sentido == 'left' *}
+            UNSET(andar_direita{{ rand }});
+            {* if lpositiva *}
+                SET(distancia_positiva{{ rand }});
+            {* else *}
+                UNSET(distancia_positiva{{ rand }});
+            {* endif *}
+        {* else *}
+            IF({{ sentido }}=="right");
+                SET(andar_direita{{ rand }});
+                {* if rpositiva *}
+                    SET(distancia_positiva{{ rand }});
+                {* else *}
+                    UNSET(distancia_positiva{{ rand }});
+                {* endif *}
+            ELSE;
+                UNSET(andar_direita{{ rand }});
+                {* if lpositiva *}
+                    SET(distancia_positiva{{ rand }});
+                {* else *}
+                    UNSET(distancia_positiva{{ rand }});
+                {* endif *}
+            ENDIF;
+        {* endif *}
+        
+    {* endmacro *}
+    
+    //LOG("LOG SEGURO DIREÇÃO: {{ direção }}");
+    //HERE <- voltar
+    {* if direção == 'N' *}
+        
+        //LOG("é N literal");
+        {{ gera_código_direção(para=sentido, dir=configs.N.dir, var_eixo_constante=configs.N.var_eixo_constante, var_eixo_variável=configs.N.var_eixo_variável, variações=configs.N.variações) }}
+        {{ gerar_direita_positivo(sentido=sentido,rpositiva=True,lpositiva=False) }}
+        
+    {* elif direção == 'S' *}
+        
+        //LOG("é S literal");
+        {{ gera_código_direção(para=sentido, dir=configs.S.dir, var_eixo_constante=configs.S.var_eixo_constante, var_eixo_variável=configs.S.var_eixo_variável, variações=configs.S.variações) }}
+        {{ gerar_direita_positivo(sentido=sentido,rpositiva=False,lpositiva=True) }}
+        
+    {* elif direção == 'E' *}
+        
+        //LOG("é E literal");
+        {{ gera_código_direção(para=sentido, dir=configs.E.dir, var_eixo_constante=configs.E.var_eixo_constante, var_eixo_variável=configs.E.var_eixo_variável, variações=configs.E.variações) }}
+        {{ gerar_direita_positivo(sentido=sentido,rpositiva=True,lpositiva=False) }}
+        
+    {* elif direção == 'W' *}
+        
+        //LOG("é W literal");
+        {{ gera_código_direção(para=sentido, dir=configs.W.dir, var_eixo_constante=configs.W.var_eixo_constante, var_eixo_variável=configs.W.var_eixo_variável, variações=configs.W.variações) }}
+        {{ gerar_direita_positivo(sentido=sentido,rpositiva=False,lpositiva=True) }}
+        
+    {* else *}
+        
+        if({{ direção }}=="N");
+            
+            //LOG("é N");
+            {{ gera_código_direção(para=sentido, dir=configs.N.dir, var_eixo_constante=configs.N.var_eixo_constante, var_eixo_variável=configs.N.var_eixo_variável, variações=configs.N.variações) }}
+            {{ gerar_direita_positivo(sentido=sentido,rpositiva=True,lpositiva=False) }}
+            
+            
+        elseif({{ direção }}=="S");
+            
+            //LOG("é S");
+            {{ gera_código_direção(para=sentido, dir=configs.S.dir, var_eixo_constante=configs.S.var_eixo_constante, var_eixo_variável=configs.S.var_eixo_variável, variações=configs.S.variações) }}
+            {{ gerar_direita_positivo(sentido=sentido,rpositiva=False,lpositiva=True) }}
+            
+            
+        elseif({{ direção }}=="E");
+            
+            //LOG("é E");
+            {{ gera_código_direção(para=sentido, dir=configs.E.dir, var_eixo_constante=configs.E.var_eixo_constante, var_eixo_variável=configs.E.var_eixo_variável, variações=configs.E.variações) }}
+            {{ gerar_direita_positivo(sentido=sentido,rpositiva=True,lpositiva=False) }}
+            
+        elseif({{ direção }}=="W");
+            
+            //LOG("é W");
+            {{ gera_código_direção(para=sentido, dir=configs.W.dir, var_eixo_constante=configs.W.var_eixo_constante, var_eixo_variável=configs.W.var_eixo_variável, variações=configs.W.variações) }}
+            {{ gerar_direita_positivo(sentido=sentido,rpositiva=False,lpositiva=True) }}
+            
+        endif;
+        
+    {* endif *}
+    
+    #destinox{{ rand }}=XPOS+({{ distância }}*#variacaox{{ rand }});
+    #destinoz{{ rand }}=ZPOS+({{ distância }}*#variacaoz{{ rand }});
+    //log(X:%#destinox{{ rand }}% Z:%#destinoz{{ rand }}%)
+    SET(#pitch_congelado{{ rand }},%PITCH%);
+    CENTEROVERBLOCK();
+    WAIT(3t);
+    do;
+        
+        {* if this.protocol == 'CTRL' *}
+            {* import 'Macrosoft.cortex.common' as CORTEX *}
+            {{ CORTEX.loop() }}
+        {* endif *}
+        
+        look(%#dir{{ rand }}%,%#pitch_congelado{{ rand }}%);
+        
+        GETIDREL(%#variacaox{{ rand }}%,-1,%#variacaoz{{ rand }}%,&bloco_lado{{ rand }});
+        GETIDREL(%#variacaox{{ rand }}%,0,%#variacaoz{{ rand }}%,&bloco_lado0{{ rand }});
+        GETIDREL(%#variacaox{{ rand }}%,1,%#variacaoz{{ rand }}%,&bloco_lado1{{ rand }});
+        
+        //LOG(%&bloco_lado{{ rand }}%);
+        
+        /*
+            1. Achar um fórmula que indique se o programa
+            a) está à caminho da posição destino
+            b) chegou à posição destino
+            c) passou da posição destino
+            - Se passou da posição destino, então, mude o sentido
+            2. Achar um número que indique a distância da posição destino
+            a) se for maior que 0, estamos à caminho
+            b) se for igual a zero, chegamos no destino
+            c) se for menor que 0, passamos do destino
+            3. Este número será a imagem de uma função d(s,x,z,X,Z,D)
+            a) d representa a distância do destino
+            b) s representa o sentido, que pode ser left ou right
+            c) x e z representam, respectivamente, a posição X e Z do destino
+            d) X e Z representam, respectivamente, a posição do player
+            e) D é a direção assumida pelo player
+        */
+        
+        /*
+            A variável #diferenca_eixo mostra a soma das diferenças das coordenadas X e Z
+            Como sempre uma das coordenadas ou X ou Z são iguais entre o player e o destino,
+            então, um dos termos da expressão atribuída a #diferenca_eixo sempre sera igual a zero.
+            Como consequência, o módulo de #diferenca_eixo sempre indicará a distância do player ao destino.
+            Basta verificarmos a relação entre sinal de #diferenca_eixo, sentido e direção para os eventos:
+            1. está a caminho da posição destino
+            2. passou da posição destino
+            Estudando a relação direção-sentido-sinal-evento:
+            N:
+            right:
+            - passamos
+            + estamos a caminho
+            left
+            - estamos a caminho
+            + passamos
+            S:
+            right:
+            - estamos a caminho
+            + passamos
+            left
+            - passamos
+            + estamos a caminho
+            E:
+            right:
+            - passamos
+            + estamos a caminho
+            left
+            - estamos a caminho
+            + passamos
+            W:
+            right:
+            - estamos a caminho
+            + passamos
+            left
+            - passou
+            + estamos a caminho
+        */
+        
+        #diferenca_eixo{{ rand }}=(#destinox{{ rand }}-XPOS)+(#destinoz{{ rand }}-ZPOS);
+        
+        //Pega a diferença absoluta
+        #abs_diferenca_eixo{{ rand }}=#diferenca_eixo{{ rand }};
+        IF(#diferenca_eixo{{ rand }}<0);
+            #abs_diferenca_eixo{{ rand }}=#diferenca_eixo{{ rand }}*-1;
+        ENDIF;
+        //LOG(%#diferenca_eixo{{ rand }}%);
+        
+        //LOG("andar direita: %andar_direita{{ rand }}%");
+        //LOG("distancia_positiva: %distancia_positiva{{ rand }}%");
+        IF(((#diferenca_eixo{{ rand }}>0)&&(!distancia_positiva{{ rand }}))||((#diferenca_eixo{{ rand }}<0)&&(distancia_positiva{{ rand }})));
+            TOGGLE(andar_direita{{ rand }});
+            TOGGLE(distancia_positiva{{ rand }});
+            #variacaox{{ rand }}=#variacaox{{ rand }}*-1;//Inverte a variação, já que o sentido e invertido
+            #variacaoz{{ rand }}=#variacaoz{{ rand }}*-1;//Inverte a variação, já que o sentido e invertido
+            LOG("§e✘ §8woops");
+            KEYUP("right");
+            KEYUP("left");
+            {* if distância_cautelar > 0 *}
+                KEYUP("sneak");
+            {* endif *}
+            WAIT(1t);
+        ELSEIF(#diferenca_eixo{{ rand }}==0);
+            SET({{ variável_sucesso }});
+            BREAK;
+        ENDIF;
+        
+        IFMATCHES("%&bloco_lado{{ rand }}%","{{ '^' + blocos_proibidos | join('$|^') + '$' }}");
+            UNSET({{ variável_sucesso }});
+            BREAK;
+        ENDIF;
+        
+        {* import 'Federal.sense.sensor' as SENSOR *}
+        //Isso espera que tenha blocos proibidos (blocos não sólidos) para que ela possa passar por entre eles
+        IFMATCHES("{%&bloco_lado0{{ rand }}%}{%&bloco_lado1{{ rand }}%}","{{ SENSOR.regexp_has_ids(ids=blocos_proibidos, only=True) }}");
+            SET({{ variável_sucesso }});
+        ELSE;
+            UNSET({{ variável_sucesso }});
+            BREAK;
+        ENDIF;
+        
+        //Anda agachado se estiver perto
+        {* if distância_cautelar > 0 *}
+            IF(#abs_diferenca_eixo{{ rand }}<={{ distância_cautelar }});
+                KEYDOWN("sneak");
+            ENDIF;
+        {* endif *}
+        
+        IF(andar_direita{{ rand }});
+            KEYDOWN("right");
+        ELSE;
+            KEYDOWN("left");
+        ENDIF;
+        WAIT(1t);//Não remova este atraso. É essencial para UNSAFE
+        
+    LOOP;
+    KEYUP("right");
+    KEYUP("left");
+    {* if distância_cautelar > 0 *}
+        KEYUP("sneak");
+    {* endif *}
+    WAIT(3t);
+    CENTEROVERBLOCK();
+    
+{* endmacro *}
+{* macro op_abre_bau_multiaccount(success_outvar, baú) *}
+    if({{ baú }} = 0)
+        #y = %YPOS% + 3;
+    elseif({{ baú }} = 1)
+        #y = %YPOS% + 2;
+    elseif({{ baú }} = 2)
+        #y = %YPOS% + 1;
+    elseif({{ baú }} = 3)
+        #y = %YPOS%;
+    elseif({{ baú }} = 4)
+        #y = %YPOS% - 1;
+    endif;
+    if(%DIRECTION% = "N")
+        #z = %ZPOS% - 2;
+        #x = %XPOS%;
+    elseif(%DIRECTION% = "S")
+        #z = %ZPOS% + 2;
+        #x = %XPOS%;
+    elseif(%DIRECTION% = "W")
+        #x = %XPOS% - 2;
+        #z = %ZPOS%;
+    elseif(%DIRECTION% = "E")
+        #x = %XPOS% + 2;
+        #z = %ZPOS%;
+    endif;
+    UNSET({{ success_outvar }});
+    DO;
+        INC(#count{{ gr }}abrir,1);
+        IFMATCHES(%GUI%,CHEST);
+            SET({{ success_outvar }});
+            BREAK;
+        ELSE;
+            IF(#count{{ gr }}abrir>50);
+                BREAK;
+            ENDIF;
+            KEYUP(SNEAK);
+            simulaterightclick(%#x%,%#y%,%#z%,t);
+            WAIT(10t);
+        ENDIF;
+    LOOP;
+    UNSET(#count{{ gr }}abrir);
+{* endmacro *}
+{* macro testa_estamos_a_caminho_passou(direção,sentido,sinal_esperado) *}
+    
+    {*
+        set configs = {
+            'N':{
+                'dir': 0,
+                'var_eixo_constante': '#variacaoz',
+                'var_eixo_variável': '#variacaox',
+                'variações': {
+                    'right':1,
+                    'left':-1
+                }
+            },
+            'S':{
+                'dir': 180,
+                'var_eixo_constante': '#variacaoz',
+                'var_eixo_variável': '#variacaox',
+                'variações': {
+                    'right':-1,
+                    'left':1
+                }
+            },
+            'E':{
+                'dir': 90,
+                'var_eixo_constante': '#variacaox',
+                'var_eixo_variável': '#variacaoz',
+                'variações': {
+                    'right':1,
+                    'left':-1
+                }
+            },
+            'W':{
+                'dir': 270,
+                'var_eixo_constante': '#variacaox',
+                'var_eixo_variável': '#variacaoz',
+                'variações': {
+                    'right':-1,
+                    'left':1
+                }
+            }
+        }
+    *}
+    
+    LOOK({{ configs[direção].dir }},0);
+    WAIT(10t);
+    UNSET(#variacaox);
+    UNSET(#variacaoz);
+    INC({{ configs[direção].var_eixo_variável }},{{ configs[direção].variações[sentido] }});
+    #destinox=XPOS+#variacaox;
+    #destinoz=ZPOS+#variacaoz;
+    SET(&sinal,"{{ sinal_esperado }}");
+    #diferenca_eixo=(#destinox-XPOS)+(#destinoz-ZPOS);
+    IF((#diferenca_eixo>0)&&(&sinal=="positivo"));
+        LOG("§a§lsucesso com {{ direção }}+{{ sentido }}+positivo");
+    ELSEIF((#diferenca_eixo<0)&&(&sinal=="negativo"));
+        LOG("§a§lsucesso com {{ direção }}+{{ sentido }}+negativo");
+    ELSEIF((#diferenca_eixo==0));
+        LOG("§c§linssucesso com {{ direção }}+{{ sentido }}. Sem sinal. Igual a 0");
+        BREAK;
+    ELSE;
+        LOG("§c§linssucesso com {{ direção }}+{{ sentido }} está {{ sinal_esperado }}");
+        BREAK;
+    ENDIF;
+    
+{* endmacro *}
+
+/*
+    DESCRIÇÃO: testo a macro walk
+    Fazer uma passarela conforme a seguir:
+    ░012345
+    0░░░N░░
+    1░▓▓f▓▓
+    2░▓▓║▓▓
+    3░a═╬═f
+    4░▓▓║▓▓
+    5░▓▓a▓▓
+    ║ -> passarela
+    a -> ar,
+    f -> flor
+    Centralize em ╬, olhe para o norte e execute o teste_walk
+    HERE <- teste_walk
+*/
+{* macro teste_walk(macro) *}
+    
+    DO(1)
+        
+        SET(&dir_n,"N");
+        SET(&dir_s,"S");
+        SET(&dir_e,"E");
+        SET(&dir_w,"W");
+        
+        {* set direções = ['N','S','E','W',"%&dir_n%","%&dir_s%","%&dir_e%","%&dir_w%"] *}
+        
+        {*
+            set testes = [
+                
+                {'andar_para':'left', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': '1. teste esquerda'},
+                {'andar_para':'right', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 1.'},
+                
+                {'andar_para':'right', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': '2. teste direita'},
+                {'andar_para':'left', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 2.'},
+                
+                {'andar_para':'left', 'quantidade_blocos': 99, 'resultado_esperado': False, 'nome': '3. teste esquerda, bloco proibido'},
+                {'andar_para':'right', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 3.'},
+                
+                {'andar_para':'right', 'quantidade_blocos': 99, 'resultado_esperado': False, 'nome': '4. teste direita, bloco proibido'},
+                {'andar_para':'left', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 4.'},
+                
+                
+                
+                {'comando': 'SET(&comando,"left")', 'andar_para':'%&comando%', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': '5. teste esquerda'},
+                {'comando': 'SET(&comando,"right")', 'andar_para':'%&comando%', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 5.'},
+                
+                {'comando': 'SET(&comando,"right")', 'andar_para':'%&comando%', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': '6. teste direita'},
+                {'comando': 'SET(&comando,"left")', 'andar_para':'%&comando%', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 6.'},
+                
+                {'comando': 'SET(&comando,"left")', 'andar_para':'%&comando%', 'quantidade_blocos': 99, 'resultado_esperado': False, 'nome': '7. teste esquerda, bloco proibido'},
+                {'comando': 'SET(&comando,"right")', 'andar_para':'%&comando%', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 7.'},
+                
+                {'comando': 'SET(&comando,"right")', 'andar_para':'%&comando%', 'quantidade_blocos': 99, 'resultado_esperado': False, 'nome': '8. teste direita, bloco proibido'},
+                {'comando': 'SET(&comando,"left")', 'andar_para':'%&comando%', 'quantidade_blocos': 1, 'resultado_esperado': True, 'nome': 'volta do 8.'},
+                
+                
+            ]
+        *}
+        
+        {* for direção in direções *}
+            
+            {* for teste in testes *}
+                
+                {* if teste.comando is defined *}
+                    
+                    {{ teste.comando }};
+                    
+                {* endif *}
+                
+                {{ macro(direção=direção, sentido=teste.andar_para, distância=teste.quantidade_blocos, variável_sucesso='destino_alcancado') }}
+                {* if teste.resultado_esperado == True *}
+                    {{ 'IF(!destino_alcancado);' }}
+                {* else *}
+                    {{ 'IF(destino_alcancado);' }}
+                {* endif *}
+                LOG("deu merda no passo {{ teste.nome }} [{{ direção }}]");
+                BREAK;
+                ENDIF;
+                
+            {* endfor *}
+            
+        {* endfor *}
+        
+        
+    LOOP;
+    
+    IF(destino_alcancado);
+        
+        LOG("todos os testes até aki passaram com sucesso");
+        
+    ENDIF;
+    
+{* endmacro *}
+
+
+
+/*
+    
+    TESTADO OK em 25 julho de 2021, às 18:28 do horário de Brazília
+    POR Federal e Jeff
+    DEV: Criado por Jeff
+    HERE <- olha_bau
+*/
+{* set variação_pitch = [310,335,0,35,50] *}
+{* macro olha_baú(número=0) *}
+    {* set r = nid() *}
+    #yaw{{ r }}=((DIRECTION=="N")*360)+((DIRECTION=="S")*180)+((DIRECTION=="E")*90)+((DIRECTION=="W")*270);
+    INC(#yaw{{ r }},5);
+    {* if número is number *}
+        look(%#yaw{{ r }}%,{{ variação_pitch[número] }});
+    {* else *}
+        {* for pitch in variação_pitch *}
+            {* if  loop.index0 == 0 *}
+            {{ 'if('~número~'=='~loop.index0~')' }}
+            {* else *}
+                {{ 'elseif('~número~'=='~loop.index0~')' }}
+            {* endif *}
+            look(%#yaw{{ r }}%,{{ variação_pitch[loop.index0] }});
+            {* if loop.index0 == 4 *}
+                {{ 'endif;' }}
+            {* endif *}
+            //log({{ loop.index0 }}|{{ pitch }})
+        {* endfor *}
+    {* endif *}
+    WAIT(1t);//Aguarda a visão de estabilizar naquele pitch
+{* endmacro *}
+
+//HERE <- teste_olha_bau
+{* macro teste_olha_baú() *}
+    
+    {*
+        set testes = [
+            {'baú': 0, 'baú_esperado': 0, 'nome': 'j1'},
+            {'baú': 1, 'baú_esperado': 1, 'nome': 'j2'},
+            {'baú': 2, 'baú_esperado': 2, 'nome': 'j3'},
+            {'baú': 3, 'baú_esperado': 3, 'nome': 'j4'},
+            {'baú': 4, 'baú_esperado': 4, 'nome': 'j5'},
+            {'baú': 5, 'baú_esperado': 5, 'nome': 'j5.2'},
+            {'comando': 'SET(#bau,0)','baú': '%#bau%', 'baú_esperado': 0, 'nome': 'j6'},
+            {'comando': 'SET(#bau,1)','baú': '%#bau%', 'baú_esperado': 1, 'nome': 'j7'},
+            {'comando': 'SET(#bau,2)','baú': '%#bau%', 'baú_esperado': 2, 'nome': 'j8'},
+            {'comando': 'SET(#bau,3)','baú': '%#bau%', 'baú_esperado': 3, 'nome': 'j9'},
+            {'comando': 'SET(#bau,4)','baú': '%#bau%', 'baú_esperado': 4, 'nome': 'j10'},
+        ]
+    *}
+    
+    DO(1);
+        {* for teste in testes *}
+            
+            WAIT(1);
+            
+            {* if teste.comando is defined *}
+                
+                {{ teste.comando }};
+                
+            {* endif *}
+            
+            {{ olha_baú(número=teste.baú) }}
+            
+            IF(PITCH!={{ variação_pitch[teste.baú_esperado] }});
+                
+                LOG("deu merda no teste {{ teste.name }} porque eu esperava PITCH={{ variação_pitch[teste.baú_esperado] }} mas estou no pitch %PITCH%");
+                
+                BREAK;
+            ENDIF;
+            
+        {* endfor *}
+        
+        LOG("§aTODOS OS TESTES DERAM BOM, PAI!");
+        
+    LOOP;
+    
+{* endmacro *}
+
+
+/*
+    
+    Temos prontos:
+    - a macro de andar
+    - a macro de olhar para baús
+    
+    Uma macro que ande para onde eu quiser na trap,
+    Olhe para o baú que eu quiser e pronto.
+    
+*/
+//HERE <- percorrer
+{* macro percorrer(baú=0,coluna=0,direção='N',sentido='right') *}
+    
+    {* set rand = nid() *}
+    
+    {{ jeffwalk(direção=direção, sentido=sentido, distância=coluna, variável_sucesso='success'~rand) }}
+    IF(success{{ rand }});
+        {{ olha_baú(número=baú) }}
+    ELSE;
+        LOG("§cnão consegui percorrer distância {{ distância }} baú {{ baú }}");
+    ENDIF;
+    
+{* endmacro *}
+
+
+/*
+    
+    OBJETIVO:
+    DESCRIÇÃO: Esta macro implementará um loop que seguirá o seguinte algoritmo:
+    1. o player será movido até o baú e coluna indicados na direção e no sentido definidos
+    2. olhará para o baú e executará a operação.
+    3. o baú será incrementado e o look será atualizado para o novo baú. Exceto se
+    o baú for o último. Neste caso, o número do baú será reiniciado para o
+    início, e o player será movido 1 coluna na direção e sentido definidos. vá para 2
+    
+    A operação realizará função de gestão entre baú e inventário. A operação decidirá
+    quando o loop deverá ser quebrado.
+    
+    Para a operação será passado: o baú, a coluna, direção, sentido, e regex_id e variável_resposta
+    O último baú e última coluna utilizada pelo loop serão informados, respectivamente
+    variável_bau, variável_colunas
+    
+    Caso player seja impedido de movimentar-se em função de fim de passarela,
+    então a variável_sucesso será definida como 'false' e o loop será quebrado.
+    DEV: Jeff, TonNSz, Federal
+    
+    
+    Sexo: macho ou fêmea ou hermafrodita (definido no nascimento) (imutável)
+    Gênero: homem, mulher (diferente de sexualidade) (papel social)
+    Opção sexual: heterossexual, homossexual, bissexual, panssexual...
+    
+    DISCLAIMER: Senhorita namorada do Federal, eu Jeff Hinoto me abstenho completamente desse tipo de assunto e nego ter qualquer relação com tal ocorrido.
+    
+    * hook_acessar_baú(outvar='consegui_abrir'): recebe uma macro que abre o baú e indica se ele foi fechado
+    * hook_fechar_inventário(outvar='consegui_fechar'): recebe uma macro que fecha o baú e indica se ele foi fechado
+    
+*/
+{* set gr = nid() *}
+
+{* macro hook_acessar_baú(success_outvar, baú) *}
+    
+    UNSET({{ success_outvar }});
+    IFMATCHES(%HITID%,"{{ '^'~ids_baús|join('$|^')~'$' }}");
+        {* set lados_permitidos_baús = ['N','S','E','W'] *}
+        IFMATCHES(%HITSIDE%,"{{ '^'~lados_permitidos_baús|join('$|^')~'$' }}");
+            #distancex{{ gr }}=XPOS-HITX;
+            #distancez{{ gr }}=ZPOS-HITZ;
+            #distancesum{{ gr }}=#distancex{{ gr }}+#distancez{{ gr }};
+            MATCH("%#distancesum{{ gr }}%","-?([0-9]+)",#distance{{ gr }},1);//Pega a distância absoluta até o baú
+            IF(#distance{{ gr }}==2);
+                DO;
+                    INC(#count{{ gr }}abrir,1);
+                    IFMATCHES(%GUI%,CHEST);
+                        SET({{ success_outvar }});
+                        BREAK;
+                    ELSE;
+                        IF(#count{{ gr }}abrir>50);
+                            BREAK;
+                        ENDIF;
+                        KEYUP(SNEAK);
+                        KEY(USE);
+                        WAIT(10t);
+                    ENDIF;
+                LOOP;
+                UNSET(#count{{ gr }}abrir);
+            ELSE;
+                LOG("§e✘ §8baú na distância incorreta");
+            ENDIF;
+        ELSE;
+            LOG("§e✘ §8baú mal colocado");
+        ENDIF;
+    ELSE;
+        LOG("§e✘ §8não é báu");
+    ENDIF;
+    
+{* endmacro *}
+
+{* macro hook_fechar_inventário(success_outvar, baú) *}
+    
+    UNSET({{ success_outvar }});
+    DO;
+        IFMATCHES(%GUI%,NONE);
+            SET({{ success_outvar }});
+            BREAK;
+        ELSE;
+            GUI();
+        ENDIF;
+        WAIT(5t);
+    LOOP;
+    
+{* endmacro *}
+
+//HERE <- itera_mkb
+{*
+    macro itera_mkb(
+        operação,
+        regex_id='^.*$',
+        baú='%@#bau%',
+        coluna='%@#coluna%',
+        direção='%DIRECTION%',
+        sentido='right',
+        variável_resposta='&resposta'~gr,
+        variável_baú='@#bau',
+        variável_coluna='@#coluna',
+        variável_sucesso='success'~gr,
+        passo=1,
+        quantidade=0,
+        limite_baús=0,
+        hook_abrir_baú=hook_acessar_baú,
+        hook_fechar_baú=hook_fechar_inventário,
+        hook_executar_ao_iniciar=None,
+        hook_executar_ao_finalizar=None,
+        informação_útil=None,
+        delay=0,
+        distância_cautelar=0,
+        turbo=None
+    )
+*}
+
+{* set r = nid() *}
+
+SET(#bau{{ r }},{{ baú }});
+SET(#distancia{{ r }},{{ coluna }});
+UNSET(#coluna{{ r }});
+UNSET(#baus_verificados{{ r }});
+UNSET({{ variável_resposta }});
+
+{* if hook_executar_ao_iniciar is callable *}
+    {{ hook_executar_ao_iniciar(baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados='%#baus_verificados'~r~'%', delay=delay, informação_útil=informação_útil) }}
+{* endif *}
+
+DO;
+    {* if this.protocol == 'CTRL' *}
+        {* import 'Macrosoft.cortex.common' as CORTEX *}
+        {{ CORTEX.loop() }}
+    {* endif *}
+    #distancia{{ r }}=#distancia{{ r }}*{{ passo}};//alteração feita para pular mais de uma fileira por vez na MKB
+    {{ jeffwalk(direção=direção, sentido=sentido, distância='%#distancia'~r~'%', variável_sucesso=variável_sucesso, distância_cautelar=distância_cautelar) }}
+    INC(#coluna{{ r }},%#distancia{{ r }}%);//Isso indicará a quantidade de colunas percorridas
+    {* if turbo != None *}
+        {{ 'UNSAFE('~ turbo ~')' }};
+    {* endif *}
+    /**
+        * Modificação feita dia 10/02/2025
+        *
+        * Após 4 anos, 3 apocalipses e 1 guerra mundial, voltamos aqui para dizer que tá tudo bem e o mundo não é mais o mesmo.
+        * Com ChatGPT, Gemini e o novo DeepSeek, nós meros fazedore de macros estamos passando fome e vendendo macro feito agua,
+        * o que por sinal é contraditório, não?
+        *
+        * deixo aqui minha anotação salva pro meu eu de 40 anos de que tá tudo certo pra dar errado, se vira pra arruar aí <3
+        *
+        * Jeff, Tony, Federal todos discordam mas "na minha máquina funciona"
+    */
+    IF({{ variável_sucesso }});
+        #front{{ r}}=2;
+        #right{{ r}}=0;
+        #up{{ r}}=3-#bau{{ r}};//varia de -1 a 3
+        #x{{ r}}=(((DIRECTION=="E")-(DIRECTION=="W"))*(#front{{ r}}))+(((DIRECTION=="N")-(DIRECTION=="S"))*(#right{{ r}}))+XPOS;
+        #y{{ r}}=YPOS+#up{{ r}};
+        #z{{ r}}=(((DIRECTION=="S")-(DIRECTION=="N"))*(#front{{ r}}))+(((DIRECTION=="E")-(DIRECTION=="W"))*(#right{{ r}}))+ZPOS;
+        GETID(%#x{{ r}}%,%#y{{ r}}%,%#z{{ r}}%,&id_bloco{{ r}});
+        UNSET(abriu{{ r}});
+        IFMATCHES("%&id_bloco{{ r}}%","{{ '^'~ids_baús|join('$|^')~'$' }}")
+            {{ olha_baú(número='%#bau'~r~'%') }}
+            {* if hook_abrir_baú is callable *}
+                {{ hook_abrir_baú(success_outvar='abriu'~r, baú='%#bau'~r~'%') }}
+            {* else *}
+                SET(abriu{{ r }});
+            {* endif *}
+        endif;
+        IF(abriu{{ r }});//Para se não conseguir abrir ele vai pular pra o próximo
+            
+            {{ operação(baú='%#bau'~r~'%', coluna='%#coluna'~r~'%', direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados='%#baus_verificados'~r~'%', delay=delay, informação_útil=informação_útil) }}
+            
+            {* if hook_fechar_baú is callable*}
+                {{ hook_fechar_baú(success_outvar='fechou'~r, baú='%#bau'~r~'%') }}
+            {* else *}
+                SET(fechou{{ r }});
+            {* endif *}
+            
+            IF(!fechou{{ r }});//Para se não conseguir fechar o báu e indica falta de sucesso no processo
+                UNSET({{ variável_sucesso }});
+                BREAK;
+            ENDIF;
+        ENDIF;
+        UNSET(#distancia{{ r }});//Isso volta a coluna pra 0
+        UNSET(bottom_reached{{ r }});
+        INC(#bau{{ r }},1);//Incrementando o baú
+        
+        IF(#bau{{ r }}>4);
+            SET(#bau{{ r }},4);
+            SET(bottom_reached{{ r }});
+        ENDIF;
+        //IF(#bau{{ r }}>4);
+        //	UNSET(#bau{{ r }});//Isso retorna o baú para 0
+        //	INC(#distancia{{ r }},1);//Isso faz a macro andar uma posição no sentido definido
+        //ENDIF;
+        
+        /**
+         * Federal em 18/10/2025, às 1:06 da madrugada.
+         * --> Correção de parâmetro "quantidade" <--
+         * MKBs incompletas (com colunas com vãos) estavam causando mau funcionamento do MKB itera.
+         * Quando desenhamos isso, imaginamos que a coluna sempre teria 5 baús de altura.
+         * No entanto, em algum momento entre 2024 e 2025, Jeff e eu fizemos o programa
+         * ignorar posições da coluna onde o baú não estivesse. Não imaginávamos, porém,
+         * que isso traria um efeito colateral que seria resolvido apenas no fim.
+         * de outubro de 2025 (com a ajuda do Gemini!)
+         * Quando o primeiro baú não existia no topo, o programa considerava que
+         * um baú tinha sido lido. E por isso, uma variável crítica (#quantidade_faltando) nunca era inicializada.
+         * FEITO! BONITO! SIMPLES e IRRITANTE!
+         */
+        //INC(#baus_verificados{{ r }},1); <-- 18/10/2025: comentado: 
+        //Correção abaixo:
+        IF(abriu{{ r }});//Só avalia como verdade se o báu da iteração foi aberto!
+            INC(#baus_verificados{{ r }},1); //<-- a execução agora é condicional
+        ENDIF;
+        
+        IF(({{ limite_baús }}>0)&&(#baus_verificados{{ r }}=={{ limite_baús }}));
+            //LOG("§8§llimit reached §7(§8{{ limite_baús }}§7)");
+            LOG("§a✓ §8limite de baús alcançado");
+            BREAK;
+        ENDIF;
+        
+        IF(bottom_reached{{ r }});
+            UNSET(#bau{{ r }});//Isso retorna o baú para 0
+            INC(#distancia{{ r }},1);//Isso faz a macro andar uma posição no sentido definido
+        ENDIF;
+        
+    ELSE;
+        
+        LOG("§e✘ §8fim da passarela");
+        BREAK;//Isso para a macro se o cara chegou no fim da passarela
+        
+    ENDIF;
+    
+    {* if turbo != None *}
+        {{ 'ENDUNSAFE' }};
+    {* endif *}
+    
+LOOP;
+
+{* if hook_fechar_baú is callable *}
+    {{ hook_fechar_baú(success_outvar='fechou'~r, baú='%#bau'~r~'%') }}
+{* else *}
+    SET(fechou{{ r }});
+{* endif *}
+
+IF(({{ variável_sucesso }})&&(!fechou{{ r }}));//Para se não conseguir fechar o báu e indica falta de sucesso no processo
+    UNSET({{ variável_sucesso }});
+ENDIF;
+
+//Essas variáveis nos informarão em que local da mkb a operação parou
+SET({{ variável_baú }},%#bau{{ r }}%);
+SET({{ variável_coluna }},%#coluna{{ r }}%);
+
+{* if hook_executar_ao_finalizar is callable *}
+    {{ hook_executar_ao_finalizar(baú='%#bau'~r~'%', coluna='%#coluna'~r~'%', direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados='%#baus_verificados'~r~'%', delay=delay, informação_útil=informação_útil) }}
+{* endif *}
+
+{* endmacro *}
+
+{* macro _op_apanhar_abstrata(slot_inicio, slot_fim, baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, obstrução_outvar, delay, informação_útil, quantidade_movidos_outvar=None) *}
+    
+    //adicionar inicio, fim e quantidade
+    //inicio: variável que definirá onde o slot_inicio será definido
+    //fim: variável que definirá onde o slot_fim será definido
+    //quantidade: definirá a quantidade de itens a serem movidas
+    {* set r = nid() *}
+    
+    IF(!{{ baús_verificados }});//Isso será executado sempre no início da operação
+        //LOG("Beleza, resetei");
+        SET(#quantidade_inicial{{ r }},{{ quantidade }});
+        SET(#quantidade_faltando{{ r }},{{ quantidade }});
+    ENDIF;
+    
+    UNSET(#quantidade{{ r }});
+    
+    {{ olha_baú(número=baú) }}
+    
+    {{
+        GUI.itera(
+            operação=GUI.op_apanhar,
+            slot_inicio=slot_inicio,
+            slot_fim=slot_fim,
+            errorvar=obstrução_outvar,
+            quantidade='%#quantidade_faltando'~r~'%',
+            regex_id=regex_id,
+            outvar='#quantidade'~r,
+            delay=delay
+        )
+    }}
+    
+    SET({{ quantidade_movidos_outvar }},%#quantidade{{ r }}%);
+    
+    INC({{ variável_resposta }},%#quantidade{{ r }}%);
+    
+    DEC(#quantidade_faltando{{ r }},%#quantidade{{ r }}%);
+    
+    IF(({{ quantidade }}!=0)&&(#quantidade_faltando{{ r }}<=0));
+        //IF((#quantidade_inicial{{ r }}!=0)&&(#quantidade_faltando{{ r }}<=0));//Tentativa de resolver em 10/8/21
+        BREAK;//Para de fazer
+    ENDIF;
+    
+{* endmacro *}
+
+
+//HERE <- op_testar
+{* macro op_testar(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    LOG("§abaú:§7{{ baú }} §acoluna:{{ coluna }} §adireção:§7{{ direção }} §asentido:§7{{ sentido }} §aregex_id:§7{{ regex_id }} §avariável_resposta:§7{{ variável_resposta }} §aquantidade:§7{{ quantidade }}, §alimite_baús:§7{{ limite_baús }} §abaús_verificados:§7{{ baús_verificados }}");
+    //BREAK;
+    
+{* endmacro *}
+
+//HERE <- op_pegar
+{* macro op_pegar(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {* set rd = nid() *}
+    {* set obstrução_outvar = 'obstrucao'~rd *}
+    {* set quantidade_movidos_outvar = '#movidos'~rd *}
+    
+    {{ _op_apanhar_abstrata(slot_inicio=0, slot_fim=53, baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados=baús_verificados, obstrução_outvar=obstrução_outvar, quantidade_movidos_outvar=quantidade_movidos_outvar, informação_útil=informação_útil, delay=delay) }}
+    
+    IF(obstrucao{{ rd }});
+        LOG("§e⚠ §8inventário cheio");
+        BREAK;
+    ENDIF;
+    
+{* endmacro *}
+
+
+
+{* macro op_pegar_vendas(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {* set rd = nid() *}
+    {* set obstrução_outvar = 'obstrucao'~rd *}
+    {* set quantidade_movidos_outvar = '#movidos'~rd *}
+    
+    do;
+        {{ _op_apanhar_abstrata(slot_inicio=0, slot_fim=53, baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados=baús_verificados, obstrução_outvar=obstrução_outvar, quantidade_movidos_outvar=quantidade_movidos_outvar, informação_útil=informação_útil, delay=delay) }}
+    until(obstrucao{{ rd }});
+    
+{* endmacro *}
+
+
+//HERE <- op_deixar
+{* macro op_deixar(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {* set rd = nid() *}
+    {* set obstrução_outvar = 'obstrucao'~rd *}
+    {* set quantidade_movidos_outvar = '#movidos'~rd *}
+    
+    {{ _op_apanhar_abstrata(slot_inicio=54, slot_fim=89, baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados=baús_verificados, obstrução_outvar=obstrução_outvar, quantidade_movidos_outvar=quantidade_movidos_outvar, informação_útil=informação_útil, delay=delay) }}
+    
+    //IF((!obstrucao{{ rd }})&&(!#movidos{{ rd }}));
+    IF(!obstrucao{{ rd }});
+        LOG("§a✓ §8não há mais itens para mover");
+        BREAK;
+    ELSE(obstrucao{{ rd }});
+        LOG("§e⚠ §8baú cheio");
+    ENDIF;
+    
+{* endmacro *}
+
+
+//HERE <- op_deixar_farmer
+
+{* macro op_deixar_farmer(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {* set rd = nid() *}
+    {* set obstrução_outvar = 'obstrucao'~rd *}
+    {* set quantidade_movidos_outvar = '#movidos'~rd *}
+    
+    {{ _op_apanhar_abstrata(slot_inicio=54, slot_fim=86, baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados=baús_verificados, obstrução_outvar=obstrução_outvar, quantidade_movidos_outvar=quantidade_movidos_outvar, informação_útil=informação_útil, delay=delay) }}
+    
+    //IF((!obstrucao{{ rd }})&&(!#movidos{{ rd }}));
+    IF(!obstrucao{{ rd }});
+        LOG("§a✓ §8não há mais itens para mover");
+        BREAK;
+    ELSE(obstrucao{{ rd }});
+        LOG("§e⚠ §8baú cheio");
+    ENDIF;
+    
+{* endmacro *}
+
+
+
+{* macro _op_descarregar_abstrata(slot_inicio, slot_fim, baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {* set r = nid() *}
+    
+    IF(!{{ baús_verificados }});//Isso será executado sempre no início da operação
+        //LOG("Beleza, resetei");
+        SET(#quantidade_faltando{{ r }},{{ quantidade }});
+    ENDIF;
+    
+    UNSET(#quantidade{{ r }});
+    
+    {{ olha_baú(número=baú) }}
+    
+    {{
+        GUI.itera(
+            operação=GUI.op_descarregar,
+            slot_inicio=slot_inicio,
+            slot_fim=slot_fim,
+            errorvar='obstrucao'~r,
+            quantidade='%#quantidade_faltando'~r~'%',
+            regex_id=regex_id,
+            outvar='#quantidade'~r,
+            delay=delay
+        )
+    }}
+    
+    INC({{ variável_resposta }},%#quantidade{{ r }}%);
+    
+    DEC(#quantidade_faltando{{ r }},%#quantidade{{ r }}%);
+    
+    IF(({{ quantidade }}!=0)&&(#quantidade_faltando{{ r }}<=0));
+        BREAK;
+    ENDIF;
+    
+    //IF((!obstrucao{{ r }})&&(!#quantidade{{ r }}));
+    IF(!obstrucao{{ r }});
+        LOG("§a✓ §8não há mais itens para mover");
+        BREAK;
+    ELSE;
+        LOG("§e⚠ §8baú cheio");
+    ENDIF;
+    
+{* endmacro *}
+
+//HERE <- op_descarregar
+{* macro op_descarregar(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {{ _op_descarregar_abstrata(slot_inicio=54,slot_fim=89,baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados=baús_verificados, informação_útil=informação_útil, delay=delay) }}
+    
+{* endmacro *}
+
+//HERE <- op_descarregar
+{* macro op_descarregar_mochila(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, informação_útil, delay) *}
+    
+    {{ _op_descarregar_abstrata(slot_inicio=54,slot_fim=80,baú=baú, coluna=coluna, direção=direção, sentido=sentido, regex_id=regex_id, variável_resposta=variável_resposta, variável_baú=variável_baú, variável_coluna=variável_coluna, quantidade=quantidade, limite_baús=limite_baús, baús_verificados=baús_verificados, informação_útil=informação_útil, delay=delay) }}
+    
+{* endmacro *}
+
+
+{* macro testa_estamos_a_caminho() *}
+    
+    /*
+        1. Achar um fórmula que indique se o programa
+        a) está à caminho da posição destino
+        b) chegou à posição destino
+        c) passou da posição destino
+        - Se passou da posição destino, então, mude o sentido
+        2. Achar um número que indique a distância da posição destino
+        a) se for maior que 0, estamos à caminho
+        b) se for igual a zero, chegamos no destino
+        c) se for menor que 0, passamos do destino
+        3. Este número será a imagem de uma função d(s,x,z,X,Z,D)
+        a) d representa a distância do destino
+        b) s representa o sentido, que pode ser left ou right
+        c) x e z representam, respectivamente, a posição X e Z do destino
+        d) X e Z representam, respectivamente, a posição do player
+        e) D é a direção assumida pelo player
+    */
+    
+    /*
+        A variável #diferenca_eixo mostra a soma das diferenças das coordenadas X e Z
+        Como sempre uma das coordenadas ou X ou Z são iguais entre o player e o destino,
+        então, um dos termos da expressão atribuída a #diferenca_eixo sempre sera igual a zero.
+        Como consequência, o módulo de #diferenca_eixo sempre indicará a distância do player ao destino.
+        Basta verificarmos a relação entre sinal de #diferenca_eixo, sentido e direção para os eventos:
+        1. está a caminho da posição destino
+        2. passou da posição destino
+        Estudando a relação direção-sentido-sinal-evento:
+        N:
+        right:
+        - passamos
+        + estamos a caminho
+        left
+        - estamos a caminho
+        + passamos
+        S:
+        right:
+        - estamos a caminho
+        + passamos
+        left
+        - passamos
+        + estamos a caminho
+        E:
+        right:
+        - passamos
+        + estamos a caminho
+        left
+        - estamos a caminho
+        + passamos
+        W:
+        right:
+        - estamos a caminho
+        + passamos
+        left
+        - pa ssou
+        + estamos a caminho
+    */
+    
+    {*
+        set testes = [
+            {
+                'direção':'N',
+                'sentido':'right',
+                'sinal':'positivo'
+            },
+            {
+                'direção':'N',
+                'sentido':'left',
+                'sinal':'negativo'
+            },
+            
+            
+            {
+                'direção':'S',
+                'sentido':'right',
+                'sinal':'negativo'
+            },
+            {
+                'direção':'S',
+                'sentido':'left',
+                'sinal':'positivo'
+            },
+            
+            
+            {
+                'direção':'E',
+                'sentido':'right',
+                'sinal':'positivo'
+            },
+            {
+                'direção':'E',
+                'sentido':'left',
+                'sinal':'negativo'
+            },
+            
+            
+            {
+                'direção':'W',
+                'sentido':'right',
+                'sinal':'negativo'
+            },
+            {
+                'direção':'W',
+                'sentido':'left',
+                'sinal':'positivo'
+            }
+            
+        ]
+    *}
+    
+    DO(1);
+        {* for teste in testes *}
+            
+            {{ testa_estamos_a_caminho_passou(direção=teste.direção,sentido=teste.sentido,sinal_esperado=teste.sinal) }}
+            
+        {* endfor *}
+    LOOP;
+    LOG("§a§lTODOS OS TESTES PASSARAM AQUI!");
+    
+{* endmacro *}
+
+{* import 'Macrosoft.common.control' as CONTROL *}
+//HERE <- main
+
+$${
+    
+    
+    {!! teste_walk(macro=jeffwalk) !!}
+    {!! teste_olha_baú() !!}
+    
+    {!! percorrer(baú=4,coluna=7,direção='N',sentido='right') !!}
+    
+    {!!
+        {* import 'jeffhinoto.resources.simplehome' as SIMPLEHOME *}
+        
+        //HERE <- for_teste
+        PUT(#quantidades[],3);
+        PUT(#quantidades[],4);
+        PUT(#quantidades[],5);
+        PUT(#limites[],0);
+        PUT(#limites[],0);
+        PUT(#limites[],0);
+        
+        
+        {* import 'Macrosoft.common.UI' as UI *}
+        
+        {{
+            UI.input(
+                label="bota a home do Jeff!",
+                outvar='@&morre',
+                validation='\W+',
+                is_text=True
+            )
+        }}
+        
+        DO;
+            FOR(#i,0,2);
+                LOG("teleportando agora");
+                
+                {{
+                    SIMPLEHOME.simplehome(
+                        comando='home %@&morre%',
+                    )
+                }}
+                
+                SET(#quantidade,%#quantidades[%#i%]%);
+                SET(#limite,%#limites[%#i%]%);
+                LOG("§ainiciando tentativa §7%#i%/2 §8quantidade §c%#quantidade%");
+                UNSAFE(0);
+                    {{
+                        itera_mkb(
+                            operação=op_pegar,
+                            direção='N',
+                            baú='%#b%',
+                            coluna='%#c%',
+                            regex_id='^17$',
+                            quantidade='%#quantidade%',
+                            variável_sucesso='sucesso',
+                            variável_baú='#b',
+                            variável_resposta='#quantidade_movidos',
+                            variável_coluna='#c'
+                        )
+                    }}
+                ENDUNSAFE;
+                
+                LOG("O sucesso foi: %sucesso% último báu: %#b% última coluna: %#c% movidos:%#quantidade_movidos%");
+                
+                IF(#quantidade!=#quantidade_movidos);
+                    
+                    
+                    {* import 'Macrosoft.TAXON.gui' as GUI *}
+                    {* from 'Federal.@.old-repository-parts' import parts *}
+                    
+                    {{ parts.common.open_inventory() }}
+                    {{ GUI.itera(operação=GUI.op_contar,slot_inicio=9, slot_fim=44, regex_id='^0$|^air$', outvar="#slots_vazios" ) }}
+                    {{ parts.common.close_inventory() }}
+                    
+                    IF(#slots_vazios==0);
+                        LOG("§e§lops, tá lotado o inventário. Vou guardar em algum lugar");
+                        
+                        {{
+                            SIMPLEHOME.simplehome(
+                                comando='home %@&morre%',
+                            )
+                        }}
+                        
+                        UNSAFE(0);
+                            {{
+                                itera_mkb(
+                                    operação=op_deixar,
+                                    direção='N',
+                                    baú='%#b0%',
+                                    coluna='%#c0%',
+                                    regex_id='^17$',
+                                    variável_sucesso='sucesso0',
+                                    variável_baú='#b0',
+                                    variável_resposta='#quantidade_movidos0',
+                                    variável_coluna='#c0'
+                                )
+                            }}
+                        ENDUNSAFE;
+                        LOG("§e§lguardado!");
+                        
+                    ELSE;
+                        UNSET(sucesso);
+                        LOG("§c§ldeu muito ruim aki, seu programador farofa!");
+                        BREAK;
+                    ENDIF;
+                    
+                    
+                ELSE;
+                    LOG("§a§laté aqui tudo bem, só sua obrigação!");
+                ENDIF;
+                
+            NEXT;
+        UNTIL((!sucesso)||(KEY_DELETE));
+        
+    !!}
+    
+    {{ CONTROL.basic_switch() }}
+    
+    
+    
+}$$

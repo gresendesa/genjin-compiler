@@ -1,0 +1,173 @@
+{* import 'Federal.INTEL.ticks' as TICKS *}
+{* import 'Federal.text.transform' as TRANSFORM *}
+{* import 'Federal.INTEL.JZON' as JZON *}
+{* import 'Federal.INTEL.array' as ARRAY *}
+
+/*
+    
+    ======> BETA <======
+    
+    NECESSÁRIO: INTEL
+    
+    NOME: KILL
+    DESCRIÇÃO: [
+        KILL (pronouncia de QUEUE, ou fila em inglês)
+        é um recurso para troca de mensagens entre macros utilizando
+        conceitos de filas.
+    ]
+    
+    FILAS:
+    1. Cada macro possui um grupo de filas para recebimento de mensagens.
+    2. Cada fila representa uma porta. Uma porta é um valor inteiro não negativo.
+    3. Cada fila será armazenada em uma variável textual (obrigatoriamente global)
+    4. Cada fila terá o nome queue<porta>, exemplos: @&queue0, @&queue1
+    
+    MACRO:
+    1. Cada macro possui um identificador textual.
+    
+    MENSAGENS:
+    1. Cada mensagem é um objeto JSON.
+    2. Cada objeto possui três atributos:
+    2.1. Identificador do tipo da mensagem (o tipo é arbitrário). É textual
+    2.2. Timestamp em ticks que registra o momento de envio da mensagem. É textual.
+    2.3. O conteúdo, de qualquer tipo. A forma de interpretar depende do tipo da mensagem.
+*/
+
+{*
+    set KEYS = {
+        'subject': 's',
+        'content': 'c',
+        'timestamp': 't'
+    }
+*}
+
+/*
+    Cria o nome da variável global que servirá como canal
+*/
+{*- macro channel_(port) -*}{{ '@&queue'~port }}{*- endmacro -*}
+
+{*- macro jsonfy_(dictionary) -*}
+{{ dictionary | tojson | replace('"','\\"') | replace('%\\u0026','%&') | replace('%@\\u0026','%@&') }}
+{*- endmacro -*}
+
+{* macro extract(outvar, port=0, index=0) *}
+    /*
+        Obtém apenas consultando o próximo elemento da fila de uma porta
+    */
+    {{ ARRAY.remove(array=channel_(port=port)~'[]', index=index, outvar=outvar) }}
+{* endmacro *}
+
+{* macro consult(outvar, port=0, index=0) *}
+    /*
+        Obtém removendo o próximo elemento da fila de uma porta
+    */
+    SET({{ outvar }},%{{ channel_(port=port) }}[{{ index }}]%);
+{* endmacro *}
+
+{* macro parse(value, subject_outvar, content_outvar, ts_outvar) *}
+    /*
+      Recebe o conteúdo de um elemento da fila
+    */
+    {* if subject_outvar *}
+        {!! JZON.key(json=value, key=KEYS.subject, outvar=subject_outvar) !!}
+        {{ JZON.get_key_content(json=value, path=KEYS.subject, outvar=subject_outvar) }}
+    {* endif *}
+    
+    {* if ts_outvar *}
+        {!! JZON.key(json=value, key=KEYS.timestamp, outvar=ts_outvar) !!}
+        {{ JZON.get_key_content(json=value, path=KEYS.timestamp, outvar=ts_outvar) }}
+    {* endif *}
+    
+    {* if content_outvar *}
+        {!! JZON.key(json=value, key=KEYS.content, outvar=content_outvar) !!}
+        {{ JZON.get_key_content(json=value, path=KEYS.content, outvar=content_outvar) }}
+    {* endif *}
+    
+{* endmacro *}
+
+{* macro transact(subjectvar, contentvar, timevar, operation, port=0, index=0) *}
+    
+    {* set n = nid() *}
+    {* set value_storage = '&v'~n *}
+    UNSET({{ value_storage }});
+    {{ operation(outvar=value_storage, port=port, index=index) }}
+    
+    {* if subjectvar *}
+        UNSET({{ subjectvar }});
+    {* endif *}
+    
+    {* if contentvar *}
+        UNSET({{ contentvar }});
+    {* endif *}
+    
+    {* if timevar *}
+        UNSET({{ timevar }});
+    {* endif *}
+    
+    IF({{ value_storage }});
+        {{ parse(value='%'~value_storage~'%', subject_outvar=subjectvar, content_outvar=contentvar, ts_outvar=timevar) }}
+    ENDIF;
+    
+{* endmacro *}
+
+{* macro add(content, subject='default', port=0, index=None) *}
+    /*
+        Adiciona uma mensagem à fila na posição index
+        (se o index for None, a mensagem é adicionada na última posição)
+    */
+    {* set n = nid() *}
+    {* set timestamp_variable = '&t'~n *}
+    {{ TICKS.timestamp(timestamp_variable) }}
+    {!! ARRAY.add(array=channel_(port=port)~'[]', element='"'~jsonfy_({KEYS.subject: subject, KEYS.content: content, KEYS.timestamp: '%'~timestamp_variable~'%'})~'"', index=index) !!}
+    SET(&json{{ n }},"{}");
+    {{ JZON.add_or_update_key(json='%&json'~n~'%', path=KEYS.subject, value=subject, outvar='&json'~n) }}
+    {{ JZON.add_or_update_key(json='%&json'~n~'%', path=KEYS.content, value=content, outvar='&json'~n) }}
+    {{ JZON.add_or_update_key(json='%&json'~n~'%', path=KEYS.timestamp, value='%'~timestamp_variable~'%', outvar='&json'~n) }}
+    {{ ARRAY.add(array=channel_(port=port)~'[]', element='%&json'~n~'%', index=index) }}
+{* endmacro *}
+
+
+{* macro peek(subjectvar, contentvar, timevar, port=0, index=0) *}
+    /**
+        * Obtém o próximo item da fila sem removê-lo
+    ***/
+    {{ transact(subjectvar=subjectvar, contentvar=contentvar, timevar=timevar, operation=consult, port=port, index=index) }}
+{* endmacro *}
+
+{* macro poll(subjectvar, contentvar, timevar, port=0, index=0) *}
+    /**
+        * Obtém o próximo item da fila o removendo
+    ***/
+    {{ transact(subjectvar=subjectvar, contentvar=contentvar, timevar=timevar, operation=extract, port=port, index=index) }}
+{* endmacro *}
+
+{* macro size(outvar, port=0) *}
+    /**
+        * Registra na variável numérica informada a quantidade de registros em uma fila indicada pela porta
+    ***/
+    ARRAYSIZE({{ channel_(port=port)~'[]' }},{{ outvar }});
+{* endmacro *}
+
+{* macro purge(port=0) *}
+    /**
+        * Limpa todos os registros da fila indicada pela porta
+    ***/
+    UNSET({{ channel_(port=port)~'[]' }});
+{* endmacro *}
+
+{* macro ___examples() *}
+    $${
+        
+        
+        {{ add(content={'agora': 'sim', "boi": "tantos"}, port=10, index=0) }}
+        {{ peek('&subject', '&content', '&time', port=10) }}
+        {{ size('#size', port=10) }}
+        {{ purge(port=10) }}
+        
+        LOG("subject: %&subject% time: %&time% content: %&content% size: %#size%");
+        
+    }$$
+{* endmacro *}
+
+
+{{ ___examples() }}

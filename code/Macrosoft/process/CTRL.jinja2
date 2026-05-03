@@ -1,0 +1,12 @@
+{* set emergency_key = 'KEY_DELETE' *}
+
+{* macro cloudscript(id,force_start,pname,paused_flag,hello_message) *}
+  
+  {* set rand = range(1,9999999)|random *}
+
+  SET(&arguments{{ rand }},"{{ hello_message }}");
+  REPLACE(&arguments{{ rand }},"¬",",");
+  //This is a simple CloudScript macro calling using the CTRL protocol definition
+  RUN({{ id }},{{ force_start }},{{ pname }},{{ paused_flag }},"%&arguments{{ rand }}%");
+  
+{* endmacro *}

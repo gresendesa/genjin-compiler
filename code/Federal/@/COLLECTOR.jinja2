@@ -1,0 +1,182 @@
+{* import 'Macrosoft.CLOUDSCRIPT.template' as TEMPLATE *}
+{* extends 'Macrosoft.CLOUDSCRIPT.template' *}
+{* import 'Macrosoft.CLOUDSCRIPT.event' as EVENT *}
+{* import 'Macrosoft.common.control' as CONTROL *}
+{* import 'Federal.INTEL.QUEUE' as QUEUE *}
+{* import 'Federal.INTEL.JZON' as JZON *}
+
+{*
+	set EVENTS = {
+		'on_join_game': 'onJoinGame',
+		'on_chat': 'onChat',
+		'on_health_change': 'onHealthChange',
+		'on_food_change': 'onFoodChange',
+		'on_armour_change': 'onArmourChange',
+		'on_world_change': 'onWorldChange',
+		'on_mode_change': 'onModeChange',
+		'on_inventory_slot_change': 'onInventorySlotChange',
+		'on_oxygen_change': 'onOxygenChange',
+		'on_xp_change': 'onXPChange',
+		'on_level_change': 'onLevelChange',
+		'on_item_durability_change': 'onItemDurabilityChange',
+		'on_weather_change': 'onWeatherChange',
+		'on_pickup_item': 'onPickupItem',
+		'on_player_joined': 'onPlayerJoined',
+		'on_show_gui': 'onShowGui',
+		'on_armour_durability_change': 'onArmourDurabilityChange',
+		'on_auto_crafting_complete': 'onAutoCraftingComplete',
+		'on_config_change': 'onConfigChange',
+		'on_send_chat_message': 'onSendChatMessage',
+		'on_websocket_message': 'onWebSocketMessage'
+	}
+*}
+
+
+{*
+	set PORTS = {
+		EVENTS.on_join_game: 1000,
+		EVENTS.on_chat: 1001,
+		EVENTS.on_health_change: 1002,
+		EVENTS.on_food_change: 1003,
+		EVENTS.on_armour_change: 1004,
+		EVENTS.on_world_change: 1005,
+		EVENTS.on_mode_change: 1006,
+		EVENTS.on_inventory_slot_change: 1007,
+		EVENTS.on_oxygen_change: 1008,
+		EVENTS.on_xp_change: 1009,
+		EVENTS.on_level_change: 1010,
+		EVENTS.on_item_durability_change: 1011,
+		EVENTS.on_weather_change: 1012,
+		EVENTS.on_pickup_item: 1013,
+		EVENTS.on_player_joined: 1014,
+		EVENTS.on_show_gui: 1015,
+		EVENTS.on_armour_durability_change: 1016,
+		EVENTS.on_auto_crafting_complete: 1017,
+		EVENTS.on_config_change: 1018,
+		EVENTS.on_send_chat_message: 1019,
+		EVENTS.on_websocket_message: 1100
+	}
+*}
+
+
+{* macro add_event_collectors(events=[]) *}
+	/*
+		Registra a macro coletora nos eventos especificados.
+		A partir desse momento, os eventos serão enviados para as respectivas portass.
+	*/
+	{* for event in events *}
+		{{ EVENT.register(id='collector', event=event, overwrite=True) }}
+	{* endfor *}
+{* endmacro *}
+
+{* macro remove_event_collectors(events=[]) *}
+	/*
+		Remove os coletores de eventos dos respectivos eventos.
+	*/
+	{* for event in events *}
+		{{ EVENT.unregister(id='collector', event=event) }}
+	{* endfor *}
+{* endmacro *}
+
+{* macro purge_event_queue(events=[]) *}
+	/*
+		Remove os elementos de uma fila de evento.
+	*/
+	{* for event in events *}
+		{{ QUEUE.purge(port=PORTS[event]) }}
+	{* endfor *}
+{* endmacro *}
+
+{* block onJoinGame *}
+	{{ QUEUE.add(content='%PLAYER%', subject='onJoinGame', port=PORTS.onJoinGame) }}
+{* endblock *}
+
+{* block onChat *}
+	{{ QUEUE.add(content='%CHAT%', subject='onChat', port=PORTS.onChat) }}
+{* endblock *}
+
+{* block onHealthChange *}
+	{{ QUEUE.add(content='%HEALTH%', subject='onHealthChange', port=PORTS.onHealthChange) }}
+{* endblock *}
+
+{* block onFoodChange *}
+	{{ QUEUE.add(content='%HUNGER%', subject='onFoodChange', port=PORTS.onFoodChange) }}
+{* endblock *}
+
+{* block onArmourChange *}
+	{{ QUEUE.add(content='%ARMOUR%', subject='onArmourChange', port=PORTS.onArmourChange) }}
+{* endblock *}
+
+{* block onWorldChange *}
+	{{ QUEUE.add(content='%DIMENSION%', subject='onWorldChange', port=PORTS.onWorldChange) }}
+{* endblock *}
+
+{* block onModeChange *}
+	{{ QUEUE.add(content='%MODE%', subject='onModeChange', port=PORTS.onModeChange) }}
+{* endblock *}
+
+{* block onInventorySlotChange *}
+	{{ QUEUE.add(content='%OLDINVSLOT%', subject='onInventorySlotChange', port=PORTS.onInventorySlotChange) }}
+{* endblock *}
+
+{* block onOxygenChange *}
+	{{ QUEUE.add(content='%OXYGEN%', subject='onOxygenChange', port=PORTS.onOxygenChange) }}
+{* endblock *}
+
+{* block onXPChange *}
+	{{ QUEUE.add(content='%XP%', subject='onXPChange', port=PORTS.onXPChange) }}
+{* endblock *}
+
+{* block onLevelChange *}
+	{{ QUEUE.add(content='%LEVEL%', subject='onLevelChange', port=PORTS.onLevelChange) }}
+{* endblock *}
+
+{* block onItemDurabilityChange *}
+	{{ QUEUE.add(content='%DURABILITY%', subject='onItemDurabilityChange', port=PORTS.onItemDurabilityChange) }}
+{* endblock *}
+
+{* block onWeatherChange *}
+	{{ QUEUE.add(content='%RAIN%', subject='onWeatherChange', port=PORTS.onWeatherChange) }}
+{* endblock *}
+
+{* block onPickupItem *}
+	{* set r = nid() *}
+	SET(&json{{ r }},"{}");
+	{{ JZON.add_or_update_key(json='%&json'~r~'%', path='ID', value='%PICKUPID%', outvar='&json'~r) }}
+	{{ JZON.add_or_update_key(json='%&json'~r~'%', path='ITEM', value='%PICKUPITEM%', outvar='&json'~r) }}
+	{{ JZON.add_or_update_key(json='%&json'~r~'%', path='DATA', value='%PICKUPDATA%', outvar='&json'~r) }}
+	{{ JZON.add_or_update_key(json='%&json'~r~'%', path='AMOUNT', value='%PICKUPAMOUNT%', outvar='&json'~r) }}
+	{{ QUEUE.add(content='%&json'~r~'%', subject='onPickupItem', port=PORTS.onPickupItem) }}
+{* endblock *}
+
+{* block onPlayerJoined *}
+	{{ QUEUE.add(content='%JOINEDPLAYER%', subject='onPlayerJoined', port=PORTS.onPlayerJoined) }}
+{* endblock *}
+
+{* block onShowGui *}
+	{{ QUEUE.add(content='%GUI%', subject='onShowGui', port=PORTS.onShowGui) }}
+{* endblock *}
+
+{* block onArmourDurabilityChange *}
+	{{ QUEUE.add(content='%ARMOUR%', subject='onArmourDurabilityChange', port=PORTS.onArmourDurabilityChange) }}
+{* endblock *}
+
+{* block onAutoCraftingComplete *}
+	{{ QUEUE.add(content='%REASON%', subject='onAutoCraftingComplete', port=PORTS.onAutoCraftingComplete) }}
+{* endblock *}
+
+{* block onConfigChange *}
+	{{ QUEUE.add(content='%CONFIG%', subject='onConfigChange', port=PORTS.onConfigChange) }}
+{* endblock *}
+
+{* block onSendChatMessage *}
+	{{ QUEUE.add(content='%CHAT%', subject='onSendChatMessage', port=PORTS.onSendChatMessage) }}
+{* endblock *}
+
+{* block onWebSocketMessage *}
+	{* set r = nid() *}
+	SET(&json{{ r }},"{}")
+	{{ JZON.add_or_update_key(json='%&json'~r~'%', path='CHANNEL', value='%CHANNEL%', outvar='&json'~r) }}
+	{{ JZON.add_or_update_key(json='%&json'~r~'%', path='MESSAGE', value='%MESSAGE%', outvar='&json'~r) }}
+	{{ QUEUE.add(content='%&json'~r~'%', subject='onWebSocketMessage', port=PORTS.onWebSocketMessage) }}
+{* endblock *}

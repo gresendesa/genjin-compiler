@@ -1,0 +1,447 @@
+{* import 'Macrosoft.cortex.common' as CORTEX *}
+{* import 'Macrosoft.TASK.servicepack' as SERVICEPACK *}
+{* import 'Federal.data_structures.dict' as DICT *}
+{* import 'Macrosoft.common.UI' as UI *}
+{* import 'Federal.text.chat' as CHAT *}
+
+
+{* set extension = {} *}
+{* set service = {} *}
+{* set server = {} *}
+
+{* set alias_separator = '⇿' *}
+
+/*
+
+  ÍNDICE
+  goto -> CLIENT
+  goto -> SERVER
+
+
+*/
+
+/*_________________________________________________
+
+
+  HERE <- CLIENT: para ser utilizado na macro cliente
+
+  ___________________________________________________*/
+
+{* set escaped_csid = this.csid|replace("-","_")|replace(".","_")|lower() *}
+
+/*
+  DESCRIÇÃO: Isso pega o valor de uma variável e joga em outra
+*/
+{* macro map_variable(var,outvar) *}
+  {* if '%' in var *}
+    {* set rid = nid() *}
+    SET(&variable_name{{ rid }},"{{ var }}");
+    SET({{ outvar }},%%&variable_name{{ rid }}%%);
+  {* else *}
+    SET({{ outvar }},"%{{ var }}%");
+  {* endif *}
+{* endmacro *}
+
+/*
+  DESCRIÇÃO: Isso define o valor de uma variável com o valor definido em value
+*/
+{* macro set_variable(var,value=None) *}
+  {* if '%' in var *}
+    {* set rid = nid() *}
+    SET(&variable_name{{ rid }},"{{ var }}");
+    {* if value != None *}
+      SET(%&variable_name{{ rid }}%,"{{ value }}");
+    {* else *}
+      SET(%&variable_name{{ rid }}%);
+    {* endif *}
+  {* else *}
+    {* if value != None *}
+      SET({{ var }},"{{ value }}");
+    {* else *}
+      SET({{ var }});
+    {* endif *}
+  {* endif *}
+    
+{* endmacro *}
+
+/*
+  DESCRIÇÃO: Isso apaga a variável
+*/
+{* macro unset_variable(var) *}
+  {* if '%' in var *}
+    {* set rid = nid() *}
+    SET(&variable_name{{ rid }},"{{ var }}");
+    UNSET(%&variable_name{{ rid }}%);
+  {* else *}
+    UNSET({{ var }});
+  {* endif *}
+{* endmacro *}
+
+/*
+  
+  Cria uma variável padronizada
+
+*/
+{* macro context_variable(extension, name, prefix='') -*}
+
+  {{ prefix~'ext_'~escaped_csid~'_'~name~'_'~extension }}
+    
+{*- endmacro *}
+/*
+  NOME: registrar extensão
+  DESCRIÇÃO: esta macro registra a extensão no contexto.
+  Ela incia a extensão em modo pausado e já requisita 
+  Lembre-se que 'name' deve receber caracteres alfanuméricos e
+  underlines somente.
+  suas informações para registrá-los no contexto. 
+  Adicionamente atribui a 'outvar' a string que contém
+  suas informações.
+  Isso permite que ela seja chamada ao longo de um projeto.
+  Ela só recebe o nome da extensão como parâmetro
+  TODO: Em name usar somente caracteres alfatnuméricos e underline
+*/
+{* macro client_register(id, name='extension', outvar='&info'~nid(), success_outvar='success'~nid(), timeout=120, debug=False, arguments=[]) *}
+	
+	{* set rid = nid() *}
+	{{ map_variable(context_variable(extension=name, name='enabled'),'enabled'~rid) }}
+	IF(!enabled{{ rid }});
+	  
+	  {* if debug *}
+      {{ CHAT.print('ok, registering!','info','debug-client-register') }}
+    {* endif *}
+	
+  	{{ SERVICEPACK.load(id=id, pname=name, success_outvar=success_outvar, timeout=timeout) }}
+  	
+  	{* if debug *}
+      {{ CHAT.print('loaded: %'~success_outvar~'%','info','debug-client-register') }}
+    {* endif *}
+  	
+  	IF({{ success_outvar }});
+
+  	  {{ SERVICEPACK.play(pname=name, task='info', outvar=outvar, timeout=120, arguments=arguments) }}
+  	  
+  	  UNSET({{ success_outvar }});
+  	  IF({{ outvar }});
+  	    SET({{ success_outvar }});
+  	  ENDIF;
+  	  
+  	  {!! set_variable('&extension_'~escaped_csid~'_'~name~'_info','%'~outvar~'%') !!}
+  	  {!! set_variable('extension_'~escaped_csid~'_'~name~'_enabled','%'~success_outvar~'%') !!}
+  	  
+  	  {{ set_variable(context_variable(extension=name, name='info', prefix='&'),'%'~outvar~'%') }}
+  	  {{ set_variable(context_variable(extension=name, name='enabled'),'%'~success_outvar~'%') }}
+  	  
+  	  {* if debug *}
+        {{ CHAT.print('info: %'~outvar~'%','info','debug-client-register') }}
+      {* endif *}
+  	  
+  	  /*SET({{ '&extension_'~escaped_csid~'_'~name~'_info' }},%{{ outvar }}%);
+  	  SET({{ 'extension_'~escaped_csid~'_'~name~'_enabled' }},%{{ success_outvar }}%);*/
+  	  
+  	ENDIF;
+  ENDIF;
+	
+{* endmacro *}
+
+
+/*
+  NOME: desabilita contexto
+  DESCRIÇÃO: esta macro desabilita o contexto.
+  Ela envia um sinal para que a extensão em execução
+  seja finalizada. Além disso reseta todas as varáveis
+  de contexto.
+  TODO: Em name usar somente caracteres alfatnuméricos e underline
+*/
+{* macro client_unregister(name='extension', force=True) *}
+	{* if not force *}
+	  {* set rid = nid() *}
+
+	  {{ map_variable(context_variable(extension=name, name='enabled'),'enabled'~rid) }}
+	  
+	  IF(!enabled{{ rid }});
+	  /*IF({{ 'extension_'~escaped_csid~'_'~name~'_enabled' }});*/
+  {* endif *}
+	
+	  {{ SERVICEPACK.stop(pname=name) }}
+	  /*UNSET({{ 'extension_'~escaped_csid~'_'~name~'_enabled' }});*/
+	  {{ unset_variable(context_variable(extension=name, name='enabled')) }}
+	{* if not force *}
+	  ENDIF;
+  {* endif *}
+
+{* endmacro *}
+
+/*
+  NOME: menu de informações par ao cliente
+  DESCRIÇÃO: Isso lê a informação cedida pela extensão e gera um menu
+  que detalha as funções daquela extensão
+*/
+{* macro client_info_menu(info) *}
+  
+  {* set rid = nid() *}
+
+  MATCH("{{ info }}","([^,]+),(.*)",{{ '{&owner'~rid~',&dictcopy'~rid~'}' }});
+
+  UNSET(&services{{ rid }}[]);
+  UNSET(&descriptions{{ rid }}[]);
+  UNSET(&returns{{ rid }}[]);
+  
+	DO;
+		IFMATCHES("%&dictcopy{{ rid }}%","^{{ DICT.left_item_border }}[^{{ DICT.right_item_border }}]+{{ DICT.right_item_border }}→{{ DICT.left_item_border }}[^{{ DICT.right_item_border }}]*{{ DICT.right_item_border }}.*",&dictvalueaux{{ rid }});
+			UNSET(&dictgroups{{ rid }}[]);
+			MATCH(%&dictvalueaux{{ rid }}%,"^{{ DICT.left_item_border }}([^{{ DICT.right_item_border }}]+){{ DICT.right_item_border }}→{{ DICT.left_item_border }}([^{{ DICT.right_item_border }}]*){{ DICT.right_item_border }}(.*)",&dictgroups{{ rid }}[]);
+			//LOG("§7%&dictgroups{{ rid }}[1]% §8→ §f%&dictgroups{{ rid }}[2]%");
+			IF(&dictgroups{{ rid }}[2]);
+  			MATCH("%&dictgroups{{ rid }}[2]%","(.*){{ alias_separator }}(.*)",{{ '{&alias'~rid~',&description'~rid~'}' }});
+  			PUT(&services{{ rid }}[],"§b%&alias{{ rid }}% §8%&dictgroups{{ rid }}[1]%");
+  			PUT(&descriptions{{ rid }}[],"%&description{{ rid }}%");
+  		ENDIF;
+			SET(&dictcopy{{ rid }},%&dictgroups{{ rid }}[3]%)
+		ELSE;
+			BREAK;
+		ENDIF;
+	LOOP;
+	
+  UNSET(&string_list_items{{ rid }});
+  FOREACH(&services{{ rid }},&item{{ rid }});
+    IF(&string_list_items{{ rid }});
+      SET(&string_list_items{{ rid }},"%&string_list_items{{ rid }}%,%&item{{ rid }}%");
+    ELSE;
+      SET(&string_list_items{{ rid }},%&item{{ rid }}%);
+    ENDIF;
+  NEXT;
+  
+  DO;
+  
+    {{
+      UI.menu(
+        items=[
+          '§a← voltar',
+          ' ',
+          '§c%&owner'~rid~'%',
+          '%&string_list_items'~rid~'%'
+        ],
+        outvar='&option'~rid,
+        label='Selecione um dos serviços oferecidos por essa extensão §a§lMacrosoft§7® §o2022',
+        strip=False
+      ) 
+    }}
+    
+    IF((!&option{{ rid }})||(&option{{ rid }}=="§a← voltar"));
+      BREAK;
+    ELSE;
+      
+      INDEXOF(&services{{ rid }}[],#index{{ rid }},%&option{{ rid }}%,true);
+      IF(#index{{ rid }}>-1);
+        
+        SET(&servicename{{ rid }},%&option{{ rid }}%);
+        &lines{{ rid }}="%&descriptions{{ rid }}[%#index{{ rid }}%]%";
+        
+        DO;
+          {{
+            UI.menu(
+              items=[
+                '§a← voltar',
+                ' ',
+                '%&lines'~rid~'%'
+              ],
+              outvar='&option'~rid,
+              label='Saiba mais sobre o serviço §8§l[§f%&servicename'~rid~'%§8§l] §a§lMacrosoft§7® §o2022',
+              strip=False
+            ) 
+          }}
+            
+          IF((!&option{{ rid }})||(&option{{ rid }}=="§a← voltar"));
+            BREAK;
+          ENDIF;
+          
+        LOOP;
+  
+      ENDIF;
+    
+    ENDIF;
+  
+  LOOP;
+
+
+
+{* endmacro *}
+
+/*
+  NOME: consome um evento de uma extensão
+  DESCRIÇÃO: esta macro chama uma extensão já
+  instanciada. Indica-se um evento para ser
+  consumido. 
+  
+  REMOVIDO:
+    Se o evento retornar alguma mensagem prefixada por 'halt[:mensagem]' 
+    então, indica-se que este evento deve ser bloqueado para execuções futuras.
+    
+  TODO: Em name e event usar somente caracteres alfatnuméricos e underline
+*/
+{* macro client_event(event, name='extension', timeout=None, outvar='&message'~nid(), success_outvar='success'~nid(), async=False, arguments=[]) *}
+	
+	{* set rand = nid() *}
+	
+	{* set event_name = event|replace("-","_")|replace(".","_")|lower()|replace_especial_alphabetic_chars() *} 
+	
+	UNSET({{ success_outvar }});
+	
+	{{ map_variable(context_variable(extension=name, name='enabled'),'enabled'~rand) }}
+	{!! map_variable(context_variable(extension=name, name='halted'),'halted'~rand) !!}
+	
+	//IF((enabled{{ rand }})&&(!halted{{ rand }}));
+	IF(enabled{{ rand }});
+	/*IF(({{ 'extension_'~escaped_csid~'_'~name~'_enabled' }})&&(!{{ 'extension_'~escaped_csid~'_'~name~'_'~event_name~'_halted' }}));*/
+	
+	  {{ map_variable(context_variable(extension=name, name='info', prefix='&'),'&info'~rand) }}
+	  
+	  IFCONTAINS("%&info{{ rand }}%","{{ DICT.left_item_border~event~DICT.right_item_border~'→' }}");
+
+      {* if async *}
+      
+        {{ CORTEX.send(name,'play!'~event~' '~arguments|join(',')) }}
+        
+      {* else *}
+      
+        {{ SERVICEPACK.play(pname=name,task=event, outvar=outvar, arguments=arguments, timeout=timeout) }}
+            
+        IF({{ outvar }});
+          SET({{ success_outvar }});
+          //IFMATCHES(%{{ outvar }}%,"^halt:?(.*)?",&message{{ rand }},1);
+          //  UNSET({{ success_outvar }});//O halt faz o success_outvar ser 'false'
+          //  {!! set_variable(context_variable(extension=name, name='halted')) !!}
+          //  {!!SET({{ 'extension_'~escaped_csid~'_'~name~'_'~event_name~'_halted' }});!!}
+          //  SET({{ outvar }},%&message{{ rand }}%);
+          //ENDIF;     
+        ENDIF;
+            
+      {* endif *}
+      
+    ELSE;
+      {!! set_variable(context_variable(extension=name, name='halted')) !!}
+      {!! SET({{ 'extension_'~escaped_csid~'_'~name~'_'~event_name~'_halted' }});!!}
+      LOG("§4§l✗ §7§l{{ event }}");
+    ENDIF;
+    
+  ENDIF;
+	
+{* endmacro *}
+
+/*_________________________________________________
+
+
+  HERE <- SERVER: para ser utilizado no provedor 
+
+  ___________________________________________________*/
+
+
+/*
+  NOME: gera informações em um servidor
+  DESCRIÇÃO: esta macro captura o desenvolvedor da extensão
+  e os eventos aceitos pela extensão e atribui a uma variável
+  'outvar'
+  O parâmetro 'descriptions' recebe uma lista de objetos que devem conter
+  os seguintes atributos: 
+    - event: o nome do evento a ser descripto
+    - alias: um nome apelido que será dado ao evento
+    - details: uma lista de linhas que serão exibidas em menu
+*/
+{* macro server_generate_info(outvar='&info'~nid(), descriptions=[],disclamer='§3by §b'~dev) *}
+	
+	UNSET({{ outvar }});
+	{* set events = [] *}
+
+  {* set shared_tasks = [] *}
+  {* set owners_shared_tasks = [] *}
+  
+  {* for dependencie in this.dependencies *}
+    {* set foo = shared_tasks.append(dependencie.taskName) *}
+    {* set foo = owners_shared_tasks.append(dependencie.dev) *}
+  {* endfor *}
+  
+  {* for task in this.tasks + shared_tasks *}
+    
+    {* if task.name not in this.disabled_tasks *}
+    
+      {* set event_details = {} *}
+      
+      {* for description in descriptions *}
+        
+        {* set event_name = description.event *}
+        
+        {* if event_name == task.name *}
+        
+          {* set alias = description.alias *}
+          {* set details = description.details *}
+          {* set foo = event_details.update({event_name: alias~alias_separator~details|join(',')}) *}
+        
+        {* endif *}
+      
+      {* endfor *}
+      
+      {* if task.name != 'info'  *}
+        {* set foo = events.append(DICT.left_item_border~task.name~DICT.right_item_border~'→'~DICT.left_item_border~event_details[task.name]~DICT.right_item_border) *}
+      {* endif *}
+      
+    {* endif *}
+    
+  {* endfor *}
+    
+  SET({{ outvar }},"{{ disclamer~','~''.join(events) }}")
+	
+{* endmacro *}
+
+/*
+  DESCRIÇÃO: atualização das variáveis que guardam as macros
+*/
+
+{*
+	set foo = service.update(
+		register=client_register,
+		unregister=client_unregister,
+		event=client_event,
+		info_menu=client_info_menu
+	)
+*}
+
+{*
+	set foo = server.update(
+	  generate_info=server_generate_info
+	)
+*}
+
+$${
+  
+  
+  
+  
+  {{ 
+    client_register(
+      name='deferal', 
+      id='demo-wood-ext', 
+      success_outvar='foi_registrado'
+    ) 
+  }}
+  
+  LOG(%&info%, %foi_registrado%);
+  
+  LOG("---------------");
+  {{ 
+    client_event(
+      name='deferal',
+      event='ok',
+      outvar='&resposta'
+    ) 
+  }}
+  
+  
+  {{ 
+    client_unregister(
+      name='deferal',
+      force=True
+    ) 
+  }}
+
+  
+}$$

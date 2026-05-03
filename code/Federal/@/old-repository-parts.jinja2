@@ -1,0 +1,1663 @@
+{* import 'Federal.@.modular' as MODULAR *}
+{* import 'Federal.time.seconds' as SECONDS *}
+{* import "Federal.miner.constants" as CONSTANTS *}
+{* import "Federal.std.GUI" as GUI *}
+{* import 'Macrosoft.cortex.common' as CORTEX *}
+{* import 'Federal.text.chat' as CHAT *}
+
+
+{* set parts = {} *}
+
+/*
+
+  ÍNDICE
+  
+  goto -> COMMON
+  goto -> SERVICES
+  goto -> ONCHAT
+  goto -> WOOD
+  goto -> WOOD2
+
+*/
+
+/* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -======          HERE <- COMMON         ======-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+/*
+  NOME: parts/common/open_inventory.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_open_inventory() *}
+
+  DO(10);
+    IFMATCHES(%GUI%,INVENTORY);
+      BREAK;
+    ELSE;
+    	WAIT(100ms);
+      GUI(INVENTORY);
+    ENDIF;
+    IF(KEY_DELETE);
+    	BREAK;
+    ENDIF;
+  LOOP;
+
+{* endmacro *}
+
+/*
+  NOME: parts/common/open_chest.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_open_chest() *}
+
+  DO(50);
+    KEYUP(SNEAK);
+    IFMATCHES(%GUI%,CHEST);
+      BREAK;
+    ELSE;
+      KEYUP(SNEAK);
+      KEY(USE);
+      DO(20);
+        KEYUP(SNEAK);
+        WAIT(50ms);
+        IFMATCHES(%GUI%,CHEST);
+          BREAK;
+        ENDIF;
+      UNTIL(KEY_DELETE);
+    ENDIF;
+  UNTIL(KEY_DELETE);
+
+{* endmacro *}
+
+/*
+  NOME: parts/common/keyendloop.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_keyendloop() *}
+
+  IF((KEY_DELETE) || (keyendpressed_));
+    LOG("§4§lKEY_DELETE pressed");
+    SET(keyendpressed_);
+    BREAK;
+  ELSE;
+    UNSET(keyendpressed_);
+  ENDIF;
+  
+{* endmacro *}  
+
+/*
+  NOME: parts/common/getslotitem.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_getslotitem(countvar='#i') *}
+
+  UNSET(&id);
+  GETSLOTITEM(%{{ countvar }}%,&id,#stack,&damage);
+  IF(!&id);
+    GETSLOTITEM(%{{ countvar }}%,#id,#stack,#damage);
+    MATCH("%#id%:%#damage%","([0-9]+):([0-9]+)",{&id,&damage});
+  ENDIF;
+  
+{* endmacro *} 
+
+/*
+  NOME: parts/common/yaw_restore.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_yaw_restore() *}
+  DO(10);
+    LOOK(%#transformed_yaw%,%#frozen_pitch%,0.1);
+    WAIT(10ms);
+  UNTIL((%YAW%==%#untransformed_yaw%) || (KEY_DELETE));
+{* endmacro *} 
+
+/*
+  NOME: parts/common/close_inventory.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_close_inventory() *}
+  
+  DO(10);
+    IFMATCHES(%GUI%,NONE);
+      BREAK;
+    ELSE;
+      GUI();
+    ENDIF;
+    IF(KEY_DELETE);BREAK;ENDIF;
+    WAIT(100ms);
+  LOOP;
+
+{* endmacro *}
+
+/*
+  NOME: parts/common/yaw_save.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_yaw_save() *}
+  
+  #transformed_yaw=%YAW%-180;
+  IF(%YAW%<180);
+    #transformed_yaw=%YAW%+180;
+  ENDIF;
+  #frozen_pitch=%PITCH%
+
+  #untransformed_yaw=%#transformed_yaw%-180;
+  IF(#transformed_yaw<180);
+    #untransformed_yaw=%#transformed_yaw%+180;
+  ENDIF;
+
+{* endmacro *}  
+
+/*
+  NOME: parts/common/pick_item.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_pick_item() *}
+
+  //&item_list is the input
+  UNSET(item_picked);
+  FOR(#i_inv,1,9);
+    UNSET(&id);
+    GETSLOTITEM(%#i_inv%,&id,#stacksize,&data);
+    IF(&id=="");
+      GETSLOTITEM(%#i_inv%,#id,#stacksize,#data);
+      MATCH("%#id%","[0-9]+",&id);
+      //MATCH("%#data%","[0-9]+",&data);
+    ENDIF;
+    &item="%&id%";
+    IFMATCHES("%&item%","%&item_list%");
+      SLOT(%#i_inv%);
+      #durability_left=((10000*%DURABILITY%)/(100*%ITEMDAMAGE%));
+      //IF((DURABILITY<=0)||(#durability_left>10));
+      IF((#durability_left>10) || (%DURABILITY%<0) || (%ITEM%=="air") || (%ITEM%=="0"));
+        SET(item_picked);
+        UNSET(break_);
+        BREAK;
+      ENDIF;
+    ENDIF;
+  NEXT;
+
+{* endmacro *}
+  
+
+/*
+  NOME: parts/common/sensor_directions.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_sensor_directions() *}
+
+  IF(%DIRECTION%=="N");
+    #x=0;#z=-1;       
+  ELSEIF(%DIRECTION%=="S");
+    #x=0;#z=1;
+  ELSEIF(%DIRECTION%=="E");
+    #x=1;#z=0;
+  ELSEIF(%DIRECTION%=="W");
+    #x=-1;#z=0;
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NOME: parts/common/.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_plugin_scanner() *}
+
+  //&services="";
+  //&plugin="";
+  &ibm_request_="%&plugin%:info()";
+  //{% "../../ibm/requester.txt" %}
+  {{ MODULAR.ibm_requester() }}
+
+  SET(services_ok);
+
+  IF(#ibm_success_);
+    SET(&info,%&ibm_response_%);
+    MATCH(%&ibm_response_%,"([^,]+),?.*",{&author});
+    DO;
+      MATCH(%&services%,"([^,]*),?(.*)?",{&s,&o});
+      SET(&services,%&o%);
+      IF(&s);
+        IFMATCHES(%&info%,",?%&s%,?");
+          WAIT(1ms);
+        ELSE;
+          LOG("§8§l[SCANNER] §7service §f%&s% §4not found §7on §f%&plugin%");
+          UNSET(services_ok);
+          BREAK;
+        ENDIF;
+      ENDIF;
+      WAIT(10ms);
+    WHILE(&s);
+  ELSE;
+    UNSET(services_ok);
+  ENDIF;
+
+  IF(services_ok);
+    LOG("§8§l[SCANNER] §f%&plugin% §8§9by %&author% §aOK.");
+  ENDIF;
+
+{* endmacro *}
+
+
+/*
+  NOME: parts/common/near_direction.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_near_direction() *}
+
+  IF(%YAW%<=45);
+    #direction=0;//South
+  ELSEIF(%YAW%<=135);
+    #direction=90;//West
+  ELSEIF(%YAW%<=225);
+    #direction=180;//North
+  ELSEIF(%YAW%<=315);
+    #direction=270;//East
+  ELSE;
+    #direction=0;//South
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NOME: parts/common/daytimestamp.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_daytimestamp() *}
+
+  //SET(&time,"%TIME%");
+  MATCH(%&time%,"([0-9]{2}):([0-9]{2}):([0-9]{2})",#groups[]);
+  SET(#hour,%#groups[1]%);
+  SET(#minute,%#groups[2]%);
+  SET(#second,%#groups[3]%);
+  #daytimestamp=(%#hour%*3600)+(%#minute%*60)+%#second%;
+  //LOG("%&time% %#hour% : %#minute% : %#second%  == %#daytimestamp%");
+
+{* endmacro *}
+
+/*
+  NOME: parts/common/mkb_around.txt
+  DESCRIÇÃO: 
+*/
+{* macro common_mkb_around() *}
+
+  //{% "sensor.directions.txt" %}
+  {{ common_sensor_directions() }}
+
+  #nx=%#x%*%#dir%*2;
+  #nz=%#z%*%#dir%*2;
+
+  GETIDREL(2,0,0,"&id_","&data_");
+  SET(&a0,"%&id_%"); 
+  GETIDREL(2,1,0"&id_","&data_");
+  SET(&a1,"%&id_%"); 
+
+  GETIDREL(-2,0,0,"&id_","&data_");
+  SET(&b0,"%&id_%"); 
+  GETIDREL(-2,1,0,"&id_","&data_");
+  SET(&b1,"%&id_%"); 
+
+  GETIDREL(0,0,2,"&id_","&data_");
+  SET(&c0,"%&id_%"); 
+  GETIDREL(0,1,2,"&id_","&data_");
+  SET(&c1,"%&id_%"); 
+
+  GETIDREL(0,0,-2,"&id_","&data_");
+  SET(&d0,"%&id_%"); 
+  GETIDREL(0,1,-2,"&id_","&data_");
+  SET(&d1,"%&id_%"); 
+
+  SET(&chest,"146|54|trapped_chest|chest");
+
+  UNSET(mkbtrap_around);
+  IFMATCHES("<{%&a0%}{%&a1%}><{%&b0%}{%&b1%}><{%&c0%}{%&c1%}><{%&d0%}{%&d1%}>",".*<\{%&chest%\}\{%&chest%\}>.*");
+    SET(mkbtrap_around);
+  ENDIF;
+
+{* endmacro *}
+
+
+
+/* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -======         HERE <- SERVICES          ======-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+  
+/*
+  NOME: parts/services/inventory_count.txt
+  DESCRIÇÃO: 
+*/
+{* macro services_inventory_count() *}
+  
+  //SET(&item,"");
+  //SET(&not_item,"");
+
+  //{% "../common/open_inventory.txt" %}
+  {{ common_open_inventory() }}
+  UNSET(#item_quantity);
+  UNSET(#ignored_item_quantity);
+  IF(!&not_item);
+    SET(&not_item,"^foobar$");
+  ENDIF;
+  FOR(#i,44,9);
+    
+    //{% "../common/keyendloop.txt" %}
+    {{ common_keyendloop() }}
+
+    //{% "../common/getslotitem.txt" %}
+    {{ common_getslotitem() }}
+
+    IFMATCHES(%&id%,%&item%);
+
+      IFMATCHES(%&id%,%&not_item%);
+
+        INC(#ignored_item_quantity,%#stack%);
+
+      ELSE;
+
+        IFMATCHES(%&id%,"^air$|^0$");
+          INC(#item_quantity,1);
+        ELSE;
+          INC(#item_quantity,%#stack%);
+        ENDIF;
+
+      ENDIF;
+
+    ENDIF;
+
+  NEXT;
+
+  #pack_quantity=%#item_quantity%/64;
+
+  //{% "../common/close_inventory.txt" %}
+  {{ common_close_inventory() }}
+
+  LOG("§e'§3Inventory Count§e' §f%#item_quantity% §7itens found matching §f%&item%");
+
+{* endmacro *}
+
+/*
+  NOME: reparador baseado no código do minerador
+  DESCRIÇÃO: 
+*/
+{* macro services_cl_repair_tool(onchat='cl-syncpack') *}
+    
+  {* import 'Macrosoft.common.onchat' as ONCHAT *} 
+  {* import 'Federal.@.shared' as SHARED *} 
+  UNSET(repair_issue);
+  
+  {{ SHARED.tool.is_durability_ok(outvar='durable') }}
+  
+  IF(!durable);
+  
+    {{ ONCHAT.register(onchat) }}
+    
+    //SET(#current_durability,%DURABILITY%);
+    SET(&repair_command_datetime,%DATETIME%);
+    ECHO("/reparar");
+    {{ CHAT.print('solicitação de reparação enviada ao servidor','info') }}
+    UNSET(repaired);
+    UNSET(not_vip);
+  
+    {* set timeout_repair = 250 *}
+    UNSET(#timeout_repair);
+    UNSET(&response);
+    DO({{ timeout_repair }});
+      INC(#timeout_repair);
+      
+      {{ CORTEX.read(CONSTANTS.servicepack['CL']['onchat']['pname'], "&response") }}
+  
+      IF(&response);
+        IFMATCHES(%&response%,"^ok\:repair");
+          SET(repaired);
+        ELSE;
+          {{ CHAT.print('O processo de reparação retornou um erro','error','%&response%') }}
+        ENDIF;
+        BREAK;
+      ELSE;
+      
+        IF(&repair_command_datetime);
+          {{ SECONDS.diff('%&repair_command_datetime%',outvar='#seconds_diff') }}
+          IF(#seconds_diff>10); //10 segundos é o máximo para esperar reparação da ferramenta
+            {{ CHAT.print('Passou-se 10 segundos e a macro não reparou','warning') }}
+            {{ CHAT.print('Vou retornar mensagem de sucesso para manter o fluxo do programa','info') }}
+            UNSET(&subject_repair_tool);//Esquece a ferramenta objeto
+            {!! pause(trigger.task_name~':issue demorou mais de 10 segundos para reparar') !!}
+            SET(repaired);//Demorou, mas a macro continuará tentando
+            BREAK;
+          ENDIF;
+        ENDIF;
+  
+        IFMATCHES(%GUI%,"^GUICHEST");
+          {{ CHAT.print('Você não é VIP, reparação cancelada!','info') }}
+          {{ GUI.inventory(action='close',cortex=False) }}
+          SET(not_vip);
+          BREAK;
+        ENDIF;
+        
+        WAIT(1t);
+        
+      ENDIF;
+    
+    UNTIL(repaired);
+  
+    //IF(DURABILITY>#current_durability);
+    SET(repair_issue);
+    IF(repaired);
+      {{ CHAT.print('Beleza! Ferramenta reparada','success') }}
+      UNSET(repair_issue);
+    ELSEIF(not_vip);
+      {{ CHAT.print('Não foi possível reparar a ferramenta 0','warning') }}
+      {{ CHAT.print('indo trocar ferramenta...','info') }}
+    ELSEIF(#timeout_repair<{{ timeout_repair }});
+      UNSET(&subject_repair_tool);//Esquece a ferramenta objeto
+      {{ CHAT.print('Não foi possível reparar a ferramenta 1','error') }}
+    ELSE;
+      UNSET(&subject_repair_tool);//Esquece a ferramenta objeto
+      {{ CHAT.print('Não foi possível reparar a ferramenta 2','error','timeout') }}
+    ENDIF;
+      
+    {{ ONCHAT.unregister(onchat) }}
+  
+  ENDIF;
+  
+{* endmacro *}
+
+/*
+  NOME: parts/services/cl/autorep.txt
+  DESCRIÇÃO: 
+*/
+{* macro services_cl_autorep() *}
+  
+  //1 - Verifica a quantidade q de blocos de diamante no inventário
+  //2 - Se houver itere no máximo q elementos n da hotbar, senão retorne 'rep_unavailable'
+  //3 - Se o elemento n corresponder a %&autorep_id%, insira /reparar
+  //4 - Depois de inserir /reparar, verifique se o item foi reparado, senão, retorne 'rep_unavailable'
+
+  //SET(&autorep_id,"^diamond_pickaxe$|^278$");
+  //SET(#autorep_durability,101);
+  //SET(&autorep_block,"^57$|^diamond_block$")
+
+  LOG("§e'§3CL /reparar§e' checking...");
+
+  SET(&item,%&autorep_block%);
+  UNSAFE(0);
+    //{% "../inventory_count.txt" %}
+    {{ services_inventory_count() }}
+  ENDUNSAFE;
+
+  //UNSET(#quant_hotbar_iter,%#item_quantity%);
+  UNSET(#quant_hotbar_iter);
+  UNSET(repair_issue);
+
+  IF(!#autorep_durability);
+    SET(#autorep_durability,105);
+  ENDIF;
+
+  IF(#item_quantity);
+
+    //FOR(#i,1,9);
+        
+      SLOT(%#i%);//Go to slot
+
+      WAIT(50ms);
+
+      //IFMATCHES(%ITEM%,%&autorep_id%); //Check slots contains target
+
+        //IF(%DURABILITY%<=#autorep_durability);//Checks durability
+
+          SET(#last_durability,%DURABILITY%);
+
+          ECHO("/reparar -a"); 
+
+          UNSET(#j);
+          DO(100);
+
+            INC(#j);
+            IFMATCHES(%#j%,"10|20|30|40|50|60|70|80|90");
+              LOG("§a§lAguardando aumento da durabilidade §f%#j%/100 §8abrindo §8baú §8para §8evitar §8bug §8do §8servidor. §8Obrigado §3@ninjacinzabr §8por §8identificar §8e §8relatar §8o §8problema");
+              //Sugestão de @ninjacinzabr S2
+              IFMATCHES(%HITID%,"^146$|^54$|^trapped_chest$|^chest$")
+                //{% "../../common/open_chest.txt" %}
+                {{ common_open_chest() }}
+                WAIT(10t);
+                //{% "../../common/close_inventory.txt" %}
+                {{ common_close_inventory() }}
+              ENDIF;
+            ENDIF;
+            WAIT(10t);
+
+            IFMATCHES(%GUI%,%GUICHEST%);
+              LOG("§a§lVocê não é VIP. Cancelando §7§l/reparar");
+              //{% "../../common/close_inventory.txt" %}
+              {{ common_close_inventory() }}
+              SET(repair_issue);
+              BREAK;
+            ENDIF;
+
+            SET(#current_durability,%DURABILITY%);
+
+            //{% "../../../modular/loop.txt" %}
+            {{ MODULAR.modular_loop() }}
+
+          UNTIL(#current_durability>#last_durability);
+
+          IF(%DURABILITY%>#last_durability);
+            LOG("§e'§3CL /reparar§e' §eOK");
+          ELSE;
+            LOG("§e'§3CL /reparar§e' §4ISSUE");
+            SET(repair_issue);
+            BREAK;
+          ENDIF;
+
+          //IF(#i>=#quant_hotbar_iter);
+          //  BREAK;
+          //ENDIF;
+
+        //ENDIF;
+
+      //ENDIF;
+
+    //NEXT;
+
+  ELSE;
+
+    SET(repair_issue);
+    LOG("§e'§3CL /reparar§e' §4no block of diamond found");
+
+  ENDIF;
+  
+{* endmacro *}
+
+
+/*
+  NOME: parts/services/picker.txt
+  DESCRIÇÃO: 
+    # Serviço PICKER
+     Este serviço pretende ser o definitivo para trazer um item do inventário para a hotbar.
+     Para que um item seja selecionado este precisa ter durabilidade maior que 9 ou menor que 1
+    
+    ## Inputs
+     * a=>b (a:regex para a validação de id:data, b:posição destino da hotbar [1-9])
+    
+    ## Outputs
+     * ok
+     * not_available:id
+     * low_durability:id
+    
+    ## Algoritmo
+     1. O item está na posição da hotbar?
+       * SIM: Mova o cursor para a posição escolhida e retorne 'ok'
+       * NÃO: Comece o processo de busca
+         * Abra o inventário
+         * Iniciando do início da hotbar até o topo itere o slot S
+           * O slot S corresponde ao item solicitado
+             * SIM: Mova o item para a posição destino trocando os itens entre os slots e retone 'ok'
+             * NÃO: Próxima iteração
+         * Como o item não foi encontrado retone 'not_found'
+*/
+{* macro services_picker(inputvar='&express',outvar='&ibm_return_') *}
+  
+  UNSET(&parts[]);
+  //-----------------------------------
+  // Parses input
+  //-----------------------------------
+  MATCH(%{{ inputvar }}%,"([^=]+)(?:=>([0-9]+))?",&parts[]);
+  
+  SET(&regex_item,%&parts[1]%);
+  MATCH(%&parts[2]%,"([0-9-]+)?",{#hotpos});
+  //LOG("§e'§3Picker§e' §8regex_item:§7%&regex_item% §8hotpos:§7%#hotpos%");
+  
+  IF(&regex_item);
+  
+    //-----------------------------------
+    // Set 1 to hotbar target position if it was not informed
+    //-----------------------------------
+    IF((#hotpos<=0) || ((#hotpos>=10)));
+  
+      SET(#hotpos,1);
+  
+    ENDIF;
+  
+    //-----------------------------------
+    // It checks hotbar
+    //-----------------------------------
+  
+    SET(not_available);
+    UNSET(low_durability);
+    SLOT(%#hotpos%);
+  
+    IFMATCHES("%ITEM%",%&regex_item%);
+      IF(%STACKSIZE%>0);
+        #durability_left=((10000*%DURABILITY%)/(100*%ITEMDAMAGE%));
+        IF((DURABILITY<=0)||(#durability_left>10));
+          UNSET(not_available);
+          LOG("§e'§3Picker§e' §a§lOK§r§8 §7%ITEM% §aalready placed");
+        ELSE;
+          SET(low_durability);
+          //LOG("§e'§3Picker§e' Some item skipped. §8Low durability");
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  
+    IF(not_available);
+  
+      //{% "../common/open_inventory.txt" %}
+      {{ common_open_inventory() }}
+  
+      FOR(#i,44,9);
+  
+        //{% "../common/keyendloop.txt" %}
+        {{ common_keyendloop() }}
+  
+        //{% "../common/getslotitem.txt" %}
+        {{ common_getslotitem() }}
+  
+        SET(#invhotpos,%#hotpos%);
+        INC(#invhotpos,35);
+  
+        IF(#i!=#invhotpos);
+  
+          IFMATCHES("%&id%",%&regex_item%);
+  
+            //WAIT(50ms);
+            //SLOTCLICK(%#i%,left);WAIT(50ms);//Pick item
+            //SLOTCLICK(%#invhotpos%,left,true);WAIT(50ms);//Clear target position
+            //SLOTCLICK(%#invhotpos%,left);WAIT(50ms);//Place item
+  
+            WAIT(500ms);
+            SLOTCLICK(%#i%,left);WAIT(750ms);//Pick item
+            SLOTCLICK(%#invhotpos%,left);WAIT(750ms);//Clear target position
+            SLOTCLICK(%#i%,left);WAIT(750ms);//Place item
+            SLOTCLICK(-999);
+  
+            SLOT(%#hotpos%);
+  
+            IF(%STACKSIZE%>0);
+  
+              #durability_left=((10000*%DURABILITY%)/(100*%ITEMDAMAGE%));
+              IF((DURABILITY<=0)||(#durability_left>10));
+                UNSET(not_available);
+                SET({{ outvar }},"ok");
+                LOG("§e'§3Picker§e' §a§lOK§r§8 §7%ITEM% ==> inventory(%#hotpos%)");
+                BREAK;
+              ELSE;
+                SET(low_durability);
+                //LOG("§e'§3Picker§e' Some item skipped. §8Low durability");
+              ENDIF;
+            ENDIF;
+            
+          ENDIF;
+          
+        ENDIF;
+  
+      NEXT;
+  
+      //{% "../common/close_inventory.txt" %}
+      {{ common_close_inventory() }}
+  
+      IF(not_available);
+        IF(low_durability);
+          LOG("§e'§3Picker§e' §4§lLOW DURABILITY§r§8 §7%ITEM% ==> inventory(%#hotpos%)");
+          SET({{ outvar }},"low_durability:%&regex_item%");
+        ELSE;
+          LOG("§e'§3Picker§e' §4No matches found for §7%&regex_item%");
+          SET({{ outvar }},"not_available:%&regex_item%");
+        ENDIF;
+      ENDIF;
+  
+    ELSE;
+  
+      SET({{ outvar }},"ok");
+  
+    ENDIF;
+  
+  ELSE;
+  
+    SET({{ outvar }},"not_available:%&regex_item%");
+  
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NOME: parts/services/chest_replace_damaged.txt
+  DESCRIÇÃO: 
+*/
+{* macro services_chest_replace_damaged() *}
+  
+  //SET(&items_to_exchange,".+_pickaxe");
+  SET(chest_not_available);
+
+  IFMATCHES(%HITID%,"^146$|^54$|^trapped_chest$|^chest$")
+    //{% "../common/open_chest.txt" %}
+    {{ common_open_chest() }}
+    IFMATCHES(%GUI%,CHEST);
+      UNSET(chest_not_available);
+      //selectiona uma posição do inventário
+      //se o item não estiver na hotbar coloque-o lá trocando com um slot aleatório da hotbar
+      //se o item tiver baixa durabilidade, troque com algum do baú
+      //recoloque o item em sua posição original, se for o caso
+
+      IF(!&items_to_exchange);
+        SET(&items_to_exchange,"^271$|^275$|^258$|^279$|^286$|^.+_axe$|^270$|^274$|^257$|^278$|^285$|^.+_pickaxe$|^269$|^273$|^256$|^277$|^284$|^.+_shovel$|^268$|^272$|^267$|^276$|^283$|^.+_sword$|^359$|^shears$|^261$|^bow$|^290$|^291$|^292$|^293$|^294$|^.+_hoe$|^346$|^fishing_rod$");
+      ENDIF;
+
+      UNSET(exchanged);
+
+      FOR(#j,54,89);
+
+        //{% "../common/keyendloop.txt" %}
+        {{ common_keyendloop() }}
+        
+        //GetSlotItem crossversion
+        UNSET(&idj);
+        GETSLOTITEM(%#j%,&idj,#s,&d);
+        IF(!&idj);
+          GETSLOTITEM(%#j%,#idj,#s,#d);
+          MATCH("%#idj%","([0-9]+)",{&idj});
+        ENDIF;
+
+        IFMATCHES(%&idj%,%&items_to_exchange%);
+
+          IF(#j<=80);
+            //Sort a slot target
+            DO;
+              RANDOM(#slot,1,9);
+              #invslot=80+%#slot%;
+
+              //{% "../common/keyendloop.txt" %}
+              {{ common_keyendloop() }}
+
+            UNTIL(#invslot!=%#j%);
+
+            //Put the item on hotbar
+            WAIT(77ms);
+            SLOTCLICK(%#j%,left);
+            WAIT(77ms);
+            SLOTCLICK(%#invslot%,left);
+            WAIT(77ms);
+            SLOTCLICK(%#j%,left);
+            WAIT(77ms);
+          ELSE;
+            #slot=%#j%-80;
+            #invslot=%#j%;
+          ENDIF;
+
+          SLOT(%#slot%);
+
+          //Exchange itens on chest
+          IF(%DURABILITY%<=101);
+            FOR(#i,0,53);
+
+              //{% "../common/keyendloop.txt" %}
+              {{ common_keyendloop() }}
+
+              IF(#i!=#j);
+
+                //GetSlotItem crossversion
+                UNSET(&idi);
+                GETSLOTITEM(%#i%,&idi,#s,&d);
+                IF(!&idi);
+                  GETSLOTITEM(%#i%,#idi,#s,#d);
+                  MATCH("%#idi%","([0-9]+)",{&idi});
+                ENDIF;
+
+                IFMATCHES(%&idi%,"^%&idj%$");
+
+                  //Exchange item with chest
+                  WAIT(77ms);
+
+                  DO(20);
+                    SLOTCLICK(%#i%,left);
+                    //SET(&custom_i,"#i");
+                    //{% "../common/getslotitemcustomvar.txt" %}
+                    {{ common_getslotitem(countvar='#i') }}
+                    WAIT(250ms);
+                  UNTIL(#stack==0);
+
+                  SLOTCLICK(%#invslot%,left);
+                  WAIT(250ms);
+
+                  DO(20);
+                    SLOTCLICK(%#i%,left);
+                    //SET(&custom_i,"#i");
+                    //{% "../common/getslotitemcustomvar.txt" %}
+                    {{ common_getslotitem(countvar='#i') }}
+                    WAIT(250ms);
+                  UNTIL(#stack>0);
+
+                  //Gives the item back to the position if it has not enough durability
+                  SLOT(%#slot%);
+                  IF(%DURABILITY%<=101);
+
+                    DO(20);
+                      SLOTCLICK(%#invslot%,left);
+                      //SET(&custom_i,"#invslot");
+                      //{% "../common/getslotitemcustomvar.txt" %}
+                      {{ common_getslotitem(countvar='#invslot') }}
+                      WAIT(250ms);
+                    UNTIL(#stack==0);
+
+                    
+                    SLOTCLICK(%#i%,left);
+                    WAIT(250ms);
+
+                    DO(20);
+                      SLOTCLICK(%#invslot%,left);
+                      //SET(&custom_i,"#invslot");
+                      //{% "../common/getslotitemcustomvar.txt" %}
+                      {{ common_getslotitem(countvar='#invslot') }}
+                      WAIT(250ms);
+                    UNTIL(#stack>0);
+
+                  ELSE;
+                    LOG("§e'§3Chest Replacer§e' §a§lOK§r§8 §7%ITEM% §aexchanged");
+                    SET(exchanged);
+                    BREAK;
+                  ENDIF;
+
+                ENDIF;
+
+              ENDIF;
+
+            NEXT;
+          ENDIF;
+
+          IF(#j<=80);
+            //Give the item back to the origin slot
+            WAIT(77ms);
+            
+
+            DO(20);
+              SLOTCLICK(%#invslot%,left);
+              //SET(&custom_i,"#invslot");
+              //{% "../common/getslotitemcustomvar.txt" %}
+              {{ common_getslotitem(countvar='#invslot') }}
+              WAIT(250ms);
+            UNTIL(#stack==0);
+
+            SLOTCLICK(%#j%,left);
+            WAIT(250ms);
+            
+            DO(20);
+              SLOTCLICK(%#invslot%,left);
+              //SET(&custom_i,"#invslot");
+              //{% "../common/getslotitemcustomvar.txt" %}
+              {{ common_getslotitem(countvar='#invslot') }}
+              WAIT(250ms);
+            UNTIL(#stack>0);
+
+          ENDIF;
+
+
+        ENDIF;
+        
+      NEXT;
+
+      //{% "../common/close_inventory.txt" %}
+      {{ common_close_inventory() }}
+
+    ELSE;
+
+      LOG("§e'§3Chest Replacer§e' chest not available");
+
+    ENDIF;
+
+  ELSE;
+
+    LOG("§e'§3Chest Replacer§e' chest not found");
+
+  ENDIF;
+  
+{* endmacro *}
+
+/*
+  NOME: parts/services/inventory_split_item.txt
+  DESCRIÇÃO: 
+*/
+{* macro services_inventory_split_item() *}
+  
+
+  //{% "../common/open_inventory.txt" %}
+  {{ common_open_inventory() }}
+  
+  FOR(#i,44,9);
+  
+    //{% "../common/keyendloop.txt" %}
+    {{ common_keyendloop() }}
+  
+    //{% "../common/getslotitem.txt" %}
+    {{ common_getslotitem() }}
+    
+    IFMATCHES("%&id%","%&item%");
+      WAIT(250ms);
+      SLOTCLICK(%#i%,left);WAIT(250ms);
+      SLOTCLICK(1,left);WAIT(250ms);
+      SLOTCLICK(0,left,true);WAIT(250ms);
+    ENDIF;
+  
+    //CHeck if there's space
+    SET(full);
+    FOR(#j,44,9);
+  
+      //{% "../common/keyendloop.txt" %}
+      {{ common_keyendloop() }}
+  
+      UNSET(&id);
+      GETSLOTITEM(%#j%,&id,#stack,&damage);
+      IF(!&id);
+        GETSLOTITEM(%#j%,#id,#stack,#damage);
+        MATCH("%#id%:%#damage%","([0-9]+):([0-9]+)",{&id,&damage});
+      ENDIF;
+  
+      IFMATCHES("%&id%","^0$|^air$");
+        UNSET(full);
+        BREAK;
+      ENDIF;
+  
+    NEXT;
+  
+    IF(full);
+      LOG("§8§lInventory full!");
+      BREAK;
+    ENDIF;
+  
+  NEXT;
+  
+  //{% "../common/close_inventory.txt" %}
+  {{ common_close_inventory() }}
+
+
+  
+{* endmacro *}
+
+/* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -======          HERE <- ONCHAT         ======-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+/*
+  NOME: parts/onchat/restart/client_snippet.txt
+  DESCRIÇÃO: 
+*/
+{* macro onchat_restart_client_snippet() *}
+  
+  SET(&time,"%TIME%");
+  //{% "../../common/daytimestamp.txt" %}
+  {{ common_daytimestamp() }}
+  #diff=%#daytimestamp%-%@#macrosoft_last_restart%;
+  MATCH("%#diff%","-?([0-9]+)",{#abs_diff_restart});
+  SET(#seconds_limit,15);
+  #overflow_seconds_limit=86400-%#seconds_limit%;
+  IF((#abs_diff_restart<=#seconds_limit) || (#abs_diff_restart>=#overflow_seconds_limit));//Verifica se o programa de reinício foi executado a no máximo 15 segundos atrás
+    LOG("§7§lrestart_flag §8§l%#abs_diff_restart%s");
+    SET(restart_flag);
+  ELSE;
+    UNSET(restart_flag);
+  ENDIF;
+  
+{* endmacro *}
+
+/* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -======           HERE <- WOOD            ======-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  
+  goto -> break_trunk
+  goto -> clear_leaves
+  goto -> centralize
+  goto -> build_support
+  goto -> check_tools
+  goto -> scanner_above
+  goto -> collects
+  goto -> fertilize
+  goto -> plants
+*/
+  
+/*
+  NOME: parts/wood/break_trunk.txt
+  DESCRIÇÃO: 
+  HERE <- break_trunk
+*/
+{* macro wood_break_trunk() *}
+
+  DO(50);
+  	
+    SET(&hit_message,"%%&hit_socket%%"); 
+
+    IFMATCHES(%&hit_message%,"^missing_tool$");
+      SET(hit_issue);
+      BREAK;
+    ELSE;
+      &sensor=%HITID%;
+      WAIT(50ms);
+    ENDIF;
+
+    //{% "../../modular/loop.txt" %}
+    {{ MODULAR.modular_loop() }}
+
+  UNTIL((&sensor!="17") && (&sensor!="log"));
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/clear_leaves.txt
+  DESCRIÇÃO: 
+  HERE <- clear_leaves
+*/
+{* macro wood_clear_leaves() *}
+  
+  WAIT(200ms);
+  #transformed_yaw=%YAW%-180;
+  IF(%YAW%<180);
+    #transformed_yaw=%YAW%+180;
+  ENDIF;
+  #frozen_pitch=%PITCH%;
+
+  DO(100);
+    LOOK(,90,0.1);
+    IFMATCHES(%HITID%,"18|leaves");
+      CAPTUREFOCUS();
+      KEY(ATTACK);
+      WAIT(10ms);
+    ELSE;
+      BREAK;
+    ENDIF;
+  UNTIL(KEY_DELETE);
+
+  DO(10);
+    LOOK(%#transformed_yaw%,%#frozen_pitch%,0.1);
+    WAIT(10ms);
+  UNTIL((%YAW%==%#untransformed_yaw%) || (KEY_DELETE));
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/centralize.txt
+  DESCRIÇÃO: 
+  HERE <- centralize
+*/
+{* macro wood_centralize() *}
+  
+  IFMATCHES(%HITID%,"18|leaves");
+    //{% "clear_leaves.txt" %}
+    {{ wood_clear_leaves() }}
+  ENDIF;
+
+  IF(HASINTEL);
+    CENTEROVERBLOCK();
+  ELSE;
+    FOR(#i,1,4);
+      IF(#i==1);
+        &interact_="ON(%&service_socket%) NOTWRITE() AND WAIT UNTIL(paused)";
+      ELSEIF(#i==2);
+        &interact_="ON(%&service_socket%) WRITE(resume:center) AND WAIT UNTIL(resumed)";
+      ELSEIF(#i==3);
+        &interact_="ON(%&service_socket%) NOTWRITE() AND WAIT WHILE(resumed)";
+      ELSEIF(#i==4);
+        &interact_="ON(%&service_socket%) WRITE(ok. thanks) AND WAIT UNTIL(paused)";
+      ENDIF;
+      //{ "../../modular/socket.interact.txt" }
+      {{ MODULAR.modular_socket_interact() }}
+    NEXT;
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/build_support.txt
+  DESCRIÇÃO: 
+  HERE <- build_support
+*/
+{* macro wood_build_support() *}
+
+  FOR(#bravo,1,3);
+    IF(#bravo==1);
+
+      &interact_="ON(%&hit_socket%) WRITE(pause: ok. thanks) AND WAIT UNTIL(paused)";
+
+    ELSEIF(#bravo==2);
+
+      //{% "centralize.txt" %}
+      {{ wood_centralize() }}
+
+      IF(!hit_issue);
+
+        #targety=%YPOS%+%#wood_above%-7;
+
+        UNSET(wood_not_found);
+        DO(50);
+
+          PICK("17","log");
+
+          IFMATCHES(%ITEM%,"17|log");//Looks towards floor and build support
+            LOOK(,90);
+            KEYDOWN(JUMP);
+            KEY(USE);
+          ELSE;
+            //picks wood
+            FOR(#alpha,1,4);
+              IF(#alpha==1);
+                &interact_="ON(%&service_socket%) NOTWRITE() AND WAIT UNTIL(paused)";
+              ELSEIF(#alpha==2);
+                &interact_="ON(%&service_socket%) WRITE(resume:picker,17|log=>4) AND WAIT UNTIL(resumed)";
+              ELSEIF(#alpha==3);
+                &interact_="ON(%&service_socket%) NOTWRITE() AND WAIT WHILE(resumed)";
+              ELSEIF(#alpha==4);
+                IFMATCHES(%&interact_message_%,"^not_available|^low_durability");
+                  LOG("§e'§3Wood§e' §6There'no log available");
+                  SET(wood_not_found);
+                ENDIF;
+                &interact_="ON(%&service_socket%) WRITE(ok. thanks) AND WAIT UNTIL(paused)";
+              ENDIF;
+              //{% "../../modular/socket.interact.txt" %}
+              {{ MODULAR.modular_socket_interact() }}
+            NEXT;
+          ENDIF;
+
+          WAIT(100ms);
+          GETIDREL(0,-1,0,&id_below,&data_below);
+
+          IFMATCHES(%&id_below%,"17|log");
+            IF(%YPOS%==%#targety%);
+              BREAK;
+            ENDIF;
+          ENDIF;
+
+        UNTIL((KEY_DELETE) || (wood_not_found));
+
+        KEYUP(JUMP);
+
+        LOOK(,270,0.3);
+
+        &interact_="ON(%&hit_socket%) WRITE(resume:17|log,%&axe_list%,attack) AND WAIT UNTIL(resumed)";
+
+      ELSE;
+
+        //LOG("break at 2/3");
+        BREAK;
+
+      ENDIF;
+    
+    ELSEIF(#bravo==3);
+
+      //{% "break_trunk.txt" %}
+      {{ wood_break_trunk() }}
+
+      IF(!hit_issue);
+
+        DO(3);
+        
+          LOOK(,90,0.3);
+
+          //{% "break_trunk.txt" %}
+          {{ wood_break_trunk() }}
+
+        UNTIL((%YPOS%==%#woodypos%) || (KEY_DELETE));
+
+        &interact_="ON(%&hit_socket%) WRITE(pause: ok. thanks) AND WAIT UNTIL(paused)";
+
+      ELSE;
+
+        //LOG("break at 3/3");
+        BREAK;
+
+      ENDIF;
+
+    ENDIF;
+
+    //{% "../../modular/socket.interact.txt" %}
+    {{ MODULAR.modular_socket_interact() }}
+
+  NEXT;
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/check_tools.txt
+  DESCRIÇÃO: 
+  HERE <- check_tools
+*/
+{* macro wood_check_tools() *}
+
+  //=========================
+  //=== CHECKS ITENS/TOOLS ==
+  //========================= 
+  UNSET(item_missing);
+  PICK("6:0","sapling:0","6:1","sapling:1","6:2","sapling:2","6:3","sapling:3");//Try to pick sapling
+  IFMATCHES(%ITEMIDDMG%,"6:0|sapling:0|6:1|sapling:1|6:2|sapling:2|6:3|sapling:3"); 
+    PICK("351:15","dye:15");//Try to pick dye
+    IFMATCHES(%ITEMIDDMG%,"351:15|dye:15");
+      SET(&item_list,%&axe_list%);
+      //{% "../../parts/common/pick_item.txt" %}
+      {{ common_pick_item() }}
+      IF(item_picked);
+        &axe_id=%ITEMIDDMG%;
+      ELSE;
+        LOG("§e'§3Wood§e' §eNo axe");
+        SET(item_missing);
+      ENDIF;
+    ELSE;
+      LOG("§e'§3Wood§e' §eNo dye");
+      SET(item_missing);
+    ENDIF;
+  ELSE;
+    LOG("§e'§3Wood§e' §eNo sapling");
+    SET(item_missing);
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/scanner_above.txt
+  DESCRIÇÃO: 
+  HERE <- scanner_above
+*/
+{* macro wood_scanner_above() *}
+  
+  UNSET(#wood_above);
+  UNSET(#obstruction_above);
+  UNSET(#space_above);
+  FOR(#i,0,11);
+    GETIDREL(0,%#i%,0,&id_above,&data_above);
+    IFMATCHES("%&id_above%","^0$|air");
+      IF(!#obstruction_above);
+        INC(#space_above);
+      ENDIF;
+    ELSE;
+      IFMATCHES("%&id_above%","^17$|^log$|^6$|^sapling$");
+        SET(#wood_above,%#i%);
+        INC(#wood_above);
+      ELSE;
+        IF(!#obstruction_above);
+          SET(#obstruction_above,%#i%);
+          INC(#obstruction_above);
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  NEXT;
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/collects.txt
+  DESCRIÇÃO: 
+  HERE <- collects
+*/
+{* macro wood_collects() *}
+  
+  //=========================
+  //=== IT BREAKS FRONT =====
+  //========================= 
+
+  &item_list=%&axe_list%;
+  //{% "../../parts/common/pick_item.txt" %}
+  {{ common_pick_item() }}
+
+  FOR(#i,1,2);
+    IF(#i==1);
+      &interact_="ON(%&hit_socket%) NOTWRITE() AND WAIT UNTIL(paused)";
+    ELSEIF(#i==2);
+      &interact_="ON(%&hit_socket%) WRITE(resume:17|log,%&axe_list%,attack) AND WAIT UNTIL(resumed)";
+    ENDIF;
+
+    //=========================
+    //=== IT CLEARS LEAVES =====
+    //========================= 
+
+    IFMATCHES(%HITID%,"18|leaves");
+      //{% "clear_leaves.txt" %}
+      {{ wood_clear_leaves() }}
+    ENDIF;
+    
+    //{% "../../modular/socket.interact.txt" %}
+    {{ MODULAR.modular_socket_interact() }}
+  NEXT;
+
+  //{% "../common/sensor.directions.txt" %}
+  {{ common_sensor_directions() }}
+
+  #dir=1;#nx=%#x%*%#dir%*1;#nz=%#z%*%#dir%*1;
+
+  //---------------------------------
+  //=== toggles axe position
+  //---------------------------------
+  UNSET(hit_issue);
+  UNSET(walk_issue);
+  FOR(#i,1,0);
+    
+    SET(&hit_message,"%%&hit_socket%%"); 
+
+    IFMATCHES(%&hit_message%,"^missing_tool$");
+      SET(hit_issue);
+      BREAK;
+    ELSE;
+
+      #pitch=60*%#i%;
+      LOOK(%#freeze_yaw%,%#pitch%,0.1);
+
+      DO(50);
+
+        IF(#i);
+          GETIDREL(%#nx%,0,%#nz%,"&id_","&data_");
+          SET(&sensor,"%&id_%"); 
+        ELSE;
+          GETIDREL(%#nx%,1,%#nz%,"&id_","&data_");
+          SET(&sensor,"%&id_%");
+        ENDIF;
+
+        WAIT(50ms);
+        //{% "../../modular/loop.txt" %}
+        {{ MODULAR.modular_loop() }}
+
+      UNTIL((&sensor!="17") && (&sensor!="log"));
+
+    ENDIF;
+    
+    //{% "../../modular/loop.txt" %}
+    {{ MODULAR.modular_loop() }}
+
+  NEXT;
+
+  IF(!hit_issue);
+
+    //==============================================
+    //=== MOVES FORWARD AND LOOKS TOWARDS UP =======
+    //==============================================
+
+    FOR(#i,1,4);
+      IF(#i==1);
+        &interact_="ON(%&walk_socket%) NOTWRITE() AND WAIT UNTIL(paused)";
+      ELSEIF(#i==2);
+        &interact_="ON(%&walk_socket%) WRITE(resume:FORWARD:SNEAK,1,-1) AND WAIT UNTIL(resumed)";
+      ELSEIF(#i==3);
+        LOOK(%#freeze_yaw%,270,0.7);
+        &interact_="ON(%&walk_socket%) NOTWRITE() AND WAIT WHILE(resumed)";
+      ELSEIF(#i==4);
+        SET(&walk_message,%&interact_message_%);
+        &interact_="ON(%&walk_socket%) WRITE(pause: ok. thanks) AND WAIT UNTIL(paused)";
+      ENDIF;
+      //{% "../../modular/socket.interact.txt" %}
+      {{ MODULAR.modular_socket_interact() }}
+    NEXT;
+
+    IFMATCHES(%&walk_message%,"^ok$");
+
+      //==============================================
+      //=== WAIT TO BREAK THE WHOLE TRUNK ============
+      //==============================================
+      //{% "break_trunk.txt" %}
+      {{ wood_break_trunk() }}
+
+      IF(!hit_issue);
+        //==============================================
+        //=== SCANS SPACE ABOVE FOR LOGS OBSTRUCTIONS ==
+        //==============================================
+        //{% "scanner_above.txt" %}
+        {{ wood_scanner_above() }}
+
+        IF((#wood_above>7) && (#obstruction_above>#wood_above));
+
+          RANDOM(#rphrase,5);
+          IF(#rphrase==0);
+            LOG("§e'§3Wood§e' OH CRAP!");
+          ELSEIF(#rphrase==1);
+            LOG("§e'§3Wood§e' That's not my first rodeo, boy!");
+          ELSEIF(#rphrase==2);
+            LOG("§e'§3Wood§e' OH Jesus! I hate that!");
+          ELSEIF(#rphrase==3);
+            LOG("§e'§3Wood§e' Again, again, again!");
+          ELSEIF(#rphrase==4);
+            LOG("§e'§3Wood§e' A W E S O M E. Now kill me");
+          ELSEIF(#rphrase==5);
+            LOG("§e'§3Wood§e' Damn wood!");
+          ENDIF;
+
+          //{% "build_support.txt" %}
+          {{ wood_build_support() }}
+        
+        ENDIF;
+      ENDIF;
+
+      IF(!hit_issue);
+
+        //=====================================
+        //=== WALKS BACK ONE BLOCK ============
+        //=====================================
+
+        LOOK(%#freeze_yaw%,71,0.2); 
+
+        SET(#xpos_stamp,%XPOS%);
+        SET(#zpos_stamp,%ZPOS%);
+
+        KEYUP(SNEAK);WAIT(1ms);
+        DO(8);
+          KEYDOWN(BACK);WAIT(100ms);
+          KEYUP(BACK);WAIT(1ms);
+        UNTIL((%XPOS%!=%#xpos_stamp%) || (%ZPOS%!=%#zpos_stamp%));
+
+            
+        //======================
+        //=== ADJUST POSITION ==
+        //======================
+
+        //WAIT(4t);
+        //CENTRALIZE();
+        //WAIT(4t);
+
+        KEYDOWN(SNEAK);WAIT(1ms);
+        DO(8);
+          IF((%XPOS%!=%HITX%) || (%ZPOS%!=%HITZ%));
+            KEYDOWN(BACK);WAIT(1ms);
+            KEYUP(BACK);WAIT(1ms);
+          ENDIF;
+          //{ "../../modular/loop.txt" }
+          {{ MODULAR.modular_loop() }}
+        UNTIL(((%XPOS%==%HITX%) && (%ZPOS%==%HITZ%)) || (break_));
+        KEYUP(SNEAK);
+        
+      ELSE;
+
+        LOG("§e'§3Wood§e' §8daemon_hit issue (%&hit_message%) [1]");
+        SET(hit_issue);
+
+      ENDIF;
+
+        
+
+    ELSE;
+
+      LOG("§e'§3Wood§e' §8daemon_walk issue (%&walk_message%)");
+      SET(walk_issue);
+
+    ENDIF;
+
+    
+
+  ELSE;
+
+    LOG("§e'§3Wood§e' §8daemon_hit issue (%&hit_message%) [2]");
+    SET(hit_issue);
+
+  ENDIF;
+
+  &interact_="ON(%&hit_socket%) WRITE(pause: ok. thanks) AND WAIT UNTIL(paused)";
+  //{% "../../modular/socket.interact.txt" %}
+  {{ MODULAR.modular_socket_interact() }}
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/fertilize.txt
+  DESCRIÇÃO: 
+  HERE <- fertilize
+*/
+{* macro wood_fertilize() *}
+  
+  //=========================
+  //=== FERTILIZES SAPLING
+  //========================= 
+  IF((!break_) && (!pick_wood));
+    IF((%HITX%!=%XPOS%) || (%HITZ%!=%ZPOS%));
+      UNSET(#bmealcount);
+      DO(5);
+        PICK("351:15","dye:15"); //pegando o pó
+        FOR(#fertlenha,0,3);
+          KEY(USE); //aplicando o pó
+          INC(#bmealcount);
+          IFMATCHES(%HITID%,"17|log|18|leaves");
+            SET(pick_wood);
+            BREAK;
+          ELSE;
+            WAIT(77ms);
+          ENDIF;
+          //{% "../../modular/loop.txt" %}
+          {{ MODULAR.modular_loop() }}
+        NEXT;
+
+        IF(pick_wood);
+
+          BREAK;
+
+        ENDIF;
+
+          WAIT(50ms);
+
+          IFMATCHES(%HITID%,"6|sapling");
+
+            IF(#bmealcount>=20);
+
+              LOG("§e'§3Wood§e' §6Obstruction detected. Trying to handle it");
+
+              SET(pick_wood);
+
+              BREAK;
+              
+            ENDIF;
+            
+          ELSE;
+
+            IFMATCHES(%HITID%,"17|log|18|leaves");
+              SET(pick_wood);
+              BREAK;
+            ELSE;
+              //Maybe items are missing or this is not in the right place
+              &next_="wood.centralize";
+              SET(break_);
+            ENDIF;
+
+          ENDIF;
+
+        ENDIF;
+
+        //{% "../../modular/loop.txt" %}
+        {{ MODULAR.modular_loop() }}
+
+      LOOP;
+
+    ELSE;
+
+      &next_="wood.centralize";
+      SET(break_);
+
+    ENDIF;
+
+  ENDIF;
+
+{* endmacro *}
+
+/*
+  NOME: parts/wood/plants.txt
+  DESCRIÇÃO:
+  HERE <- plants
+*/
+{* macro wood_plants() *}
+
+  WAIT(100ms);
+  UNSET(pick_wood);
+  IFMATCHES(%HITID%,"2|3|dirt|grass");
+    PICK("6:0","sapling:0","6:1","sapling:1","6:2","sapling:2","6:3","sapling:3");//Try to pick sapling
+    IFMATCHES(%ITEMIDDMG%,"6:0|sapling:0|6:1|sapling:1|6:2|sapling:2|6:3|sapling:3"); 
+      KEY(USE); //plantando a muda
+      WAIT(10ms);
+    ELSE;
+      SET(break_);
+      &next_="wood.main_loop";
+    ENDIF;
+    
+  ELSE;
+    IFMATCHES(%HITID%,"17|log"); //se for madeira, comece a quebrar
+      SET(pick_wood);
+    ELSE;
+      IFMATCHES(%HITID%,"^((?!6|sapling).)*$");
+        LOG("§e'§3Wood§e' §6No way to plant the tree. Ending");
+        &next_="wood.finalize(noway)";
+        SET(break_);
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  
+{* endmacro *}
+
+/*
+  DESCRIÇÃO: atualização da variável que guarda todas as macros
+*/
+
+{* 
+  set foo = parts.update(
+    wood={
+      'break_trunk': wood_break_trunk,
+      'build_support': wood_build_support,
+      'centralize': wood_centralize,
+      'check_tools': wood_check_tools,
+      'clear_leaves': wood_clear_leaves,
+      'collects': wood_collects,
+      'fertilize': wood_fertilize,
+      'plants': wood_plants,
+      'scanner_above': wood_scanner_above
+    },
+    common={
+      'sensor_directions': common_sensor_directions,
+      'pick_item': common_pick_item,
+      'near_direction': common_near_direction,
+      'plugin_scanner': common_plugin_scanner,
+      'open_inventory': common_open_inventory,
+      'keyendloop': common_keyendloop,
+      'getslotitem': common_getslotitem,
+      'yaw_restore': common_yaw_restore,
+      'yaw_save': common_yaw_save,
+      'close_inventory': common_close_inventory,
+      'daytimestamp': common_daytimestamp,
+      'mkb_around': common_mkb_around,
+      'open_chest': common_open_chest
+    },
+    services={
+      'inventory_count': services_inventory_count,
+      'inventory_split_item': services_inventory_split_item,
+      'chest_replace_damaged': services_chest_replace_damaged,
+      'CL':{
+        'autorep': services_cl_autorep,
+        'repair_tool': services_cl_repair_tool
+      },
+      'picker': services_picker
+    },
+    onchat={
+      'restart':{
+        'client_snippet': onchat_restart_client_snippet
+      }
+    }
+  ) 
+*}
+

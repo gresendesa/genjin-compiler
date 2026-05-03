@@ -1,0 +1,205 @@
+{* import "Federal.IBM.default" as IBM *}
+
+{* macro constants() *}
+
+  SET(&pim_syn_signal_,"PIM1SYN:");
+  SET(&pim_ack_signal_,"PIM1ACK:");
+  SET(&pim_return_signal_,"PIM1END:");
+  
+{* endmacro *}
+
+{* macro requester(is_cloud=True) *}
+	
+	{{ constants() }}
+	
+	RANDOM(#pin,0,999999999);
+	SET(&pim_socket_requester_,"@&pim1_%#pin%");
+	
+	//LOG("§8§l[IBM] §e1. §7(%&pim_socket_requester_%) Socket Created.");
+	
+  {{ IBM.parse_request(request_var='&ibm_request_', target_outvar='&target_file_', syn_message_outvar='&pim_syn_message_', args_outvar='&ibm_args_', snippets_outvar='&request_snippets_') }}
+	
+	//LOG("§8§l[IBM] §erequest to file §f§l%&target_file_%.txt §asyn:%&pim_syn_message_% §7%&ibm_args_[1]% %&ibm_args_[2]% %&ibm_args_[3]% %&ibm_args_[4]% %&ibm_args_[5]% %&ibm_args_[6]% %&ibm_args_[7]% %&ibm_args_[8]% %&ibm_args_[9]%");
+	
+	SET(%&pim_socket_requester_%,"%&pim_syn_signal_%%&pim_syn_message_%");
+	
+	SET(&pim_socket_requester_msg_,"%%&pim_socket_requester_%%");
+	
+	//LOG("§8§l[IBM] §e2. §7(%&pim_socket_requester_%) Syn Message Sent: §f%&pim_socket_requester_msg_%");
+	
+	//EXEC("%&target_file_%.txt","%&target_file_%",%&ibm_args_[1]%,%&ibm_args_[2]%,%&ibm_args_[3]%,%&ibm_args_[4]%,%&ibm_args_[5]%,%&ibm_args_[6]%,%&ibm_args_[7]%,%&ibm_args_[8]%,%&ibm_args_[9]%,%&pim_socket_requester_%,%&ibm_args_[11]%,%&ibm_args_[12]%,%&ibm_args_[13]%,%&ibm_args_[14]%,%&ibm_args_[15]%);
+	{* if is_cloud *}
+		run("%&target_file_%",%&ibm_args_[1]%,%&ibm_args_[2]%,%&ibm_args_[3]%,%&ibm_args_[4]%,%&ibm_args_[5]%,%&ibm_args_[6]%,%&ibm_args_[7]%,%&ibm_args_[8]%,%&ibm_args_[9]%,%&pim_socket_requester_%,%&ibm_args_[11]%,%&ibm_args_[12]%,%&ibm_args_[13]%,%&ibm_args_[14]%,%&ibm_args_[15]%);
+	{* else *}
+		EXEC("%&target_file_%.exe","%&target_file_%",%&ibm_args_[1]%,%&ibm_args_[2]%,%&ibm_args_[3]%,%&ibm_args_[4]%,%&ibm_args_[5]%,%&ibm_args_[6]%,%&ibm_args_[7]%,%&ibm_args_[8]%,%&ibm_args_[9]%,%&pim_socket_requester_%,%&ibm_args_[11]%,%&ibm_args_[12]%,%&ibm_args_[13]%,%&ibm_args_[14]%,%&ibm_args_[15]%);
+	{* endif *}
+
+	#timeout_=500;
+	IF(#api_request_timeout_>0);
+		#timeout_=%#api_request_timeout_%;
+	ENDIF;
+	
+	&pattern_ack_="^%&pim_ack_signal_%(.*)";
+	&pattern_return_="^%&pim_return_signal_%(.*)";
+	
+	UNSET(#ibm_success_);
+	UNSET(timeout_);
+	UNSET(#count_loops_);
+	UNSET(&ibm_response_);
+	DO;
+		
+		INC(#count_loops_);
+		
+		IFMATCHES(%#count_loops_%,"^50$|^100$|^150$|^200$|^250$|^300$|^350$|^400$|^450$");
+			LOG("§8§l[IBM] §7connecting §8to §n%&target_file_% §8§o%#count_loops_%/%#timeout_%");
+		ENDIF;
+		
+		SET(&pim_socket_requester_msg_,"%%&pim_socket_requester_%%");
+		
+		IF((#count_loops_>=%#timeout_%) || (KEY_DELETE));
+			
+			SET(timeout_);
+			BREAK;
+			
+		ELSE;
+			
+			IFMATCHES(%&pim_socket_requester_msg_%,%&pattern_ack_%);
+				
+				MATCH(%&pim_socket_requester_msg_%,%&pattern_ack_%,{&pim_ack_message_});
+				
+				//LOG("§8§l[IBM] §e5. §7(%&pim_socket_requester_%) Ack Message Rcvd: §f%&pim_socket_requester_msg_%");
+				
+				BREAK;
+				
+			ENDIF;
+			
+		ENDIF;
+		
+		WAIT(10ms);
+		
+	WHILE(#count_loops_<%#timeout_%);
+	
+	IF(timeout_);
+		
+		LOG("§8§l[IBM] §7file §f§l%&target_file_% §4did not respond");
+		
+		WAIT(10ms);
+		
+	ELSE;
+		
+		SET(#ibm_success_,1);
+		//LOG("§8§l[IBM] §eConnection §aOK");
+		SET(&pim_socket_requester_msg_,"%%&pim_socket_requester_%%");
+		DO;
+			
+			WAIT(10ms);
+			
+			SET(&pim_socket_requester_msg_,"%%&pim_socket_requester_%%");
+			
+			//LOG("%&pim_socket_requester_msg_%==%&last_ack_message_%");
+			
+			IFMATCHES(%&pim_socket_requester_msg_%,%&pattern_return_%);
+				
+				MATCH(%&pim_socket_requester_msg_%,%&pattern_return_%,{&ibm_response_});
+				
+				//LOG("§8§l[IBM] §e7. §7(%&pim_socket_requester_%) Response Message Rcvd: §f%&pim_socket_requester_msg_%");
+				
+				MATCH(%&ibm_response_%,"(.*)",{#ibm_response_});
+				
+				BREAK;
+				
+			ENDIF;
+			
+		UNTIL(KEY_DELETE);
+		//WHILE(&pim_socket_requester_msg_==%&last_ack_message_%);
+		
+		IF(KEY_DELETE);
+			
+			LOG("§8§l[IBM] §7END pressed. Process aborted");
+			
+		ENDIF;
+		
+		WAIT(10ms);
+		
+		//LOG("§8§l[IBM] §aSuccess. §eTransaction finalized. §fReturned §7%&ibm_response_%");
+		
+	ENDIF;
+	
+	WAIT(100ms);
+	UNSET("%&pim_socket_requester_%");
+{* endmacro *}
+
+{* macro stop() *}
+  
+  {{ constants() }}
+
+	SET(&pim_socket_provider_msg_,"%%&pim_socket_provider_%%");
+	&pattern_ack_="^%&pim_ack_signal_%(.*)";
+
+	IF(#ibm_success_);
+
+		IFMATCHES(%&pim_socket_provider_msg_%,%&pattern_ack_%);
+
+		  SET(%&pim_socket_provider_%,"%&pim_return_signal_%%&ibm_return_%");
+
+		  SET(&pim_socket_provider_msg_,"%%&pim_socket_provider_%%");
+
+		  //LOG("§8§l[IBM] §e6. §7(%&pim_socket_provider_%) Response Message Sent: §f%&pim_socket_provider_msg_%");
+
+		ELSE;	
+
+			//LOG("§8§l[IBM] §fACK §esignal expected. But §f'§7%&pim_socket_provider_msg_%§f' §emessage §ewas §efound §einstead.");
+			
+			UNSET(%&pim_socket_provider_%);
+
+		ENDIF;
+
+		UNSET(#ibm_success_);
+
+	ENDIF;
+
+{* endmacro *}
+
+{* macro start() *}
+  
+  MATCH("$$[1]¢$$[2]¢$$[3]¢$$[4]¢$$[5]¢$$[6]¢$$[7]¢$$[8]¢$$[9]¢$$[10]¢$$[11]¢$$[12]¢$$[13]¢$$[14]¢$$[15]","([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?",&inputs_[]);
+  MATCH("$$[1]¢$$[2]¢$$[3]¢$$[4]¢$$[5]¢$$[6]¢$$[7]¢$$[8]¢$$[9]¢$$[10]¢$$[11]¢$$[12]¢$$[13]¢$$[14]¢$$[15]","([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?¢([^¢]*)?",#inputs_[]);
+
+  &pim_socket_provider_="%&inputs_[10]%";
+
+  {{ IBM.constants() }}
+  {{ constants() }}
+
+  SET(&pim_socket_provider_msg_,"%%&pim_socket_provider_%%");
+
+  &pattern_syn_="^%&pim_syn_signal_%(.*)";
+
+  IFMATCHES(%&pim_socket_provider_msg_%,%&pattern_syn_%);
+
+    MATCH(%&pim_socket_provider_msg_%,%&pattern_syn_%,{&pim_syn_message_});
+
+    //LOG("§8§l[IBM] §e3. §7(%&pim_socket_provider_%) Syn Message Rcvd: §f%&pim_socket_provider_msg_%");
+
+    SET(%&pim_socket_provider_%,"%&pim_ack_signal_%%&pim_ack_message_%");
+
+    SET(&pim_socket_provider_msg_,"%%&pim_socket_provider_%%");
+
+    //LOG("§8§l[IBM] §e4. §7(%&pim_socket_provider_%) Ack Message Sent: §f%&pim_socket_provider_msg_%");
+
+    WAIT(50ms);
+
+    SET(#ibm_success_,1);
+
+    IFMATCHES(%&pim_syn_message_%,"^%&ibm_syn_closeafter_msg_%$");
+
+    	{{ stop() }}
+    	
+    ENDIF;
+
+  ELSE;
+
+    SET(#ibm_success_,0);
+    
+  ENDIF;
+
+{* endmacro *}

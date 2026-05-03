@@ -1,0 +1,88 @@
+/**
+	* Add
+	*
+**/
+{* macro add(array, element, index=None) *}
+	{* if index != None *}
+		ARRAYADD("{{ array }}",{{ element }},{{ index }});
+	{* else *}
+	  ARRAYADD("{{ array }}",{{ element }});
+	{* endif *}
+{* endmacro *}
+
+/**
+	* Collect
+	*
+**/
+{* macro collect(array, regex, output_array=None) *}
+  
+  {* if output_array != None *}
+		ARRAYCOLLECT("{{ array }}","{{ regex }}",{{ output_array }});
+	{* else *}
+	  ARRAYCOLLECT("{{ array }}","{{ regex }}");
+	{* endif *}
+  
+{* endmacro *}
+
+/**
+	* Copy
+	*
+**/
+{* macro copy(array, output_array) *}
+    
+  ARRAYCOPY("{{ array }}",{{ output_array }});
+  
+{* endmacro *}
+
+/**
+	* Find
+	*
+**/
+{* macro find(array, regex, outvar) *}
+  ARRAYFIND("{{ array }}","{{ regex }}",{{ outvar }});
+{* endmacro *}
+
+/**
+	* Remove
+	*
+**/
+{* macro remove(array, index, outvar) *}
+  {* if outvar != None *}
+		ARRAYREMOVE("{{ array }}",{{ index }},{{ outvar }});
+	{* else *}
+	  ARRAYREMOVE("{{ array }}",{{ index }});
+	{* endif *}
+{* endmacro *}
+
+/**
+	* Reverse
+	*
+**/
+{* macro reverse(array) *}
+  ARRAYREVERSE("{{ array }}");
+{* endmacro *}
+
+
+/**
+ * Join
+ **/
+ 
+{* macro join(array, outvar, glue=',') *}
+  
+  ARRAYJOIN({{ array }},{{ outvar }},"{{ glue }}");
+  
+{* endmacro *}
+
+/**
+ * Sort
+ **/
+ 
+{* macro sort(array, inverse=False) *}
+  
+  {* if inverse *}
+    ARRAYSORT({{ array }},true);
+  {* else *}
+    ARRAYSORT({{ array }});
+  {* endif *}
+
+{* endmacro *}

@@ -1,0 +1,116 @@
+{* import "Macrosoft.common.time" as TIME *}
+{* import 'Federal.text.chat' as CHAT *}
+{* import "Federal.std.teleport" as TELEPORT *}
+
+{!! USADO PARA VERIFICAR SE A MACRO FOI CHAMADA PELO PILOTO AUTOMÁTICO !!}
+{* macro should_restart(booloutvar='restart_flag',seconds_limit=15,pfx=range(1,99999)|random) *}
+  {{ 
+    TIME.stamp(
+      sourcevar='TIME', 
+      outvar='#daytimestamp_'~pfx
+    )
+  }}
+  #diff_{{ pfx }}=%#daytimestamp_{{ pfx }}%-%@#macrosoft_last_restart%;
+  MATCH("%#diff_{{ pfx }}%","-?([0-9]+)",{#abs_diff_restart_{{ pfx }}});
+  SET(#seconds_limit_{{ pfx }},{{ seconds_limit }});
+  #overflow_seconds_limit_{{ pfx }}=86400-%#seconds_limit_{{ pfx }}%;
+  IF((#abs_diff_restart_{{ pfx }}<=#seconds_limit_{{ pfx }})||(#abs_diff_restart_{{ pfx }}>=#overflow_seconds_limit_{{ pfx }}));//Verifica se o programa de reinício foi executado a no máximo 15 segundos atrás
+    //LOG("§7✈ §8§l%#abs_diff_restart_{{ pfx }}%s");
+    SET({{ booloutvar }});
+  ELSE;
+    UNSET({{ booloutvar }});
+  ENDIF;
+{* endmacro *}
+
+
+{* if this.tasks *}
+  {* set default_args = this.csid~',restart' *}//A chamada é diferente para projetos Cortex (baseado em tasks)
+{* else *}
+  {* set default_args = this.csid *}
+{* endif *}
+
+{!! USADO PARA ADICIONAR UM PROGRAMA À LISTA DE MACROS PARA REINICIAR !!}
+{* macro add(args=default_args, verbose=False) *}
+  IFMATCHES("%@&macrosoft_restart_macros%",{{ '".*\{' ~ args ~ '\}.*"' }});
+    SET(@macrosoft_autopilot);
+    {* if verbose *}
+      {{ CHAT.print('§7'~args~' §8já §8está §8sob §8o §8piloto §8automático','plane') }}
+    {* endif *}
+  ELSE;
+    SET(@macrosoft_autopilot);
+    SET("@&macrosoft_restart_macros",{{ '"%@&macrosoft_restart_macros%{' ~ args ~'}"'}});
+    {{ CHAT.print('§7'~args~' §8será §8reiniciado §8automaticamente','plane') }}
+  ENDIF;
+{* endmacro *}
+
+{!! USADO PARA REMOVER UM PROGRAMA DA LISTA DE MACROS PARA REINICIAR !!}
+{* macro remove(args=default_args, verbose=False) *}
+  IFMATCHES(%@&macrosoft_restart_macros%,{{ '".*\{' ~ args ~ '\}.*"' }});
+    REPLACE(@&macrosoft_restart_macros,{{ '"{' ~ args ~ '}"' }},"");
+    {{ CHAT.print('§7'~args~' §8foi §8removido §8do §8piloto §8automático','plane') }}
+  {* if verbose *}
+  ELSE;
+    {{ CHAT.print('§7'~args~' §8não §8está §8sob §8o §8piloto §8automático','plane') }}
+  {* endif *}
+  ENDIF;
+{* endmacro *}
+
+{!! SNIPPET UTILIZADO PARA EXECUTAR O PILOTO AUTOMÁTICO !!}
+{* macro execute(pfx=range(1,99999)|random) *}
+
+  SET(&programs{{ pfx }},%@&macrosoft_restart_macros%);
+  IF(&programs{{ pfx }});
+    
+    LOG("");
+    {{ CHAT.print('§7§liniciando §7§lpiloto §7§lautomático...','plane') }}
+    {{ CHAT.print('§o§8segure §8DELETE §8para §8cancelar','tip') }}
+    LOG("");
+  
+    UNSET(abort{{ pfx }});
+    KEYDOWN(JUMP);//Ativa os pulinhos
+    FOR(#i,1,40);//Aguarda cancelamento do player por ~40ticks (2 segundos)
+      {{ TELEPORT.hold_position(direction='same') }}
+      IF(KEY_DELETE);
+        {{ CHAT.print('§cpiloto §cautomático §ccancelado!','plane') }}
+        SET(abort{{ pfx }});
+        BREAK;
+      ELSE;
+        WAIT(1t);
+      ENDIF;
+    NEXT;
+    KEYUP(JUMP);
+    
+    {{ TELEPORT.release_position() }}
+    
+    IF(!abort{{ pfx }});
+      WAIT(1);
+      DO;
+        UNSET(&groups{{ pfx }}[]);
+        MATCH(%&programs{{ pfx }}%,"\{([^}]+)\}(.*)",&groups{{ pfx }}[]);
+        SET(&program{{ pfx }},%&groups{{ pfx }}[1]%);
+        SET(&programs{{ pfx }},%&groups{{ pfx }}[2]%);
+        IF(&program{{ pfx }});
+          {{ 
+            TIME.stamp(
+              sourcevar='TIME', 
+              outvar='#daytimestamp'~pfx
+            )
+          }}
+          SET(@#macrosoft_last_restart,%#daytimestamp{{ pfx }}%);
+          UNSET(retorno{{ pfx }});
+          MATCH(%&program{{ pfx }}%,"([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?,?([^,]*)?",&groups{{ pfx }}[])
+          isrunning(%&groups{{ pfx }}[1]%,retorno{{ pfx }});
+          IF(retorno{{ pfx }});
+            {{ CHAT.print('§7%&program% §fjá está em execução','plane') }}
+          ELSE;
+            {{ CHAT.print('§6Reiniciando §7%&groups[1]%§f...','plane') }}
+            run(%&groups{{ pfx }}[1]%,%&groups{{ pfx }}[2]%,%&groups{{ pfx }}[3]%,%&groups{{ pfx }}[4]%,%&groups{{ pfx }}[5]%,%&groups{{ pfx }}[6]%,%&groups{{ pfx }}[7]%,%&groups{{ pfx }}[8]%,%&groups{{ pfx }}[9]%,%&groups{{ pfx }}[10]%,%&groups{{ pfx }}[11]%,%&groups{{ pfx }}[12]%,%&groups{{ pfx }}[13]%,%&groups{{ pfx }}[14]%,%&groups{{ pfx }}[15]%);
+          ENDIF;
+          UNSET(&groups{{ pfx }}[]);
+        ENDIF;
+      WHILE(&programs{{ pfx }});
+      //UNSET(@#macrosoft_last_restart);
+    ENDIF;
+  ENDIF;
+
+{* endmacro *}

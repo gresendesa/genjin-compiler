@@ -1,0 +1,214 @@
+
+{* import 'Federal.text.chat' as CHAT *}
+{* import 'Macrosoft.TAXON.gui' as GUI *}
+{* set shared = {} *}
+{* set tool = {} *}
+{* set vitals = {} *}
+{* set gui = {} *}
+
+
+/*
+	
+	ÍNDICE
+	
+	goto -> TOOL
+	
+*/
+
+/*_________________________________________________
+	
+	
+	HERE <- TOOL
+	
+___________________________________________________*/
+
+/**
+	* Nome:
+**/
+{* macro pick_item_to_hotbar_slot() *}
+{* endmacro *}
+
+/*
+	NOME: a durabilidade está boa
+	DESCRIÇÃO: retorna 'true' em outvar se a ferramenta à mão ainda
+	estiver com mais de 10% de durabilidade
+*/
+
+{* set percentage_undurability = 10 *}
+
+{* macro tool_is_durability_ok(outvar='durable', percent_limit=10) *}
+	{* set rand = nid() *}
+	SET({{ outvar }});
+	#durability_left{{ rand }}=((10000*%DURABILITY%)/(100*%ITEMDAMAGE%));
+	//LOG("%#durability_left{{ rand }}%% durável");
+	IF((ITEMDAMAGE>0)&&(#durability_left{{ rand }}<={{ percent_limit }}));
+		UNSET({{ outvar }});
+	ENDIF;
+{* endmacro *}
+
+/*
+	NOME: pegar qualquer item que não seja quebrável na hotbar
+	DESCRIÇÃO: retorna 'true' em outvar se uma ferramenta
+	não quebrável tiver sido selecionada com sucesso na hotbar.
+*/
+{* macro tool_hotbar_pick_any_no_damageable(outvar='picked') *}
+	
+	{* set rand = nid() *}
+	
+	UNSET({{ outvar }});
+	IF(ITEMDAMAGE>0);
+		SLOT(1);
+		IF(ITEMDAMAGE>0);
+			SLOT(2);
+			IF(ITEMDAMAGE>0);
+				SLOT(3);
+				IF(ITEMDAMAGE>0);
+					SLOT(4);
+					IF(ITEMDAMAGE>0);
+						SLOT(5);
+						IF(ITEMDAMAGE>0);
+							SLOT(6);
+							IF(ITEMDAMAGE>0);
+								SLOT(7);
+								IF(ITEMDAMAGE>0);
+									SLOT(8);
+									IF(ITEMDAMAGE>0);
+										SLOT(9);
+										IF(ITEMDAMAGE<=0);
+											SET({{ outvar }});//OK, consegui pegar um item que não quebra
+										ENDIF;
+									ELSE;
+										SET({{ outvar }});//OK, consegui pegar um item que não quebra
+									ENDIF;
+								ELSE;
+									SET({{ outvar }});//OK, consegui pegar um item que não quebra
+								ENDIF;
+							ELSE;
+								SET({{ outvar }});//OK, consegui pegar um item que não quebra
+							ENDIF;
+						ELSE;
+							SET({{ outvar }});//OK, consegui pegar um item que não quebra
+						ENDIF;
+					ELSE;
+						SET({{ outvar }});//OK, consegui pegar um item que não quebra
+					ENDIF;
+				ELSE;
+					SET({{ outvar }});//OK, consegui pegar um item que não quebra
+				ENDIF;
+			ELSE;
+				SET({{ outvar }});//OK, consegui pegar um item que não quebra
+			ENDIF;
+		ELSE;
+			SET({{ outvar }});//OK, consegui pegar um item que não quebra
+		ENDIF;
+	ELSE;
+		SET({{ outvar }});//OK, já estou com um item na mão que não quebra
+	ENDIF;
+	
+{* endmacro *}
+
+{* macro am_i_hungry(outvar='i_am_hungry') *}
+	
+	UNSET({{ outvar }});
+	IF((HUNGER<13)||((HEALTH<20)&&(HUNGER<20)));
+		SET({{ outvar }});
+	ENDIF;
+	
+{* endmacro *}
+
+/*
+	Essa macro abre/fecha GUIs
+*/
+{* macro switch_gui(open, max_loop=10) *}
+	
+	{*
+		set variables = {
+			'inventory': ['GUIINVENTORY','GUICONTAINERCREATIVE'],
+			'chat': ['GUICHAT']
+		}
+	*}
+	
+	{* macro prepare(varlist) -*}
+		{*- if varlist|length > 1 -*}
+			{*- set newlist = [] -*}
+			{*- for item in varlist -*}
+				{* set dummy = newlist.append('(GUI!="'~item~'")') *}
+			{*- endfor -*}
+			{{ newlist|join('&&') }}
+		{*- else -*}
+			{{ 'GUI!="'~varlist[0]~'"' }}
+		{*- endif -*}
+	{*- endmacro *}
+	
+	{* if open is defined *}
+		DO({{ max_loop }});
+			GUI("{{ open }}");
+			IF({{ prepare(variables[open]) }});
+				WAIT(1t);
+			ENDIF;
+		WHILE({{ prepare(variables[open]) }});
+	{* else *}
+		DO({{ max_loop }});
+			GUI();
+			IF((GUI!="NONE")&&(GUI!="UNKNOWN"));
+				WAIT(1t);
+			ENDIF;
+		WHILE((GUI!="NONE")&&(GUI!="UNKNOWN"));
+	{* endif *}
+	
+{* endmacro *}
+
+{* macro extended_pick(ids, to_slot, source_var='#source_slot') *}
+	//PICK({{ ids|join(',') }});
+	SLOT({{ to_slot }});
+	SET({{ source_var }},-1);
+	IFMATCHES("{%ITEM%}","{{ '\{'~ids|join('|')~'\}' }}");
+		SET({{ source_var }},%INVSLOT%);
+	ELSE;
+		{{ switch_gui(open='inventory') }}
+		{{ GUI.itera(operação=GUI.op_hotswap, slot_target=to_slot, slot_inicio=44, slot_fim=9, regex_id='^'~ids|join('$|^')~'$', outvar=source_var, resetar_outvar=False) }}
+		{{ switch_gui() }}
+	ENDIF;
+{* endmacro *}
+
+/*
+	DESCRIÇÃO: atualização da variável que guarda todas as macros
+*/
+
+{*
+	set foo = tool.update(
+		is_durability_ok=tool_is_durability_ok,
+		CONST={
+			'percentage_undurability': percentage_undurability
+		},
+		hotbar={
+			'pick_any_no_damageable': tool_hotbar_pick_any_no_damageable,
+			'pick_to_slot': extended_pick
+		}
+	)
+*}
+
+{*
+	set foo = vitals.update(
+		am_i_hungry=am_i_hungry
+	)
+*}
+
+{*
+	set foo = gui.update(
+		switch=switch_gui
+	)
+*}
+
+{*
+	set foo = shared.update(
+		tool=tool,
+		vitals=vitals,
+		gui=gui,
+		wood={
+			'extension_call': wood_extension_call,
+			'is_durability_ok': tool_is_durability_ok,
+			'execute': wood_execute
+		}
+	)
+*}

@@ -1,0 +1,3 @@
+{* macro jsonfy(dictionary) -*}
+  {{ dictionary | tojson | replace('"','\\"') | replace('%\\u0026','%&') | replace('%@\\u0026','%@&') }}
+{*- endmacro *}

@@ -1,0 +1,81 @@
+{* import 'Macrosoft.process.realtime' as REALTIME *}
+{* import 'Macrosoft.cortex.common' as CORTEX *}
+{* import 'Macrosoft.common.UI' as UI *}
+
+{!! IT STARTS THE SERVICE PACK AND PUT IT IN PAUSED MODE !!}
+{* macro load(id,pname,success_outvar='success',timeout=300,paused=True,debug=False,attempts=1) *}
+	{{
+		REALTIME.start(
+			id=id,
+			pname=pname,
+			bool_outvar=success_outvar,
+			paused=paused,
+			timeout=timeout,
+			attempts=attempts,
+			debug=debug
+		)
+	}}
+{* endmacro *}
+
+{!! IT STOPS THE SERVICEPACK !!}
+{* macro stop(pname, message) *}
+  {* if message *}
+    {{ CORTEX.send(pname,'stop '~message) }}
+  {* else *}
+    {{ CORTEX.send(pname,'stop') }}
+  {* endif *}
+{* endmacro *}
+
+{!! IT PAUSES THE SERVICEPACK !!}
+{* macro pause(pname, message) *}
+  {* if message *}
+    {{ CORTEX.send(pname,'pause '~message) }}
+  {* else *}
+    {{ CORTEX.send(pname,'pause') }}
+  {* endif *}
+{* endmacro *}
+
+
+{!! IT CONSUMES A SERVICE FROM THE SERVICEPACK AND THEN RETURNS THE VALUE TO TURNS ITSELF IN PAUSED MODE !!}
+{* macro play(pname, task, outvar, arguments=[], emergency_key='KEY_DELETE', cortex=False, timeout=None) *}
+	{{ CORTEX.send(pname,'play!'~task~' '~arguments|join(',')) }}
+	
+	{* if timeout != None *}
+    DO({{ timeout }});
+  {* else *}
+    DO;
+  {* endif *}
+	
+	  {* if cortex *}
+	    {{ CORTEX.loop() }}
+    {* endif *}
+	  UNSET({{ outvar }});
+	  {{ CORTEX.read(pname, outvar) }}
+	  
+	  //{!! if timeout != None !!}
+      WAIT(1t);
+    //{!! endif !!}
+	  
+	UNTIL(({{ emergency_key }})||({{ outvar }}));
+{* endmacro *}
+
+//Same for play
+{* set consume = play *}
+
+{!! IT CREATES THE TESTING MENU FOR THE SERVICEPACK !!}
+{* macro build_menu(tasks=this.tasks) *}
+
+  {* set tasks_names = [] *}
+  
+  {* for task in tasks *}
+    {* set aux = tasks_names.append('§7'~task.name) *}
+  {* endfor *}
+  
+	{{
+	  UI.menu(
+	   items=['§eback']+[tasks_names],
+      outvar='&option',
+      label='Use as setas para selecionar uma opção e pressione ENTER §a§lMacrosoft§7® §o2021'
+	  )
+	}}
+{* endmacro *}

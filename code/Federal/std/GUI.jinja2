@@ -1,0 +1,42 @@
+{* import "Macrosoft.cortex.common" as CORTEX *}
+
+{* macro getslotitem(slot,outvar,stack_outvar='#stacksizevar',auxvar='#id___') *}
+
+  UNSET({{ outvar }});
+  UNSET({{ stack_outvar }});
+  GETSLOTITEM({{ slot }},{{ outvar }},{{ stack_outvar }});
+  IF(!{{ outvar }});
+    GETSLOTITEM({{ slot }},{{ auxvar }},{{ stack_outvar }});
+    MATCH("%{{ auxvar }}%","([0-9]+)",{{ outvar }},1);
+  ENDIF;
+  
+{* endmacro *}
+
+{* macro inventory(action='open', cortex=False) *}
+
+  {* if action=='open' *}
+    DO(20);
+      {* if cortex *}
+        {{ CORTEX.loop() }}
+      {* endif *}
+      IFMATCHES(%GUI%,INVENTORY);
+        BREAK;
+      ELSE;
+        GUI(INVENTORY);
+      ENDIF;
+    LOOP;
+  {* elif action=='close' *}
+    DO(20);
+      {* if cortex *}
+        {{ CORTEX.loop() }}
+      {* endif *}
+      IFMATCHES(%GUI%,NONE);
+        BREAK;
+      ELSE;
+        GUI();
+        WAIT(1t);
+      ENDIF;
+    LOOP;
+  {* endif *}
+  
+{* endmacro *}

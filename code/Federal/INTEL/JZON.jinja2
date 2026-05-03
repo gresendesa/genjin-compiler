@@ -1,0 +1,36 @@
+{* macro key(json, key, outvar='&key') *}
+  JSONKEY("{{ json }}","{{ key }}","{{ outvar }}");
+{* endmacro *}
+
+{* macro array(json, outvar_array='&json[]') *}
+  JSONARRAY("{{ json }}","{{ outvar_array }}");
+{* endmacro *}
+
+//NOVAS ADIÇÕES
+{* macro add_or_update_key(json, path, value, outvar) *}
+	JSONADDORUPDATEKEY("{{ json }}","{{ path }}","{{ value }}",{{ outvar }});
+{* endmacro *}
+
+{* macro add_to_array(json, path, value, outvar) *}
+	JSONADDTOARRAY("{{ json }}","{{ path }}","{{ value }}",{{ outvar }});
+{* endmacro *}
+
+{* macro create_array(json, path, outvar) *}
+	JSONCREATEARRAY("{{ json }}","{{ path }}",{{ outvar }});
+{* endmacro *}
+
+{* macro get_key_array(json, path, array_outvar) *}
+	JSONGETKEYARRAY("{{ json }}","{{ path }}",{{ array_outvar }});
+{* endmacro *}
+
+{* macro get_key_content(json, path, outvar) *}
+	JSONGETKEYCONTENT("{{ json }}","{{ path }}",{{ outvar }});
+{* endmacro *}
+
+{* macro is_valid(json, outvar) *}
+	JSONISVALID("{{ json }}",{{ outvar }});
+{* endmacro *}
+
+{* macro remove_key(json, path, value, outvar) *}
+	JSONREMOVEKEY("{{ json }}","{{ path }}",{{ outvar }});
+{* endmacro *}

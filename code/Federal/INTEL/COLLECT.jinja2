@@ -1,0 +1,129 @@
+{* import 'Federal.@.COLLECTOR' as COLLECTOR *}
+{* import 'Federal.INTEL.QUEUE' as QUEUE *}
+{* import 'Federal.INTEL.JZON' as JZON *}
+
+{* set bind = COLLECTOR.add_event_collectors *}
+{* set unbind = COLLECTOR.remove_event_collectors *}
+{* set purge = COLLECTOR.purge_event_queue *}
+{* set EVENT = COLLECTOR.EVENTS *}
+
+{* macro default_collector(contentvar, timevar, port, read_only, index) *}
+	{* set r = nid() *}
+	{* if read_only *}
+		{{ QUEUE.peek(subjectvar='&s'~r, contentvar=contentvar, timevar=timevar, port=port, index=index) }}
+	{* else *}
+		{{ QUEUE.poll(subjectvar='&s'~r, contentvar=contentvar, timevar=timevar, port=port, index=index) }}
+	{* endif *}
+{* endmacro *}
+
+{* macro join_game(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onJoinGame, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro chat(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onChat, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro health_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onHealthChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro food_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onFoodChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro armour_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onArmourChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro world_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onWorldChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro mode_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onModeChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro inventory_slot_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onInventorySlotChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro oxygen_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onOxygenChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro xp_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onXPChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro level_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onLevelChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro item_durability_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onItemDurabilityChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro weather_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onWeatherChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro pickup_item(idvar, itemvar, datavar, amountvar, timevar, read_only=False, index=0) *}
+	{* set r = nid() *}
+	UNSET(&c{{ r }});
+	UNSET({{ idvar }});
+	UNSET({{ itemvar }});
+	UNSET({{ amountvar }});
+	UNSET({{ timevar }});
+	{{ default_collector(contentvar='&c'~r, timevar=timevar, port=COLLECTOR.PORTS.onPickupItem, read_only=read_only, index=index) }}
+	IF(&c{{ r }});
+		{!! JZON.key(json='%&c'~r~'%', key='ID', outvar=idvar) !!}
+		{!! JZON.key(json='%&c'~r~'%', key='ITEM', outvar=itemvar) !!}
+		{!! JZON.key(json='%&c'~r~'%', key='DATA', outvar=datavar) !!}
+		{!! JZON.key(json='%&c'~r~'%', key='AMOUNT', outvar=amountvar) !!}
+		{{ JZON.get_key_content(json='%&c'~r~'%', path='ID', outvar=idvar) }}
+		{{ JZON.get_key_content(json='%&c'~r~'%', path='ITEM', outvar=itemvar) }}
+		{{ JZON.get_key_content(json='%&c'~r~'%', path='DATA', outvar=datavar) }}
+		{{ JZON.get_key_content(json='%&c'~r~'%', path='AMOUNT', outvar=amountvar) }}
+		
+	ENDIF;
+{* endmacro *}
+
+{* macro player_joined(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onPlayerJoined, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro show_gui(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onShowGui, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro armour_durability_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onArmourDurabilityChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro auto_crafting_complete(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onAutoCraftingComplete, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro config_change(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onConfigChange, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro send_chat_message(contentvar, timevar, read_only=False, index=0) *}
+	{{ default_collector(contentvar=contentvar, timevar=timevar, port=COLLECTOR.PORTS.onSendChatMessage, read_only=read_only, index=index) }}
+{* endmacro *}
+
+{* macro websocket_message(channelvar, messagevar, timevar, read_only=False, index=0) *}
+	{* set r = nid() *}
+	UNSET(&c{{ r }});
+	UNSET({{ channelvar }});
+	UNSET({{ messagevar }});
+	UNSET({{ timevar }});
+	{{ default_collector(contentvar='&c'~r, timevar=timevar, port=COLLECTOR.PORTS.onWebSocketMessage, read_only=read_only, index=index) }}
+	IF(&c{{ r }});
+		{!! JZON.key(json='%&c'~r~'%', key='CHANNEL', outvar=channelvar) !!}
+		{!! JZON.key(json='%&c'~r~'%', key='MESSAGE', outvar=messagevar) !!}
+		{{ JZON.get_key_content(json='%&c'~r~'%', path='CHANNEL', outvar=channelvar) }}
+		{{ JZON.get_key_content(json='%&c'~r~'%', path='MESSAGE', outvar=messagevar) }}
+	ENDIF;
+{* endmacro *}

@@ -1,0 +1,157 @@
+{!! GERA A STRING PARA VERIFICAÇÃO COM IFMATCHES OU MATCH !!}
+{* macro tostring(lines, layers, reach, prefix, start_reach=0) -*}
+
+  {* set container = [] *}
+  {*- for i in range(start_reach|abs,reach|abs+1) -*}
+  
+    {*- if 'west-left' in lines -*} {!! GERA A LISTA DE SENSORES À EXTREMA ESQUERDA !!}
+      {*- if 'underground' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'wu'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'floor' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'wf'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'surface' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'ws'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'head' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'wh'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'roof' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'wr'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'top' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'wt'~i~'%}') *}
+      {*- endif -*}
+    {*- endif -*}
+  
+    {*- if 'left' in lines -*} {!! GERA A LISTA DE SENSORES À DIREITA !!}
+      {*- if 'underground' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'lu'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'floor' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'lf'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'surface' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'ls'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'head' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'lh'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'roof' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'lr'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'top' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'lt'~i~'%}') *}
+      {*- endif -*}
+    {*- endif -*}
+    
+    {*- if 'center' in lines -*} {!! GERA A LISTA DE SENSORES DO CENTRO !!}
+      {*- if 'underground' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'cu'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'floor' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'cf'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'surface' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'cs'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'head' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'ch'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'roof' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'cr'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'top' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'ct'~i~'%}') *}
+      {*- endif -*}
+    {*- endif -*}
+    
+    {*- if 'right' in lines -*} {!! GERA A LISTA DE SENSORES DA DIREITA !!}
+      {*- if 'underground' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'ru'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'floor' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'rf'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'surface' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'rs'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'head' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'rh'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'roof' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'rr'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'top' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'rt'~i~'%}') *}
+      {*- endif -*}
+    {*- endif -*}
+    
+    {*- if 'east-right' in lines -*} {!! GERA A LISTA DE SENSORES DA DIREITA !!}
+      {*- if 'underground' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'eu'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'floor' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'ef'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'surface' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'es'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'head' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'eh'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'roof' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'er'~i~'%}') *}
+      {*- endif -*}
+      {*- if 'top' in layers -*}
+        {* set aux_container = container.append('{%&'~prefix~'et'~i~'%}') *}
+      {*- endif -*}
+    {*- endif -*}
+    
+  {*- endfor -*}
+  {{ container|join('') }}
+{*- endmacro *}
+
+{!! RETORNA A REGEX DE VERIFICAÇÃO DOS SENSORES !!}
+{* macro regexp_has_ids(ids=[], only=False) -*}
+  {*- if only -*}
+    {{ "^(?!\s*$)(?:\{("~ids|join('|')~")\})+$" }}
+  {*- else  -*}
+    {{ "\{("~ids|join('|')~")\}" }}
+  {*- endif -*}
+{*- endmacro *}
+
+{!! VERIFICA SE NOS SENSORES ESPECIFICADOS EXISTE AO MENOS UM DOS ITENS DA LISTA !!}
+{* macro contains(ids=[],only=False,bool_outvar="contains",start_reach=0,reach=0,lines='west-left|left|center|right|east-right',layers='underground|floor|surface|head|roof|top',prefix='',log=False) *}
+  
+  {* set sensor_string = tostring(lines=lines, layers=layers, start_reach=start_reach, reach=reach, prefix=prefix) *}
+  
+  UNSET({{ bool_outvar }});
+  {* if only *}
+    IFMATCHES("{{ sensor_string }}","{{ regexp_has_ids(ids=ids, only=True) }}");
+  {* else  *}
+    IFMATCHES("{{ sensor_string }}","{{ regexp_has_ids(ids=ids, only=False) }}");
+  {* endif *}
+    SET({{ bool_outvar }});
+  ENDIF;
+
+  {* if log *}
+    IF({{ bool_outvar }});
+      LOG("§3{{ container|join('§3') }}");
+    ELSE;
+      LOG("§8{{ container|join('§8') }}");
+    ENDIF;
+  {* endif *}
+  
+{* endmacro *}
+
+{* macro am_i_floating(outvar='floating',floating_ids=['0','air','11','lava','10','flowing_lava','8','flowing_water','9','water','31','tallgrass','175','double_plant','6','sapling','323','sign','63','standing_sign','68','wall_sign','30','web']) *}
+  {* set r = nid() *}
+  UNSET({{ outvar }});
+  GETIDREL(0,-1,0,&idblock{{ r }});
+	IFMATCHES("{%&idblock{{ r }}%}","{{ regexp_has_ids(ids=floating_ids,only=False) }}");
+    SET({{ outvar }});
+  ENDIF;
+{* endmacro *}
+

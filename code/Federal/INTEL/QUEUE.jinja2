@@ -1,0 +1,20 @@
+{* import 'Federal.@.QUEUE' as QUEUE *}
+{* import 'Federal.INTEL.JZON' as JZON *}
+
+{* set add = QUEUE.add *}
+{* set peek = QUEUE.peek *}
+{* set poll = QUEUE.poll *}
+{* set size = QUEUE.size *}
+{* set purge = QUEUE.purge *}
+
+{* macro get_key(object, key, outvar) *}
+	{!! JZON.key(json=object, key=key, outvar=outvar) !!}
+	{{ JZON.get_key_content(json=object, path=key, outvar=outvar) }}
+{* endmacro *}
+
+{* macro parse_array(array, outvar) *}
+  {!! JZON.array(json=array, outvar_array=outvar) !!}
+  {{ JZON.get_key_array(json=array, path='', array_outvar=outvar) }}
+{* endmacro *}
+
+{* set JSON = {'get_key': get_key, 'parse_array': parse_array} *}

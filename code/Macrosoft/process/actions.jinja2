@@ -1,0 +1,50 @@
+{* import "Macrosoft.cortex.common" as CORTEX *}
+{* import "Macrosoft.process.logs" as LOGS *}
+{* import "Macrosoft.process.CTRL" as CTRL *}
+
+{* set rand = range(1,9999999)|random *}
+
+{!! ==================================================== !!}
+{!! WAITS UNTIL THE PROCESS GETS THE DESIRED STATUS      !!}
+{!! ==================================================== !!}
+{* macro stablish_connection(id,pname,args='',target_status='playing',paused_flag='',timeout=100,attempts=1,debug=False,success_outvar='success',emergency_key=CTRL.emergency_key) *}
+
+  //UNSET(connection_aborted{{ rand }});
+  UNSET({{ success_outvar }});
+  {* if debug *}
+    UNSET(#debug_counter{{ rand }});
+  {* endif *}
+  DO({{ attempts }});
+    UNSET("@&{{ pname }}_status___"); //clears the target status channel before calling
+    {{ CTRL.cloudscript(id=id,force_start='1',pname=pname,paused_flag=paused_flag,hello_message=args) }}
+    {* if debug *}
+      INC(#debug_counter{{ rand }});
+      LOG("§8§ltrying§8to§8§lstablish§8connection§7%#debug_counter{{ rand }}%/{{ attempts }}");
+    {* endif *}
+    
+    {* if this.protocol == 'CTRL' *}
+      {{ CORTEX.loop() }}
+    {* endif *}
+    DO({{ timeout }});
+    	{* if this.protocol == 'CTRL' *}
+        {{ CORTEX.loop() }}
+      {* endif *}
+    	{!! CORTEX.read_status(pname,'&message'~rand) !!}
+    	SET(&status_channel{{ rand }},"@&{{ pname }}_status___");
+    	SET(&message{{ rand }},%%&status_channel{{ rand }}%%);
+    	IF(&message{{ rand }}=="{{ target_status }}");
+    		SET({{ success_outvar }});
+    		BREAK;
+    	ENDIF;
+    	WAIT(1t);
+    UNTIL({{ emergency_key }});
+    {* if debug *}
+      LOG("§8§lconnection§8stablished§8§l%{{ success_outvar }}%");
+    {* endif *}
+    IF(!{{ success_outvar }});
+      UNSET({{ success_outvar }});
+      STOP({{ id }});
+    ENDIF;
+  UNTIL(({{ success_outvar }})||({{ emergency_key }}));
+  
+{* endmacro *}

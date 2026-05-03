@@ -1,0 +1,12 @@
+{* import "Macrosoft.cortex.common" as CORTEX *}
+{* macro check(bool_ouvar) *}
+
+  UNSET({{ bool_ouvar }});
+  {{ CORTEX.check(channel='in',varname='&in__') }}
+  IFMATCHES("%&in__%","{{ CORTEX.interruptions }}");
+    SET({{ bool_ouvar }});
+  ELSEIF({{ this.emergency_key }});
+    SET({{ bool_ouvar }});
+  ENDIF;
+
+{* endmacro *}

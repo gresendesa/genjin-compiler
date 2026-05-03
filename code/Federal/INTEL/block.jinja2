@@ -1,0 +1,19 @@
+{* macro coordinates(x_outvar='#xover',y_outvar='#yover',z_outvar='#zover') *}
+  COORDINATESOVERBLOCK({{ x_outvar }},{{ y_outvar }},{{ z_outvar }});
+{* endmacro *}
+
+{* macro get_position(x_outvar='#xover',y_outvar='#yover',z_outvar='#zover') *}
+  GETPOSITION({{ x_outvar }},{{ y_outvar }},{{ z_outvar }});
+{* endmacro *}
+
+{* macro set_position(x, y, z) *}
+  SETPOSITION({{ x }},{{ y }},{{ z }});
+{* endmacro *}
+
+{* macro center() *}
+  CENTEROVERBLOCK();
+{* endmacro *}
+
+{* macro get_age(x, y, z, outvar='#age') *}
+  GETBLOCKAGE({{ x }},{{ y }},{{ z }},{{ outvar }});
+{* endmacro *}
