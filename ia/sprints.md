@@ -173,6 +173,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-13.md](sprints/SPR-2026-13.md)
 
 
+### SPR-2026-14
+
+- Status: planejada
+- Data de planejamento: 2026-05-03
+- Foco: Fix `while` inline (múltiplos códigos + borbulhados) + refatorar `Troca_Ferramenta` com inline
+- Itens: B-024, B-023
+- Prioridade PO dos itens: 1 (crítica), 1 (crítica)
+- Risco da sprint: médio (1.5)
+- Arquivo detalhado: [ia/sprints/SPR-2026-14.md](sprints/SPR-2026-14.md)
+
+
 ## Template sintetico para novas sprints
 
 ### SPR-YYYY-NN

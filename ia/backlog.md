@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-024 adicionado — bloqueio de B-023)
+Ultima atualizacao: 2026-05-03 (SPR-2026-14 planejada — B-024 + B-023)
 
 ## Objetivo
 
@@ -46,6 +46,10 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-022 | Atualizar README.md com as últimas atualizações do projeto | 3 (média) | baixo | [B-022.md](backlog-items/B-022.md) |
 
 ### Pendentes
+
+(nenhum)
+
+### Planejados (SPR-2026-14)
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
