@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-022 criado — pendente)
+Ultima atualizacao: 2026-05-03 (SPR-2026-12 ativada — B-022 prioridade PO=3, sprint SPR-2026-13)
 
 ## Objetivo
 
@@ -46,9 +46,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | (a definir) | alto | [B-019.md](backlog-items/B-019.md) |
-| B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | (a definir) | médio | [B-020.md](backlog-items/B-020.md) |
-| B-022 | Atualizar README.md com as últimas atualizações do projeto | (a definir) | baixo | [B-022.md](backlog-items/B-022.md) |
+| B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | 1 (crítica) | alto | [B-019.md](backlog-items/B-019.md) |
+| B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | 2 (alta) | médio | [B-020.md](backlog-items/B-020.md) |
+| B-022 | Atualizar README.md com as últimas atualizações do projeto | 3 (média) | baixo | [B-022.md](backlog-items/B-022.md) |
 
 ### Em andamento
 
