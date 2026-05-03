@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-12 concluída — B-019 e B-020 entregues)
+Ultima atualizacao: 2026-05-03 (SPR-2026-13 concluída — B-022 entregue, backlog zerado)
 
 ## Objetivo
 
@@ -43,12 +43,13 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-021 | Criar `examples/lenhador.gnj` — script de referência do LenhadorNEO | 1 (crítica) | médio | [B-021.md](backlog-items/B-021.md) |
 | B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | 1 (crítica) | alto | [B-019.md](backlog-items/B-019.md) |
 | B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | 2 (alta) | médio | [B-020.md](backlog-items/B-020.md) |
+| B-022 | Atualizar README.md com as últimas atualizações do projeto | 3 (média) | baixo | [B-022.md](backlog-items/B-022.md) |
 
 ### Pendentes
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-022 | Atualizar README.md com as últimas atualizações do projeto | 3 (média) | baixo | [B-022.md](backlog-items/B-022.md) |
+| — | backlog zerado | — | — | — |
 
 ### Em andamento
 

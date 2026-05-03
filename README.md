@@ -1,82 +1,150 @@
 # GenJin Compiler
 
-> **GenJin** (Gerador Jinja) é um transpilador de macros baseado em Jinja2. Ele processa templates com delimitadores customizados e valida a árvore de decisões do programa em tempo de compilação, garantindo que nenhuma condição de saída fique sem tratamento.
+> **GenJin** é um compilador para a DSL Genjin (`.gnj`) — uma linguagem declarativa de fluxo de controle que valida estaticamente que todos os caminhos de execução são tratados. O compilador transpila `.gnj` para um template Jinja2 estruturado, pronto para renderização via assembler.
 
-## Visão geral
-
-O GenJin usa o Jinja2 como motor de templates e expõe uma CLI (`compiler.py`) que recebe um arquivo de entrada e um diretório de templates. A saída é escrita no **stdout**, permitindo redirecionamento e encadeamento com outros scripts. Os delimitadores padrão do projeto diferem dos padrões do Jinja2:
-
-| Função       | Padrão Jinja2 | GenJin      |
-|---|---|---|
-| Bloco        | `{% ... %}`   | `{* ... *}` |
-| Variável     | `{{ ... }}`   | `{{ ... }}` |
-| Comentário   | `{# ... #}`   | `{!! ... !!}` |
-
-## Estrutura do repositório
+## Pipeline
 
 ```
-compiler.py              # Ponto de entrada da CLI
-assembler.py             # Lógica central de renderização
-requirements.txt
-tests/
-  conftest.py            # Fixture compartilhada (make_env)
-  delimiters/
-    templates/           # Templates de entrada dos testes
-    expected/            # Saídas esperadas (golden files)
-    test_delimiters.py   # Suite de testes de delimitadores
+arquivo.gnj
+    │
+    ▼  compiler.py
+  Scanner → Parser → Desugar → Transpiler
+    │
+    ▼  stdout (template Jinja2)
+  assembler.py  ←  code/  (templates)
+    │
+    ▼  stdout (output renderizado)
+  mkb/indenter.py
+    │
+    ▼  stdout (output indentado)
 ```
+
+Cada etapa de scanner também é acessível como CLI standalone:
+
+```bash
+python -m compiler.scanner <arquivo.gnj>   # tokens em JSON
+```
+
+## Funcionalidades
+
+- **DSL Genjin (`.gnj`)**: linguagem declarativa com `program`, `vars`, `procs`, `exec`, `case`, `pass`, `while`
+- **Notação inline `@proc()`**: açúcar sintático para encadeamento de chamadas (`when(CODE)`)
+- **Proc-blocos**: blocos reutilizáveis com parâmetros (`Bloco(param: Type) { ... }`) — expansão em tempo de compilação, DFS anti-ciclo
+- **Validação estática**: todos os códigos de saída de cada proc devem aparecer em `case`, `pass` ou `while`
+- **Assembler com pipe**: lê template via stdin (`-`) ou arquivo; integra com `mkb/indenter.py`
+- **Extensão VS Code**: syntax highlighting para `.gnj` (`vscode-genjin/`)
 
 ## Instalação
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ## Uso
 
+### Pipeline completo
+
 ```bash
-python compiler.py <template> -d <dir-de-templates> [opções]
+# Compilar + renderizar + indentar
+python compiler.py examples/lenhador.gnj \
+  | python assembler.py - -d code/ \
+  | python mkb/indenter.py
 ```
 
-A saída é escrita no **stdout**. Use redirecionamento para salvar ou encadear com outros scripts:
+### Compilar para template Jinja2
 
 ```bash
+# Saída no stdout
+python compiler.py examples/lenhador.gnj
+
 # Salvar em arquivo
-python compiler.py code/genjin.jinja2 -d code \
-  --block-start '{*'  --block-end '*}'       \
-  --variable-start '{{' --variable-end '}}'  \
-  --comment-start '{!!' --comment-end '!!}' > output.js
-
-# Encadear com outro script
-python compiler.py code/genjin.jinja2 -d code ... | python outro_script.py
+python compiler.py examples/lenhador.gnj > output.jinja2
 ```
 
-### Opções disponíveis
+### Usando proc-blocos (versão sintética)
 
-| Opção | Descrição |
-|---|---|
-| `-d, --templates-dir` | Diretório raiz dos templates para `extends`/`include`/`import` |
-| `-v CHAVE=VALOR` | Variável de contexto inline (repetível) |
-| `-f, --vars-file` | Arquivo JSON com variáveis de contexto |
-| `--block-start/end` | Delimitadores de bloco |
-| `--variable-start/end` | Delimitadores de variável |
-| `--comment-start/end` | Delimitadores de comentário |
+```bash
+python compiler.py examples/lenhador-sintetico.gnj
+```
+
+`examples/lenhador-sintetico.gnj` é semanticamente equivalente a `examples/lenhador.gnj`, mas usa proc-blocos `Exceção_e_Reinicia` e `Troca_Ferramenta` para eliminar repetições.
+
+## Estrutura do repositório
+
+```
+compiler.py              # Pipeline completo: Scanner → Parser → Desugar → Transpiler
+assembler.py             # Renderização Jinja2 (lê template via stdin ou arquivo)
+requirements.txt
+
+compiler/                # Módulos do compilador
+  scanner.py             # Tokenizador da DSL .gnj
+  parser.py              # Parser recursivo-descendente → AST
+  desugar.py             # Expansão de inline e proc-blocos → AST canônica
+  transpiler.py          # AST → template Jinja2
+  ast_io.py              # Serialização/deserialização de AST (JSON)
+
+examples/
+  lenhador.gnj           # Script de referência do LenhadorNEO (canônico)
+  lenhador-sintetico.gnj # Versão com proc-blocos (equivalente ao acima)
+  basic.gnj
+  inline.gnj
+
+code/                    # Templates Jinja2 base e macros do projeto
+  genjin.jinja2          # Template raiz
+  Federal/               # Templates específicos do projeto Federal
+
+mkb/
+  indenter.py            # Indentador de saída
+  coder.py
+
+docs/
+  genjin.md              # Documentação completa da DSL Genjin
+  language.md            # Referência da linguagem
+  proc-blocos.md         # Especificação de proc-blocos
+
+vscode-genjin/           # Extensão VS Code para syntax highlighting de .gnj
+
+tests/                   # Suite de testes (360 testes, pytest)
+  scanner/
+  parser/
+  desugar/
+  transpiler/
+  assembler/
+  ast_io/
+  cli/
+  delimiters/
+
+ia/                      # Memória viva do projeto (backlog, sprints, decisões)
+  backlog.md
+  sprints.md
+  architecture.md
+  decisions.md
+  experience.md
+```
 
 ## Testes
 
-Os testes usam **pytest** e cobrem os três tipos de delimitadores e composição de templates (`include`/`extends`).
-
 ```bash
-# Todos os testes
-.venv/bin/pytest tests/ -v
+# Suite completa
+python -m pytest
 
-# Apenas delimitadores
-.venv/bin/pytest tests/delimiters/ -v
+# Por módulo
+python -m pytest tests/parser/ -v
+python -m pytest tests/desugar/ -v
 ```
 
-Cada teste renderiza um template em `tests/delimiters/templates/` e compara o resultado byte a byte com o arquivo correspondente em `tests/delimiters/expected/`.
+360 testes, 0 falhas (estado atual após SPR-2026-12).
+
+## Extensão VS Code
+
+```bash
+bash install-extension.sh
+```
+
+Adiciona syntax highlighting para arquivos `.gnj`: keywords, tipos, códigos de saída, notação inline `@proc()`, proc-blocos.
+
 
 ## Testes com templates de código Mod Macro
 

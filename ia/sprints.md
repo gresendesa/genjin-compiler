@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-12 concluída)
+Ultima atualizacao: 2026-05-03 (SPR-2026-13 concluída)
 
 ## Objetivo
 
@@ -158,6 +158,19 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: alto (2.5)
 - Resultado: B-019 e B-020 concluídos. `ProcBlockNode` parseado + desugar com DFS anti-ciclo + expansão clone+visitor. `lenhador-sintetico.gnj` compilando com saída equivalente. 360 testes, 0 falhas (+19 novos testes).
 - Arquivo detalhado: [ia/sprints/SPR-2026-12.md](sprints/SPR-2026-12.md)
+
+
+### SPR-2026-13
+
+- Status: concluída
+- Data de início: 2026-05-03
+- Data de encerramento: 2026-05-03
+- Foco: Atualizar README.md com estado atual do projeto
+- Itens: B-022
+- Prioridade PO dos itens: 3 (média)
+- Risco da sprint: baixo (1.0)
+- Resultado: README.md reescrito — pipeline completo, estrutura do repositório, features, exemplos validados.
+- Arquivo detalhado: [ia/sprints/SPR-2026-13.md](sprints/SPR-2026-13.md)
 
 
 ## Template sintetico para novas sprints
