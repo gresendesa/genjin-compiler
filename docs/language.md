@@ -96,6 +96,8 @@ vars {
 | `Text` | `TYPE.TEXT` | Cadeia de texto |
 | `Logic` | `TYPE.LOGIC` | Booleano (`true` / `false`) |
 
+> **Nota:** o tipo `Object` existe na linguagem mas **não é permitido em `vars`** — apenas em parâmetros de procedimentos. Veja a seção de `procs`.
+
 ### Cardinalidade
 
 | Sintaxe | Equivalente no motor | Descrição |
@@ -163,13 +165,29 @@ esperar(segundos: Number) from "Sys.sleep" { ... }
 
 O argumento será passado como um valor literal. Corresponde a `EVALUATION.LITERAL`.
 
-#### Parâmetro por referência
+#### Parâmetro por referência (singular)
 
 ```gnj
 enviar(texto: Text, resposta: &Text) from "Sys.send" { ... }
 ```
 
 O `&` antes do tipo indica que o argumento deve ser passado por referência a uma variável. Corresponde a `EVALUATION.REFERENCE`. Só aceita uma variável como argumento — nunca um literal.
+
+#### Parâmetro plural (sempre por referência)
+
+```gnj
+procurar(resultados: Text[]) from "Lib.busca" { ... }
+```
+
+Parâmetros do tipo `Tipo[]` são **sempre** passados por referência. O `&` é **proibido** — a referência é implícita. Corresponde a `CARDINALITY.PLURAL` + `EVALUATION.REFERENCE` no motor.
+
+#### Parâmetro do tipo `Object`
+
+```gnj
+executar(itens: Object) from "Lib.acao" { ... }
+```
+
+O tipo `Object` representa um valor opaco (ex: lista Python, dicionário) passado como literal de template. Não suporta `&` nem `[]`. Corresponde a `TYPE.OBJECT` no motor.
 
 ### Códigos de saída (`codes`)
 

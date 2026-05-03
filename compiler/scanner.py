@@ -26,6 +26,7 @@ class TokenType(Enum):
     TYPE_NUMBER = auto()
     TYPE_TEXT   = auto()
     TYPE_LOGIC  = auto()
+    TYPE_OBJECT = auto()
     # Símbolos
     LBRACE      = auto()   # {
     RBRACE      = auto()   # }
@@ -65,6 +66,7 @@ _KEYWORDS: dict[str, TokenType] = {
     'Number':  TokenType.TYPE_NUMBER,
     'Text':    TokenType.TYPE_TEXT,
     'Logic':   TokenType.TYPE_LOGIC,
+    'Object':  TokenType.TYPE_OBJECT,
 }
 
 

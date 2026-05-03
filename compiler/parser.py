@@ -19,6 +19,7 @@ from compiler.scanner import Token, TokenType, Scanner
 class ArgNode:
     value: Any               # str | int para literal; str (nome da var) para ref
     evaluation: str          # 'literal' | 'reference'
+    raw: bool = False        # True para Object literal (valor emitido sem aspas no Jinja2)
 
 
 @dataclass
@@ -118,6 +119,7 @@ _TYPE_MAP = {
     TokenType.TYPE_NUMBER: 'number',
     TokenType.TYPE_TEXT:   'text',
     TokenType.TYPE_LOGIC:  'logic',
+    TokenType.TYPE_OBJECT: 'object',
 }
 
 
@@ -417,6 +419,11 @@ class Parser:
             raise ParseError(f"tipo desconhecido '{type_tok.value}'", type_tok.line)
         self._advance()
         var_type = _TYPE_MAP[type_tok.type]
+        if var_type == 'object':
+            raise ParseError(
+                "tipo 'Object' não é permitido em 'vars'; use apenas em parâmetros de procedimentos",
+                type_tok.line,
+            )
 
         cardinality = 'singular'
         if self._check(TokenType.LBRACKET):
@@ -490,17 +497,41 @@ class Parser:
     def _parse_param_decl(self) -> ParamDeclNode:
         name_tok = self._expect(TokenType.IDENT, "esperado nome do parâmetro")
         self._expect(TokenType.COLON, "esperado ':' após nome do parâmetro")
-        evaluation = 'literal'
+        by_ref = False
         if self._check(TokenType.AMPERSAND):
             self._advance()
-            evaluation = 'reference'
+            by_ref = True
         type_tok = self._peek()
         if type_tok.type not in _TYPE_MAP:
             raise ParseError(f"tipo desconhecido '{type_tok.value}'", type_tok.line)
         self._advance()
+        param_type = _TYPE_MAP[type_tok.type]
+        if param_type == 'object' and by_ref:
+            raise ParseError(
+                "tipo 'Object' não suporta referência ('&'); remova o '&'",
+                type_tok.line,
+            )
+        # Pluralidade — Type[] implica referência (usar & com [] é proibido)
+        cardinality = 'singular'
+        if self._check(TokenType.LBRACKET):
+            if by_ref:
+                raise ParseError(
+                    "parâmetros plurais são sempre por referência; remova o '&'",
+                    type_tok.line,
+                )
+            if param_type == 'object':
+                raise ParseError(
+                    "tipo 'Object' não suporta pluralidade ('[]')",
+                    type_tok.line,
+                )
+            self._advance()
+            self._expect(TokenType.RBRACKET, "esperado ']' após '['")
+            cardinality = 'plural'
+            by_ref = True  # plural → referência implícita
+        evaluation = 'reference' if by_ref else 'literal'
         return ParamDeclNode(name=name_tok.value,
-                             type=_TYPE_MAP[type_tok.type],
-                             cardinality='singular',
+                             type=param_type,
+                             cardinality=cardinality,
                              evaluation=evaluation)
 
     def _parse_codes(self) -> list[OutputCodeNode]:
@@ -657,7 +688,8 @@ class Parser:
                 val_tok = self._peek()
                 if val_tok.type == TokenType.STRING:
                     self._advance()
-                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation='literal')
+                    raw = param.type == 'object'
+                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation='literal', raw=raw)
                 elif val_tok.type == TokenType.NUMBER:
                     self._advance()
                     kwargs[name_tok.value] = ArgNode(value=int(val_tok.value), evaluation='literal')

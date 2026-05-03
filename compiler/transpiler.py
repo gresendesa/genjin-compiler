@@ -200,7 +200,8 @@ class Transpiler:
         w.indent()
         for kwarg_name, arg in block.kwargs.items():
             eval_expr = f'EVALUATION.{arg.evaluation.upper()}'
-            w.line(f'{_jstr(kwarg_name)}: {{ATTRIBUTE.VALUE: {_jval(arg.value)}, ATTRIBUTE.EVALUATION: {eval_expr}}},')
+            val_expr = arg.value if arg.raw else _jval(arg.value)
+            w.line(f'{_jstr(kwarg_name)}: {{ATTRIBUTE.VALUE: {val_expr}, ATTRIBUTE.EVALUATION: {eval_expr}}},')
         w.dedent()
         w.line('}')
         w.dedent()
