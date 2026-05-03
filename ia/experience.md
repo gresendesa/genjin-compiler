@@ -89,3 +89,27 @@ Registrar problemas observados no processo de desenvolvimento, suas causas e com
 - **Status:** resolvido
 - **Owner:** agente
 
+---
+
+### EXP-004 — Átomo terminal sem `while(DEMORA)` deixa DEMORA borbulhar até bloco raiz
+
+- **ID:** EXP-004
+- **Data:** 2026-05-03
+- **Contexto:** SPR-2026-14, B-023 — refatorar `Troca_Ferramenta` com notação inline.
+- **Problema:** O átomo terminal `@Teleportar(home=&home_voltar)` foi escrito sem `while(DEMORA)`.
+  Sem o `while`, o código DEMORA do proc vai para `PASS_CODES` do bloco terminal e borbulha
+  por toda a cadeia inline. O `LOOP_WHILE` de blocos intermediários absorve apenas o DEMORA
+  do _próprio_ proc, não o DEMORA propagado de blocos filhos. DEMORA chegou a `Reseta variáveis`
+  que não o declara, causando erro de motor Genjin em runtime.
+- **Impacto:** Pipeline `compiler | assembler | indenter` falhava com
+  `The codes ['DEMORA'] passed to the block 'Reseta variáveis' must be handled locally`.
+- **Causa raiz:** Tradução incorreta do canônico para inline — o canônico tinha
+  `} while(DEMORA)` no terminal `Teleportar`; a versão inline omitiu esse `while`.
+- **Ação corretiva:** Adicionar `while(DEMORA)` ao átomo terminal:
+  `@Teleportar(home=&home_voltar) while(DEMORA)`
+- **Ação preventiva:** Ao converter bloco canônico para inline, o átomo terminal **deve**
+  replicar todos os `while` do bloco canônico mais interno. O LOOP_WHILE de um bloco
+  absorve APENAS o código do próprio proc — nunca o de filhos borbulhados.
+- **Status:** resolvido
+- **Owner:** agente
+
