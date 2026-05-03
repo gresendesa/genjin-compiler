@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-021 adicionado com prioridade 1)
+Ultima atualizacao: 2026-05-03 (B-021 concluído — SPR-2026-11)
 
 ## Objetivo
 
@@ -40,6 +40,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-016 | Extensão VS Code: suporte à sintaxe inline `@proc()` e keyword `when` | 1 (crítica) | baixo | [B-016.md](backlog-items/B-016.md) |
 | B-017 | Proc-blocos: blocos reutilizáveis com parâmetros de transpilação | 1 (crítica) | médio-alto | [B-017.md](backlog-items/B-017.md) |
 | B-018 | Tipo `Object`: literais estruturados em parâmetros de procedimento | 1 (crítica) | médio | [B-018.md](backlog-items/B-018.md) |
+| B-021 | Criar `examples/lenhador.gnj` — script de referência do LenhadorNEO | 1 (crítica) | médio | [B-021.md](backlog-items/B-021.md) |
 
 ### Pendentes
 
@@ -47,7 +48,6 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 |---|---|---|---|---|
 | B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | (a definir) | alto | [B-019.md](backlog-items/B-019.md) |
 | B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | (a definir) | médio | [B-020.md](backlog-items/B-020.md) |
-| B-021 | Criar `examples/lenhador.gnj` — script de referência do LenhadorNEO | 1 (crítica) | médio | [B-021.md](backlog-items/B-021.md) |
 
 ### Em andamento
 

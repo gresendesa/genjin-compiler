@@ -136,12 +136,14 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-11
 
-- Status: ativa
+- Status: concluída
 - Data de início: 2026-05-03
+- Data de encerramento: 2026-05-03
 - Foco: B-021 — `examples/lenhador.gnj` + fix parser `param: Type[]` com ref implícita
 - Itens: B-021
 - Prioridade PO dos itens: 1 (crítica)
 - Risco da sprint: médio (1.6)
+- Resultado: B-021 concluído — 3 fixes no compilador (TYPE.OBJECT, param plural, case/while borbulhados), lenhador.gnj compilando. 341 testes.
 - Arquivo detalhado: [ia/sprints/SPR-2026-11.md](sprints/SPR-2026-11.md)
 
 

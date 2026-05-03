@@ -1,0 +1,166 @@
+program "lenhador-inteligente-do-federal"
+
+// Variáveis de estado do programa Lenhador Inteligente do Federal.
+// Tradução fiel do objeto `programa` em code/Federal/@/LenhadorNEO.jinja2.
+
+vars {
+    home_mkb: Text = "%&home_guardar%"
+    home_mkb_temporaria: Text = "%&home_guardar_temp%"
+    home_mkb_machados_gastos: Text = "%&home_machados_red%"
+    home_mkb_machados_novos: Text = "%&home_machados_novos%"
+    home_checkpoint: Text = "%&home_checkpoint%"
+    quantidade_movidos: Number
+    resultado: Number
+    lista_coordenadas_arvores: Text[]
+    tronco_x: Number
+    tronco_y: Number
+    tronco_z: Number
+    cursor_array_arvores: Number
+    coordenadas_rota: Text[]
+}
+
+procs {
+    // --- server_tools_cl_77_78 ---
+
+    Teleportar(home: &Text) from "Federal.@.server_tools_cl_77_78.Teleportar" {
+        codes SUCESSO<0>, DEMORA<99>, NÃO_EXISTE<404>, CANCELADO<3>
+    }
+
+    Definir_Home(home: &Text) from "Federal.@.server_tools_cl_77_78.Definir_Home" {
+        codes SUCESSO<0>, DEMORA<99>, LIMITE_ALCANCADO<4>, PROIBIDO<1>
+    }
+
+    Ping() from "Federal.@.server_tools_cl_77_78.Ping" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Pegar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.Pegar_Itens_MKB" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Guardar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.Guardar_Itens_MKB" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Resetar_MKB(gaveta: Text) from "Federal.@.server_tools_cl_77_78.Resetar_MKB" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Pode_Usar_Home_Temp(gaveta: Text) from "Federal.@.server_tools_cl_77_78.Pode_Usar_Home_Temp" {
+        codes SUCESSO<0>, NAO_EXISTE<404>, DEMORA<99>
+    }
+
+    // --- Federal.@.LenhadorNEO ---
+
+    Reseta_Variáveis(var_posicao_lista: &Number) from "Federal.@.LenhadorNEO.reseta_variaveis" {
+        codes SUCESSO<0>
+    }
+
+    Reiniciar_Ciclo() from "Federal.@.LenhadorNEO.reiniciar_ciclo" {
+        codes REINICIAR_CICLO<99>
+    }
+
+    // --- Federal.@.Lenhador ---
+
+    Notificar_Exceção(mensagem: Text) from "Federal.@.Lenhador.notificar_exceção" {
+        codes REINICIAR_CICLO<99>
+    }
+
+    Procura_Árvores(outvar_array_arvores: Text[]) from "Federal.@.Lenhador.procura_árvores" {
+        codes SUCESSO<0>, SEM_ÁRVORES_AO_REDOR<1>
+    }
+
+    Seleciona_Árvore(invar_array_arvores: Text[], outvar_x: &Number, outvar_y: &Number, outvar_z: &Number, outvar_posicao_lista: &Number) from "Federal.@.Lenhador.seleciona_árvore" {
+        codes SUCESSO<0>, SEM_MAIS_ÁRVORES_PARA_PROCESSAR<12>
+    }
+
+    Percorre_Caminho_Até_Árvore(invar_array_caminho: Text[]) from "Federal.@.Lenhador.percorre_caminho2" {
+        codes SUCESSO<0>, DEMORA_PERCURSO<20>
+    }
+
+    Retira_A_Lenha(hotslot_ferramenta: Number) from "Federal.@.Lenhador.colhe_madeira2" {
+        codes SUCESSO<0>, FERRAMENTA_GASTA<17>, ARVORE_NAO_ENCONTRADA<404>, BLOCO_MUITO_LONGE<499>, DEMORA_EXTRAIR_BLOCO<22>
+    }
+
+    Traça_Rota(x: &Number, y: &Number, z: &Number, outvar_array_caminho: Text[]) from "Federal.@.Lenhador.calcula_caminho" {
+        codes SUCESSO<0>, CAMINHO_NÃO_ENCONTRADO<13>, SEM_SUPORTE<573>
+    }
+}
+
+// Bloco raiz: ciclo principal do lenhador.
+// O while no raiz inclui códigos borbulhados de procs filhos — é assim que o
+// programa "reinicia o ciclo" quando qualquer sub-proc retorna esses códigos.
+// O bloco FERRAMENTA_GASTA está expandido inline (sem proc-bloco, B-019/B-020).
+
+exec Reseta_Variáveis(var_posicao_lista=&cursor_array_arvores) as "Reseta variáveis" >> resultado {
+    case SUCESSO:
+        exec Procura_Árvores(outvar_array_arvores=&lista_coordenadas_arvores) as "Procura Árvores" {
+            case SUCESSO:
+                exec Seleciona_Árvore(
+                    invar_array_arvores=&lista_coordenadas_arvores,
+                    outvar_x=&tronco_x,
+                    outvar_y=&tronco_y,
+                    outvar_z=&tronco_z,
+                    outvar_posicao_lista=&cursor_array_arvores
+                ) as "Seleciona Árvore" {
+                    case SUCESSO:
+                        exec Traça_Rota(
+                            x=&tronco_x,
+                            y=&tronco_y,
+                            z=&tronco_z,
+                            outvar_array_caminho=&coordenadas_rota
+                        ) as "Traça a rota até a árvore" {
+                            case SUCESSO:
+                                exec Percorre_Caminho_Até_Árvore(invar_array_caminho=&coordenadas_rota) as "Vai até a árvore" {
+                                    case SUCESSO:
+                                        exec Retira_A_Lenha(hotslot_ferramenta=1) as "Coleta a madeira" {
+                                            pass SUCESSO, FERRAMENTA_GASTA, ARVORE_NAO_ENCONTRADA, BLOCO_MUITO_LONGE, DEMORA_EXTRAIR_BLOCO
+                                        }
+                                    pass DEMORA_PERCURSO
+                                }
+                            pass CAMINHO_NÃO_ENCONTRADO, SEM_SUPORTE
+                        }
+                    case SEM_MAIS_ÁRVORES_PARA_PROCESSAR:
+                        exec Reiniciar_Ciclo() as "Mande reiniciar porque não há mais árvores para processar" {
+                            pass REINICIAR_CICLO
+                        }
+                } while(SUCESSO, CAMINHO_NÃO_ENCONTRADO, DEMORA_EXTRAIR_BLOCO, BLOCO_MUITO_LONGE, ARVORE_NAO_ENCONTRADA, DEMORA_PERCURSO)
+
+            case SEM_ÁRVORES_AO_REDOR:
+                exec Notificar_Exceção(mensagem="Não há mais árvores ao redor. Me leve onde haja! ") as "Exceção ao procurar árvores" {
+                    pass REINICIAR_CICLO
+                }
+
+            // Bloco ferramenta_gasta expandido inline.
+            // Sequência: Definir_Home → TP machados gastos → Guardar diamond_axe
+            //            → TP machados novos → Pegar diamond_axe → Voltar checkpoint
+            case FERRAMENTA_GASTA:
+                exec Definir_Home(home=&home_checkpoint) as "FERRAMENTA_GASTA:DEFINIR_HOME" {
+                    case SUCESSO:
+                        exec Teleportar(home=&home_mkb_machados_gastos) as "FERRAMENTA_GASTA:TP_BAUS_ITENS_RED" {
+                            case SUCESSO:
+                                exec Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens="['diamond_axe']", quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "FERRAMENTA_GASTA:MKB_GUARDAR_ITENS_RED" {
+                                    case SUCESSO:
+                                        exec Teleportar(home=&home_mkb_machados_novos) as "FERRAMENTA_GASTA:TP_BAUS_ITENS_GREEN" {
+                                            case SUCESSO:
+                                                exec Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens="['diamond_axe']", quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "FERRAMENTA_GASTA:MKB_PEGAR_ITENS_GREEN" {
+                                                    case SUCESSO:
+                                                        exec Teleportar(home=&home_checkpoint) as "FERRAMENTA_GASTA:VOLTAR_CHECKPOINT" {
+                                                            pass SUCESSO, NÃO_EXISTE, CANCELADO
+                                                        } while(DEMORA)
+                                                } while(DEMORA)
+                                            pass NÃO_EXISTE, CANCELADO
+                                        } while(DEMORA)
+                                } while(DEMORA)
+                            pass NÃO_EXISTE, CANCELADO
+                        } while(DEMORA)
+                    pass SUCESSO, NÃO_EXISTE, REINICIAR_CICLO, LIMITE_ALCANCADO, PROIBIDO
+                } while(DEMORA, CANCELADO)
+
+            case SEM_SUPORTE:
+                exec Notificar_Exceção(mensagem="Não posso andar ou calcular caminho sobre este bloco. Resolva este problema. ") as "Exceção de ausência de suporte no chão" {
+                    pass REINICIAR_CICLO
+                }
+        }
+    pass FERRAMENTA_GASTA, DEMORA_EXTRAIR_BLOCO, NÃO_EXISTE, CANCELADO, LIMITE_ALCANCADO, PROIBIDO
+} while(SEM_SUPORTE, REINICIAR_CICLO, CAMINHO_NÃO_ENCONTRADO, SUCESSO, DEMORA_PERCURSO, ARVORE_NAO_ENCONTRADA, BLOCO_MUITO_LONGE)

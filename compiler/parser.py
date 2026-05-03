@@ -738,11 +738,8 @@ class Parser:
                     proc_decl: ProcDeclNode) -> CaseNode:
         self._expect(TokenType.KW_CASE, "esperado 'case'")
         code_tok = self._expect(TokenType.IDENT, "esperado código após 'case'")
-        if code_tok.value not in valid_codes:
-            raise ParseError(
-                f"código '{code_tok.value}' não declarado no proc '{proc_decl.name}'",
-                code_tok.line,
-            )
+        # Não validamos o código contra proc_decl.output_codes aqui pois o motor
+        # genjin permite capturar códigos borbulhados de procs filhos.
         self._expect(TokenType.COLON, "esperado ':' após código do case")
         child_block = self._parse_exec_or_inline(declared_vars, declared_procs, inherited_var)
         return CaseNode(output_code=code_tok.value, block=child_block)
@@ -755,11 +752,8 @@ class Parser:
             if codes:
                 self._expect(TokenType.COMMA, "esperado ',' entre códigos no while")
             code_tok = self._expect(TokenType.IDENT, "esperado código no while")
-            if code_tok.value not in valid_codes:
-                raise ParseError(
-                    f"código '{code_tok.value}' em 'while' não declarado no proc",
-                    code_tok.line,
-                )
+            # Não validamos contra proc_decl.output_codes: o while pode incluir
+            # códigos borbulhados de procs filhos (igual ao comportamento de pass).
             codes.append(code_tok.value)
         self._expect(TokenType.RPAREN, "esperado ')' após códigos do while")
         return codes

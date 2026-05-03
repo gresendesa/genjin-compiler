@@ -360,8 +360,9 @@ exec f(r=&nao_declarada) >> s { pass OK }
         with pytest.raises(ParseError, match="nao_declarada"):
             make_ast(src)
 
-    # Regra 1: código em case deve existir no proc
-    def test_case_unknown_code_raises(self):
+    # Regra 1 (relaxada): case aceita qualquer código, incluindo borbulhados de filhos
+    def test_case_bubbled_code_accepted(self):
+        """case com código não declarado no proc deve ser aceito (borbulhado de filho)."""
         src = '''\
 program "T"
 vars { s: Number }
@@ -370,24 +371,26 @@ procs {
     inner() from "A.c" { codes Y<0> }
 }
 exec outer() >> s {
-    case INEXISTENTE : exec inner() { pass Y }
+    case OK : exec inner() { pass Y }
+    case Y : exec inner() { pass Y }
 }
 '''
-        with pytest.raises(ParseError, match="INEXISTENTE"):
-            make_ast(src)
+        prog = make_ast(src)
+        assert len(prog.block.cases) == 2
 
-    # Regra 1: código em while deve existir no proc
-    def test_while_unknown_code_raises(self):
+    # Regra 1 (relaxada): while aceita qualquer código, incluindo borbulhados de filhos
+    def test_while_bubbled_code_accepted(self):
+        """while com código não declarado no proc deve ser aceito (borbulhado de filho)."""
         src = '''\
 program "T"
 vars { s: Number }
 procs { f() from "A.b" { codes OK<0> } }
 exec f() >> s {
     pass OK
-} while(INEXISTENTE)
+} while(OK, QUALQUER_CODIGO_FILHO)
 '''
-        with pytest.raises(ParseError, match="INEXISTENTE"):
-            make_ast(src)
+        prog = make_ast(src)
+        assert prog.block.loop_while == ['OK', 'QUALQUER_CODIGO_FILHO']
 
     # Regra 2: pass deve cobrir códigos não tratados
     def test_unhandled_code_without_pass_raises(self):
