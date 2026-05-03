@@ -864,3 +864,213 @@ exec f() >> s {
         with pytest.raises(ParseError, match="'BOGUS'"):
             make_ast(src)
 
+
+# ---------------------------------------------------------------------------
+# B-019: proc-blocos — declaração, inferência e validações
+# ---------------------------------------------------------------------------
+
+_PB_BASE = '''\
+program "T"
+vars {{ s: Number }}
+procs {{
+    Proc(msg: Text) from "Lib.macro" {{
+        codes SUCESSO<0>, ERRO<1>
+    }}
+    {proc_block}
+}}
+exec Proc(msg="x") >> s {{
+    pass SUCESSO, ERRO
+}}
+'''
+
+
+def _pb_src(proc_block: str) -> str:
+    return _PB_BASE.format(proc_block=proc_block)
+
+
+from compiler.parser import ProcBlockNode, ParamDeclNode
+
+
+class TestProcBlockParsing:
+    """Testes de parsing de proc-blocos — B-019."""
+
+    # --- T1: declaração válida simples ---
+
+    def test_proc_block_parsed_as_proc_block_node(self):
+        """Proc-bloco simples deve gerar ProcBlockNode em procedures."""
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        ast = make_ast(src)
+        pb = ast.procedures[1]
+        assert isinstance(pb, ProcBlockNode)
+
+    def test_proc_block_name(self):
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        pb = make_ast(src).procedures[1]
+        assert pb.name == 'Bloco'
+
+    def test_proc_block_params(self):
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        pb = make_ast(src).procedures[1]
+        assert len(pb.parameters) == 1
+        assert pb.parameters[0].name == 'msg'
+        assert pb.parameters[0].type == 'text'
+        assert pb.parameters[0].evaluation == 'literal'
+
+    def test_proc_block_ref_param(self):
+        """Parâmetro ref gera evaluation='reference'."""
+        src = _pb_src(
+            'Bloco(home: &Text) {\n'
+            '    exec Proc(msg="x") as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        pb = make_ast(src).procedures[1]
+        p = pb.parameters[0]
+        assert p.name == 'home'
+        assert p.evaluation == 'reference'
+
+    # --- T2: inferred_codes inferidos do pass_codes raiz ---
+
+    def test_inferred_codes_from_pass(self):
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        pb = make_ast(src).procedures[1]
+        assert set(pb.inferred_codes) == {'SUCESSO', 'ERRO'}
+
+    def test_inferred_codes_partial_pass(self):
+        """Só um código em pass → só esse inferido."""
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        case SUCESSO: exec Proc(msg="ok") { pass SUCESSO, ERRO }\n'
+            '        pass ERRO\n'
+            '    }\n'
+            '}'
+        )
+        pb = make_ast(src).procedures[1]
+        assert pb.inferred_codes == ['ERRO']
+
+    # --- T3: rejeições ---
+
+    def test_proc_block_arrow_in_root_exec_raises(self):
+        """>> no exec raiz de proc-bloco deve levantar ParseError."""
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) >> s as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        with pytest.raises(ParseError, match="'>>'"):
+            make_ast(src)
+
+    def test_proc_block_plural_param_raises(self):
+        """Parâmetro plural (Type[]) não é permitido em proc-blocos."""
+        src = _pb_src(
+            'Bloco(itens: Text[]) {\n'
+            '    exec Proc(msg="x") as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        with pytest.raises(ParseError, match="plural"):
+            make_ast(src)
+
+    # --- T4: dois passos — proc-bloco referencia proc normal declarado depois ---
+
+    def test_proc_block_forward_ref_to_proc_normal(self):
+        """Proc-bloco pode referenciar proc declarado depois no mesmo procs{}."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    Bloco() {
+        exec ProcDepois(msg="x") as "B" {
+            pass SUCESSO, ERRO
+        }
+    }
+    ProcDepois(msg: Text) from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+}
+exec ProcDepois(msg="x") >> s {
+    pass SUCESSO, ERRO
+}
+'''
+        ast = make_ast(src)
+        pb = ast.procedures[0]
+        assert isinstance(pb, ProcBlockNode)
+        assert pb.name == 'Bloco'
+
+    # --- T5: ref param como pseudo-variável dentro do corpo ---
+
+    def test_ref_param_usable_as_var_in_body(self):
+        """Parâmetro ref pode ser usado como &var dentro do corpo do proc-bloco."""
+        src = _pb_src(
+            'Bloco(home: &Text) {\n'
+            '    exec Proc(msg=&home) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        ast = make_ast(src)
+        pb = ast.procedures[1]
+        assert isinstance(pb, ProcBlockNode)
+        assert pb.block.kwargs['msg'] == ArgNode(value='home', evaluation='reference')
+
+    # --- T6: proc normal declarado antes de proc-bloco permanece ProcDeclNode ---
+
+    def test_proc_normal_unaffected(self):
+        """ProcDeclNode ainda deve ser gerado para procs normais."""
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        ast = make_ast(src)
+        pd = ast.procedures[0]
+        assert isinstance(pd, ProcDeclNode)
+        assert pd.name == 'Proc'
+
+    # --- T7: proc-bloco com while no exec interno (não no raiz) ---
+
+    def test_inner_exec_while_allowed(self):
+        """While em exec interno do proc-bloco é permitido."""
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO\n'
+            '    } while(ERRO)\n'
+            '}'
+        )
+        ast = make_ast(src)
+        pb = ast.procedures[1]
+        assert isinstance(pb, ProcBlockNode)
+        assert pb.block.loop_while == ['ERRO']
+

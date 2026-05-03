@@ -272,3 +272,217 @@ exec f() >> s {
         inner = outer.cases[0].block
         assert isinstance(inner, ExecBlockNode)
         assert inner.pass_codes == ['ERR', 'OK'] or set(inner.pass_codes) == {'OK', 'ERR'}
+
+
+# ---------------------------------------------------------------------------
+# B-020: proc-blocos — expansão, ciclos, aninhamento
+# ---------------------------------------------------------------------------
+
+_PB_BASE = '''\
+program "T"
+vars {{ s: Number {extra_vars}}}
+procs {{
+    Proc(msg: Text) from "Lib.macro" {{
+        codes SUCESSO<0>, ERRO<1>
+    }}
+    {proc_block}
+}}
+exec Proc(msg="x") >> s {{
+    pass SUCESSO, ERRO
+}}
+'''
+
+
+def _pb_src(proc_block: str, extra_vars: str = '') -> str:
+    return _PB_BASE.format(proc_block=proc_block, extra_vars=extra_vars)
+
+
+class TestProcBlockDesugar:
+    """Testes de expansão de proc-blocos no desugar — B-020."""
+
+    # --- T1: expansão simples (terminal) ---
+
+    def test_proc_block_removed_from_procedures(self):
+        """Proc-bloco não deve aparecer em procedures após desugar."""
+        src = _pb_src(
+            'Bloco(msg: Text) {\n'
+            '    exec Proc(msg=msg) as "B" {\n'
+            '        pass SUCESSO, ERRO\n'
+            '    }\n'
+            '}'
+        )
+        ast = desugar(parse(src))
+        names = {p.name for p in ast.procedures}
+        assert 'Bloco' not in names
+        assert 'Proc' in names
+
+    def test_proc_block_inline_call_expands(self):
+        """@Bloco() no corpo de um case deve ser expandido para ExecBlockNode."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    Proc(msg: Text) from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+    Bloco(msg: Text) {
+        exec Proc(msg=msg) as "B" {
+            pass SUCESSO, ERRO
+        }
+    }
+}
+exec Proc(msg="x") >> s {
+    case SUCESSO: @Bloco(msg="ok")
+    pass ERRO
+}
+'''
+        ast = desugar(parse(src))
+        case_block = ast.block.cases[0].block
+        assert isinstance(case_block, ExecBlockNode)
+        assert case_block.proc_name == 'Proc'
+
+    def test_proc_block_lit_param_substituted(self):
+        """Placeholder lit (msg: Text) deve ser substituído pelo valor literal da chamada."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    Proc(msg: Text) from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+    Bloco(msg: Text) {
+        exec Proc(msg=msg) as "B" {
+            pass SUCESSO, ERRO
+        }
+    }
+}
+exec Proc(msg="x") >> s {
+    case SUCESSO: @Bloco(msg="hello")
+    pass ERRO
+}
+'''
+        ast = desugar(parse(src))
+        case_block = ast.block.cases[0].block
+        from compiler.parser import ArgNode
+        assert case_block.kwargs['msg'] == ArgNode(value='hello', evaluation='literal')
+
+    def test_proc_block_ref_param_substituted(self):
+        """Placeholder ref (&home) deve ser substituído pela variável real da chamada."""
+        src = '''\
+program "T"
+vars { s: Number
+       home_var: Text }
+procs {
+    Proc(msg: Text) from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+    Bloco(home: &Text) {
+        exec Proc(msg=&home) as "B" {
+            pass SUCESSO, ERRO
+        }
+    }
+}
+exec Proc(msg="x") >> s {
+    case SUCESSO: @Bloco(home=&home_var)
+    pass ERRO
+}
+'''
+        ast = desugar(parse(src))
+        case_block = ast.block.cases[0].block
+        from compiler.parser import ArgNode
+        assert case_block.kwargs['msg'] == ArgNode(value='home_var', evaluation='reference')
+
+    # --- T2: ciclo → DesugarError ---
+
+    def test_direct_cycle_raises(self):
+        """Proc-bloco que se referencia diretamente deve levantar DesugarError."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    Proc() from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+    A() {
+        exec Proc() as "root" {
+            case SUCESSO: @A()
+            pass ERRO
+        }
+    }
+}
+exec Proc() >> s {
+    pass SUCESSO, ERRO
+}
+'''
+        from compiler.desugar import DesugarError
+        with pytest.raises(DesugarError, match="recursão"):
+            desugar(parse(src))
+
+    def test_indirect_cycle_raises(self):
+        """Ciclo indireto A → B → A deve levantar DesugarError."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    Proc() from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+    A() {
+        exec Proc() as "root" {
+            case SUCESSO: @B()
+            pass ERRO
+        }
+    }
+    B() {
+        exec Proc() as "root" {
+            case SUCESSO: @A()
+            pass ERRO
+        }
+    }
+}
+exec Proc() >> s {
+    pass SUCESSO, ERRO
+}
+'''
+        from compiler.desugar import DesugarError
+        with pytest.raises(DesugarError, match="recursão"):
+            desugar(parse(src))
+
+    # --- T3: expansão aninhada (proc-bloco usa outro proc-bloco) ---
+
+    def test_nested_proc_block_expansion(self):
+        """Proc-bloco B que usa proc-bloco A deve ser expandido corretamente."""
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    Proc(msg: Text) from "Lib.macro" {
+        codes SUCESSO<0>, ERRO<1>
+    }
+    A(msg: Text) {
+        exec Proc(msg=msg) as "A-inner" {
+            pass SUCESSO, ERRO
+        }
+    }
+    B(msg: Text) {
+        exec Proc(msg="outer") as "B-outer" {
+            case SUCESSO: @A(msg=msg)
+            pass ERRO
+        }
+    }
+}
+exec Proc(msg="x") >> s {
+    case SUCESSO: @B(msg="hello")
+    pass ERRO
+}
+'''
+        ast = desugar(parse(src))
+        case_b = ast.block.cases[0].block
+        # B expandido: exec Proc(msg="outer") { case SUCESSO: A expandido }
+        assert case_b.proc_name == 'Proc'
+        assert case_b.kwargs['msg'].value == 'outer'
+        # Dentro do case SUCESSO de B: A expandido = exec Proc(msg="hello")
+        case_a = case_b.cases[0].block
+        assert case_a.proc_name == 'Proc'
+        assert case_a.kwargs['msg'].value == 'hello'
+

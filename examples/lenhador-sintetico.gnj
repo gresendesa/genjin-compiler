@@ -1,0 +1,169 @@
+program "lenhador-inteligente-do-federal"
+
+// Versão sintética do lenhador-inteligente usando proc-blocos (B-019/B-020).
+// Semanticamente equivalente a lenhador.gnj após desugar.
+
+vars {
+    home_mkb: Text = "%&home_guardar%"
+    home_mkb_temporaria: Text = "%&home_guardar_temp%"
+    home_mkb_machados_gastos: Text = "%&home_machados_red%"
+    home_mkb_machados_novos: Text = "%&home_machados_novos%"
+    home_checkpoint: Text = "%&home_checkpoint%"
+    quantidade_movidos: Number
+    resultado: Number
+    lista_coordenadas_arvores: Text[]
+    tronco_x: Number
+    tronco_y: Number
+    tronco_z: Number
+    cursor_array_arvores: Number
+    coordenadas_rota: Text[]
+}
+
+procs {
+    // --- server_tools_cl_77_78 ---
+
+    Teleportar(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_teleportar" {
+        codes SUCESSO<0>, DEMORA<99>, NÃO_EXISTE<404>, CANCELADO<3>
+    }
+
+    Definir_Home(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_definir_home" {
+        codes SUCESSO<0>, DEMORA<99>, LIMITE_ALCANCADO<4>, PROIBIDO<1>
+    }
+
+    Ping() from "Federal.@.server_tools_cl_77_78.serviço_testar_conectividade" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Pegar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.serviço_pegar_itens_mkb" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Guardar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.serviço_guardar_itens_mkb" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Resetar_MKB(gaveta: Text) from "Federal.@.server_tools_cl_77_78.serviço_resetar_mkb" {
+        codes SUCESSO<0>, DEMORA<99>
+    }
+
+    Pode_Usar_Home_Temp(gaveta: Text) from "Federal.@.server_tools_cl_77_78.serviço_pergunta_pode_usar_home_temp" {
+        codes SUCESSO<0>, NAO_EXISTE<404>, DEMORA<99>
+    }
+
+    // --- Federal.@.LenhadorNEO ---
+
+    Reseta_Variáveis(var_posicao_lista: &Number) from "Federal.@.LenhadorNEO.reseta_variaveis" {
+        codes SUCESSO<0>
+    }
+
+    Reiniciar_Ciclo() from "Federal.@.LenhadorNEO.reiniciar_ciclo" {
+        codes REINICIAR_CICLO<99>
+    }
+
+    // --- Federal.@.Lenhador ---
+
+    Notificar_Exceção(mensagem: Text) from "Federal.@.Lenhador.notificar_exceção" {
+        codes REINICIAR_CICLO<99>
+    }
+
+    Procura_Árvores(outvar_array_arvores: Text[]) from "Federal.@.Lenhador.procura_árvores" {
+        codes SUCESSO<0>, SEM_ÁRVORES_AO_REDOR<1>
+    }
+
+    Seleciona_Árvore(invar_array_arvores: Text[], outvar_x: &Number, outvar_y: &Number, outvar_z: &Number, outvar_posicao_lista: &Number) from "Federal.@.Lenhador.seleciona_árvore" {
+        codes SUCESSO<0>, SEM_MAIS_ÁRVORES_PARA_PROCESSAR<12>
+    }
+
+    Percorre_Caminho_Até_Árvore(invar_array_caminho: Text[]) from "Federal.@.Lenhador.percorre_caminho2" {
+        codes SUCESSO<0>, DEMORA_PERCURSO<20>
+    }
+
+    Retira_A_Lenha(hotslot_ferramenta: Number) from "Federal.@.Lenhador.colhe_madeira2" {
+        codes SUCESSO<0>, FERRAMENTA_GASTA<17>, ARVORE_NAO_ENCONTRADA<404>, BLOCO_MUITO_LONGE<499>, DEMORA_EXTRAIR_BLOCO<22>
+    }
+
+    Traça_Rota(x: &Number, y: &Number, z: &Number, outvar_array_caminho: Text[]) from "Federal.@.Lenhador.calcula_caminho" {
+        codes SUCESSO<0>, CAMINHO_NÃO_ENCONTRADO<13>, SEM_SUPORTE<573>
+    }
+
+    // --- Proc-blocos reutilizáveis (B-019/B-020) ---
+
+    Exceção_e_Reinicia(mensagem: Text) {
+        exec Notificar_Exceção(mensagem=mensagem) as "Notifica e reinicia" {
+            pass REINICIAR_CICLO
+        }
+    }
+
+    Troca_Ferramenta(home_gastos: &Text, home_novos: &Text, home_voltar: &Text) {
+        exec Definir_Home(home=&home_voltar) as "Troca:Definir_Home" {
+            case SUCESSO:
+                exec Teleportar(home=&home_gastos) as "Troca:TP_Gastos" {
+                    case SUCESSO:
+                        exec Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens="['diamond_axe']", quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "Troca:Guardar" {
+                            case SUCESSO:
+                                exec Teleportar(home=&home_novos) as "Troca:TP_Novos" {
+                                    case SUCESSO:
+                                        exec Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens="['diamond_axe']", quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "Troca:Pegar" {
+                                            case SUCESSO:
+                                                exec Teleportar(home=&home_voltar) as "Troca:Voltar" {
+                                                    pass SUCESSO, NÃO_EXISTE, CANCELADO
+                                                } while(DEMORA)
+                                        } while(DEMORA)
+                                    pass NÃO_EXISTE, CANCELADO
+                                } while(DEMORA)
+                        } while(DEMORA)
+                    pass NÃO_EXISTE, CANCELADO
+                } while(DEMORA)
+            pass SUCESSO, NÃO_EXISTE, REINICIAR_CICLO, LIMITE_ALCANCADO, PROIBIDO
+        } while(DEMORA, CANCELADO)
+    }
+}
+
+// Bloco raiz: ciclo principal do lenhador.
+// Usa proc-blocos para notificação/reinício e troca de ferramenta.
+
+exec Reseta_Variáveis(var_posicao_lista=&cursor_array_arvores) as "Reseta variáveis" >> resultado {
+    case SUCESSO:
+        exec Procura_Árvores(outvar_array_arvores=&lista_coordenadas_arvores) as "Procura Árvores" {
+            case SUCESSO:
+                exec Seleciona_Árvore(
+                    invar_array_arvores=&lista_coordenadas_arvores,
+                    outvar_x=&tronco_x,
+                    outvar_y=&tronco_y,
+                    outvar_z=&tronco_z,
+                    outvar_posicao_lista=&cursor_array_arvores
+                ) as "Seleciona Árvore" {
+                    case SUCESSO:
+                        exec Traça_Rota(
+                            x=&tronco_x,
+                            y=&tronco_y,
+                            z=&tronco_z,
+                            outvar_array_caminho=&coordenadas_rota
+                        ) as "Traça a rota até a árvore" {
+                            case SUCESSO:
+                                exec Percorre_Caminho_Até_Árvore(invar_array_caminho=&coordenadas_rota) as "Vai até a árvore" {
+                                    case SUCESSO:
+                                        exec Retira_A_Lenha(hotslot_ferramenta=1) as "Coleta a madeira" {
+                                            pass SUCESSO, FERRAMENTA_GASTA, ARVORE_NAO_ENCONTRADA, BLOCO_MUITO_LONGE, DEMORA_EXTRAIR_BLOCO
+                                        }
+                                    pass DEMORA_PERCURSO
+                                }
+                            pass CAMINHO_NÃO_ENCONTRADO, SEM_SUPORTE
+                        }
+                    case SEM_MAIS_ÁRVORES_PARA_PROCESSAR:
+                        exec Reiniciar_Ciclo() as "Mande reiniciar porque não há mais árvores para processar" {
+                            pass REINICIAR_CICLO
+                        }
+                } while(SUCESSO, CAMINHO_NÃO_ENCONTRADO, DEMORA_EXTRAIR_BLOCO, BLOCO_MUITO_LONGE, ARVORE_NAO_ENCONTRADA, DEMORA_PERCURSO)
+
+            case SEM_ÁRVORES_AO_REDOR:
+                @Exceção_e_Reinicia(mensagem="Não há mais árvores ao redor. Me leve onde haja! ")
+
+            case FERRAMENTA_GASTA:
+                @Troca_Ferramenta(home_gastos=&home_mkb_machados_gastos, home_novos=&home_mkb_machados_novos, home_voltar=&home_checkpoint)
+
+            case SEM_SUPORTE:
+                @Exceção_e_Reinicia(mensagem="Não posso andar ou calcular caminho sobre este bloco. Resolva este problema. ")
+        }
+    pass FERRAMENTA_GASTA, DEMORA_EXTRAIR_BLOCO, NÃO_EXISTE, CANCELADO, LIMITE_ALCANCADO, PROIBIDO
+} while(SEM_SUPORTE, REINICIAR_CICLO, CAMINHO_NÃO_ENCONTRADO, SUCESSO, DEMORA_PERCURSO, ARVORE_NAO_ENCONTRADA, BLOCO_MUITO_LONGE)

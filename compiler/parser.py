@@ -46,6 +46,14 @@ class ProcDeclNode:
 
 
 @dataclass
+class ProcBlockNode:
+    name: str
+    parameters: list[ParamDeclNode]
+    block: ExecBlockNode | InlineSeqNode  # corpo do proc-bloco
+    inferred_codes: list[str]             # inferido dos pass_codes do bloco raiz
+
+
+@dataclass
 class VarDeclNode:
     name: str
     type: str                # 'number' | 'text' | 'logic'
@@ -97,7 +105,7 @@ class InlineSeqNode:
 class ProgramNode:
     name: str
     variables: list[VarDeclNode]
-    procedures: list[ProcDeclNode]
+    procedures: list[ProcDeclNode | ProcBlockNode]
     block: ExecBlockNode | InlineSeqNode  # InlineSeqNode possível antes do desugar
 
 
@@ -129,6 +137,7 @@ class Parser:
     def __init__(self, tokens: list[Token]):
         self._tokens = tokens
         self._pos = 0
+        self._pb_param_names: frozenset[str] = frozenset()
 
     # ------------------------------------------------------------------
     # Primitivas de navegação
@@ -153,6 +162,13 @@ class Parser:
             raise ParseError(desc, tok.line)
         return self._advance()
 
+    @staticmethod
+    def _output_code_names(proc: ProcDeclNode | ProcBlockNode) -> set[str]:
+        """Retorna o conjunto de nomes de códigos de saída de um proc (normal ou bloco)."""
+        if isinstance(proc, ProcBlockNode):
+            return set(proc.inferred_codes)
+        return {oc.name for oc in proc.output_codes}
+
     # ------------------------------------------------------------------
     # Ponto de entrada
     # ------------------------------------------------------------------
@@ -174,10 +190,10 @@ class Parser:
                          TokenType.KW_EXEC, TokenType.AT}
 
         variables: list[VarDeclNode] | None = None
-        procedures: list[ProcDeclNode] | None = None
+        procs_pos: int | None = None
         exec_pos: int | None = None  # posição do token 'exec' ou '@' na lista de tokens
 
-        # Primeiro passo: coletar vars e procs em qualquer ordem; memorizar posição do exec/inline
+        # Primeiro passo: coletar vars completamente; skip procs e exec/inline (posições guardadas)
         while self._check(*_BLOCK_TOKENS):
             tok = self._peek()
             if tok.type == TokenType.KW_VARS:
@@ -185,9 +201,10 @@ class Parser:
                     raise ParseError("bloco 'vars' declarado mais de uma vez", tok.line)
                 variables = self._parse_vars()
             elif tok.type == TokenType.KW_PROCS:
-                if procedures is not None:
+                if procs_pos is not None:
                     raise ParseError("bloco 'procs' declarado mais de uma vez", tok.line)
-                procedures = self._parse_procs()
+                procs_pos = self._pos
+                self._skip_kw_brace_block()
             elif tok.type in (TokenType.KW_EXEC, TokenType.AT):
                 if exec_pos is not None:
                     raise ParseError("bloco 'exec' raiz declarado mais de uma vez", tok.line)
@@ -199,17 +216,23 @@ class Parser:
 
         if variables is None:
             raise ParseError("bloco 'vars' ausente", self._peek().line)
-        if procedures is None:
+        if procs_pos is None:
             raise ParseError("bloco 'procs' ausente", self._peek().line)
         if exec_pos is None:
             raise ParseError("bloco 'exec' raiz ausente", self._peek().line)
 
-        # Segundo passo: parsear exec/inline com vars e procs completos
         end_pos = self._pos
+
+        # Segundo passo: parsear procs com declared_vars disponível
+        self._pos = procs_pos
+        procedures = self._parse_procs(declared_vars={v.name for v in variables})
+
+        # Terceiro passo: parsear exec/inline com vars e procs completos
         self._pos = exec_pos
+        declared_procs = {p.name: p for p in procedures}
         block = self._parse_exec_or_inline(
             declared_vars={v.name for v in variables},
-            declared_procs={p.name: p for p in procedures},
+            declared_procs=declared_procs,
             inherited_var=None,
         )
         self._pos = end_pos
@@ -218,6 +241,22 @@ class Parser:
                            variables=variables,
                            procedures=procedures,
                            block=block)
+
+    def _skip_brace_block(self) -> None:
+        """Avança pelo bloco { ... } sem parsear semanticamente. Consome o { inicial."""
+        self._expect(TokenType.LBRACE, "esperado '{'")
+        depth = 1
+        while depth > 0 and not self._check(TokenType.EOF):
+            tok = self._advance()
+            if tok.type == TokenType.LBRACE:
+                depth += 1
+            elif tok.type == TokenType.RBRACE:
+                depth -= 1
+
+    def _skip_kw_brace_block(self) -> None:
+        """Avança pelo bloco KEYWORD { ... } sem parsear semanticamente."""
+        self._advance()  # keyword (e.g. KW_PROCS)
+        self._skip_brace_block()
 
     def _skip_exec_block(self) -> None:
         """Avança o cursor por um bloco exec (e while opcional) sem parsear semanticamente."""
@@ -287,7 +326,7 @@ class Parser:
 
     def _parse_exec_or_inline(self,
                                declared_vars: set[str],
-                               declared_procs: dict[str, ProcDeclNode],
+                               declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
                                inherited_var: str | None) -> ExecBlockNode | InlineSeqNode:
         if self._check(TokenType.AT):
             return self._parse_inline_seq(declared_vars, declared_procs, inherited_var)
@@ -295,7 +334,7 @@ class Parser:
 
     def _parse_inline_seq(self,
                           declared_vars: set[str],
-                          declared_procs: dict[str, ProcDeclNode],
+                          declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
                           inherited_var: str | None) -> InlineSeqNode:
         """Parseia uma sequência inline: (átomo with when)* átomo-terminal|exec."""
         chained: list[InlineAtomNode] = []
@@ -329,7 +368,7 @@ class Parser:
 
     def _parse_inline_atom(self,
                            declared_vars: set[str],
-                           declared_procs: dict[str, ProcDeclNode]) -> InlineAtomNode:
+                           declared_procs: dict[str, ProcDeclNode | ProcBlockNode]) -> InlineAtomNode:
         """Parseia um átomo inline: @proc(args) [>> var] [while(CODE)] [when(CODE)]."""
         at_tok = self._expect(TokenType.AT, "esperado '@'")
         proc_name_tok = self._expect(TokenType.IDENT, "esperado nome do proc após '@'")
@@ -341,7 +380,7 @@ class Parser:
                 proc_name_tok.line,
             )
         proc_decl = declared_procs[proc_name]
-        valid_codes = {oc.name for oc in proc_decl.output_codes}
+        valid_codes = self._output_code_names(proc_decl)
 
         self._expect(TokenType.LPAREN, "esperado '(' após nome do proc")
         kwargs = self._parse_kwargs(proc_decl, declared_vars, at_tok.line)
@@ -453,14 +492,86 @@ class Parser:
     # procs
     # ------------------------------------------------------------------
 
-    def _parse_procs(self) -> list[ProcDeclNode]:
+    def _parse_procs(self, declared_vars: set[str] = frozenset()) -> list[ProcDeclNode | ProcBlockNode]:
         self._expect(TokenType.KW_PROCS, "esperado 'procs'")
         self._expect(TokenType.LBRACE, "esperado '{' após 'procs'")
-        procedures: list[ProcDeclNode] = []
+
+        # Passo 1: coletar ProcDeclNode completos + stubs de ProcBlockNode
+        ordered: list[ProcDeclNode | tuple] = []
+        stubs: list[tuple[str, list[ParamDeclNode], int]] = []
+        proc_decl_nodes: list[ProcDeclNode] = []
+
         while not self._check(TokenType.RBRACE, TokenType.EOF):
-            procedures.append(self._parse_proc_decl())
+            tok = self._peek()
+            if tok.type == TokenType.IDENT and tok.value == 'proc':
+                raise ParseError(
+                    "keyword 'proc' não é mais necessária; escreva diretamente o nome do procedimento",
+                    tok.line,
+                )
+            name_tok = self._expect(TokenType.IDENT, "esperado nome do proc ou proc-bloco")
+            self._expect(TokenType.LPAREN, "esperado '(' após nome")
+            params = self._parse_param_list()
+            self._expect(TokenType.RPAREN, "esperado ')' após parâmetros")
+            if self._check(TokenType.KW_FROM):
+                # Proc normal
+                pd = self._parse_proc_decl_tail(name_tok.value, params)
+                proc_decl_nodes.append(pd)
+                ordered.append(pd)
+            elif self._check(TokenType.LBRACE):
+                # Proc-bloco: validar params e registrar stub
+                brace_tok = self._peek()
+                for p in params:
+                    if p.cardinality == 'plural':
+                        raise ParseError(
+                            f"parâmetro '{p.name}': cardinalidade plural ('[]') não é permitida em proc-blocos",
+                            brace_tok.line,
+                        )
+                body_pos = self._pos
+                self._skip_brace_block()
+                stub = (name_tok.value, params, body_pos)
+                stubs.append(stub)
+                ordered.append(stub)
+            else:
+                err_tok = self._peek()
+                raise ParseError(
+                    f"esperado 'from' (proc normal) ou '{{' (proc-bloco) após parâmetros de '{name_tok.value}'",
+                    err_tok.line,
+                )
+
         self._expect(TokenType.RBRACE, "esperado '}' para fechar 'procs'")
-        return procedures
+        end_pos = self._pos
+
+        # Montar declared_procs_map com todos os ProcDeclNode
+        # e placeholders para ProcBlockNode (suporte a forward references)
+        declared_procs_map: dict[str, ProcDeclNode | ProcBlockNode] = {}
+        for pd in proc_decl_nodes:
+            declared_procs_map[pd.name] = pd
+        for stub_name, stub_params, _body_pos in stubs:
+            declared_procs_map[stub_name] = ProcBlockNode(
+                name=stub_name, parameters=stub_params, block=None, inferred_codes=[]
+            )
+
+        # Passo 2: parsear corpos dos proc-blocos com declared_procs completo
+        proc_block_nodes: dict[str, ProcBlockNode] = {}
+        for stub_name, stub_params, stub_body_pos in stubs:
+            self._pos = stub_body_pos
+            pb = self._parse_proc_block_body(
+                stub_name, stub_params, declared_vars, declared_procs_map
+            )
+            declared_procs_map[stub_name] = pb
+            proc_block_nodes[stub_name] = pb
+
+        self._pos = end_pos
+
+        # Reconstruir lista na ordem original de declaração
+        result: list[ProcDeclNode | ProcBlockNode] = []
+        for entry in ordered:
+            if isinstance(entry, ProcDeclNode):
+                result.append(entry)
+            else:
+                entry_name, _, _ = entry
+                result.append(proc_block_nodes[entry_name])
+        return result
 
     def _parse_proc_decl(self) -> ProcDeclNode:
         tok = self._peek()
@@ -473,6 +584,10 @@ class Parser:
         self._expect(TokenType.LPAREN, "esperado '(' após nome do proc")
         params = self._parse_param_list()
         self._expect(TokenType.RPAREN, "esperado ')' após parâmetros")
+        return self._parse_proc_decl_tail(name_tok.value, params)
+
+    def _parse_proc_decl_tail(self, name: str, params: list[ParamDeclNode]) -> ProcDeclNode:
+        """Parseia a cauda de um proc normal (from ... { codes ... }) após nome e params."""
         self._expect(TokenType.KW_FROM, "esperado 'from'")
         from_tok = self._expect(TokenType.STRING, "esperado caminho em 'from'")
         library, macro = self._resolve_from(from_tok.value, from_tok.line)
@@ -480,11 +595,42 @@ class Parser:
         self._expect(TokenType.KW_CODES, "esperado 'codes'")
         codes = self._parse_codes()
         self._expect(TokenType.RBRACE, "esperado '}' para fechar proc")
-        return ProcDeclNode(name=name_tok.value,
+        return ProcDeclNode(name=name,
                             library=library,
                             macro=macro,
                             parameters=params,
                             output_codes=codes)
+
+    def _parse_proc_block_body(
+        self,
+        name: str,
+        params: list[ParamDeclNode],
+        program_vars: set[str],
+        declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
+    ) -> ProcBlockNode:
+        """Parseia o corpo { exec ... } de um proc-bloco."""
+        # Parâmetros ref funcionam como pseudo-variáveis dentro do corpo
+        # Parâmetros lit também entram em body_vars para permitir uso como =nome_param
+        body_vars = set(program_vars)
+        for p in params:
+            body_vars.add(p.name)
+        self._pb_param_names = frozenset(p.name for p in params)
+        self._expect(TokenType.LBRACE, "esperado '{' no corpo do proc-bloco")
+        exec_block = self._parse_exec(
+            declared_vars=body_vars,
+            declared_procs=declared_procs,
+            inherited_var=None,
+            allow_arrow=False,
+        )
+        self._expect(TokenType.RBRACE, "esperado '}' para fechar proc-bloco")
+        self._pb_param_names = frozenset()
+        inferred_codes = list(exec_block.pass_codes)
+        return ProcBlockNode(
+            name=name,
+            parameters=params,
+            block=exec_block,
+            inferred_codes=inferred_codes,
+        )
 
     def _parse_param_list(self) -> list[ParamDeclNode]:
         params: list[ParamDeclNode] = []
@@ -559,8 +705,9 @@ class Parser:
 
     def _parse_exec(self,
                     declared_vars: set[str],
-                    declared_procs: dict[str, ProcDeclNode],
-                    inherited_var: str | None) -> ExecBlockNode:
+                    declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
+                    inherited_var: str | None,
+                    allow_arrow: bool = True) -> ExecBlockNode:
         exec_tok = self._expect(TokenType.KW_EXEC, "esperado 'exec'")
         proc_name_tok = self._expect(TokenType.IDENT, "esperado nome do proc em 'exec'")
         proc_name = proc_name_tok.value
@@ -588,6 +735,11 @@ class Parser:
         variable: str | None = None
         variable_explicit = False
         if self._check(TokenType.ARROW):
+            if not allow_arrow:
+                raise ParseError(
+                    "'>>' não é permitido no exec raiz de um proc-bloco",
+                    self._peek().line,
+                )
             self._advance()
             var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '>>'")
             # Validação semântica: variável deve estar declarada
@@ -622,12 +774,12 @@ class Parser:
         # while(...) aparece DEPOIS do }, não dentro do corpo
         loop_while: list[str] = []
         if self._check(TokenType.KW_WHILE):
-            valid_codes = {oc.name for oc in proc_decl.output_codes}
+            valid_codes = self._output_code_names(proc_decl)
             loop_while = self._parse_while(valid_codes)
 
         # Validação semântica: todos os códigos DO PROC ATUAL não tratados
         # devem aparecer em pass (pass pode conter também códigos borbulhados de filhos)
-        valid_codes = {oc.name for oc in proc_decl.output_codes}
+        valid_codes = self._output_code_names(proc_decl)
         case_while_handled = {c.output_code for c in cases} | set(loop_while)
         must_pass = valid_codes - case_while_handled
         missing = must_pass - set(pass_codes)
@@ -649,7 +801,7 @@ class Parser:
         )
 
     def _parse_kwargs(self,
-                      proc_decl: ProcDeclNode,
+                      proc_decl: ProcDeclNode | ProcBlockNode,
                       declared_vars: set[str],
                       exec_line: int) -> dict[str, ArgNode]:
         # Índice dos parâmetros por nome
@@ -693,6 +845,11 @@ class Parser:
                 elif val_tok.type == TokenType.NUMBER:
                     self._advance()
                     kwargs[name_tok.value] = ArgNode(value=int(val_tok.value), evaluation='literal')
+                elif val_tok.type == TokenType.IDENT and val_tok.value in declared_vars:
+                    # Placeholder lit de proc-bloco usado como valor: msg=nome_param
+                    self._advance()
+                    ev = 'placeholder' if val_tok.value in self._pb_param_names else 'literal'
+                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation=ev)
                 else:
                     raise ParseError(f"valor inválido para argumento '{name_tok.value}'", val_tok.line)
 
@@ -700,9 +857,9 @@ class Parser:
 
     def _parse_exec_body(
         self,
-        proc_decl: ProcDeclNode,
+        proc_decl: ProcDeclNode | ProcBlockNode,
         declared_vars: set[str],
-        declared_procs: dict[str, ProcDeclNode],
+        declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
         inherited_var: str | None,
     ) -> tuple[list[CaseNode], list[str]]:
         """Parseia o interior de { } de um exec. Retorna (cases, pass_codes).
@@ -733,9 +890,9 @@ class Parser:
     def _parse_case(self,
                     valid_codes: set[str],
                     declared_vars: set[str],
-                    declared_procs: dict[str, ProcDeclNode],
+                    declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
                     inherited_var: str | None,
-                    proc_decl: ProcDeclNode) -> CaseNode:
+                    proc_decl: ProcDeclNode | ProcBlockNode) -> CaseNode:
         self._expect(TokenType.KW_CASE, "esperado 'case'")
         code_tok = self._expect(TokenType.IDENT, "esperado código após 'case'")
         # Não validamos o código contra proc_decl.output_codes aqui pois o motor

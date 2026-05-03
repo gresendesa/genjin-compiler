@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-12 planejada)
+Ultima atualizacao: 2026-05-03 (SPR-2026-12 concluída)
 
 ## Objetivo
 
@@ -149,12 +149,14 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-12
 
-- Status: ativa
+- Status: concluída
 - Data de início: 2026-05-03
+- Data de encerramento: 2026-05-03
 - Foco: Proc-blocos — implementação completa (parser + desugar) + `lenhador-sintetico.gnj`
 - Itens: B-019, B-020
 - Prioridade PO dos itens: 1 (crítica), 2 (alta)
 - Risco da sprint: alto (2.5)
+- Resultado: B-019 e B-020 concluídos. `ProcBlockNode` parseado + desugar com DFS anti-ciclo + expansão clone+visitor. `lenhador-sintetico.gnj` compilando com saída equivalente. 360 testes, 0 falhas (+19 novos testes).
 - Arquivo detalhado: [ia/sprints/SPR-2026-12.md](sprints/SPR-2026-12.md)
 
 

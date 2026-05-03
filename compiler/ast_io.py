@@ -19,7 +19,7 @@ from typing import Any
 
 from compiler.scanner import Token, TokenType
 from compiler.parser import (
-    ArgNode, OutputCodeNode, ParamDeclNode, ProcDeclNode,
+    ArgNode, OutputCodeNode, ParamDeclNode, ProcDeclNode, ProcBlockNode,
     VarDeclNode, ExecBlockNode, CaseNode, ProgramNode,
     InlineAtomNode, InlineSeqNode,
 )
@@ -82,6 +82,7 @@ _NODE_TYPES: dict[str, type] = {
     "OutputCodeNode": OutputCodeNode,
     "ParamDeclNode":  ParamDeclNode,
     "ProcDeclNode":   ProcDeclNode,
+    "ProcBlockNode":  ProcBlockNode,
     "VarDeclNode":    VarDeclNode,
     "ExecBlockNode":  ExecBlockNode,
     "CaseNode":       CaseNode,
