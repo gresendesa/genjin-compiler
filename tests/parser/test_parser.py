@@ -745,12 +745,12 @@ class TestInlineParsing:
     def test_tipo1_root_with_while(self):
         src = _inline_src('@f() >> s while(ERR)')
         ast = make_ast(src)
-        assert ast.block.terminal.while_code == 'ERR'
+        assert ast.block.terminal.while_codes == ['ERR']
 
     def test_tipo1_root_no_while(self):
         src = _inline_src('@f() >> s')
         ast = make_ast(src)
-        assert ast.block.terminal.while_code is None
+        assert ast.block.terminal.while_codes == []
 
     # --- Tipo 2: átomo encadeado @proc() when(CODE) ---
 
@@ -785,7 +785,7 @@ class TestInlineParsing:
         """Átomo encadeado pode ter while antes de when."""
         src = _inline_src('@f() while(ERR) when(OK)\n@f() >> s')
         ast = make_ast(src)
-        assert ast.block.chained[0].while_code == 'ERR'
+        assert ast.block.chained[0].while_codes == ['ERR']
         assert ast.block.chained[0].when_code == 'OK'
 
     # --- Inline dentro de case ---
@@ -858,11 +858,23 @@ exec f() >> s {
         with pytest.raises(ParseError, match="'BOGUS'"):
             make_ast(src)
 
-    def test_unknown_while_code_raises(self):
-        """Código desconhecido em while do inline atom deve levantar ParseError."""
-        src = _inline_src('@f() while(BOGUS) when(OK)\n@f() >> s')
-        with pytest.raises(ParseError, match="'BOGUS'"):
-            make_ast(src)
+    def test_unknown_while_code_accepted(self):
+        """Código borbulhado (não declarado no proc) em while deve ser aceito (B-024)."""
+        src = _inline_src('@f() while(BUBBLED) when(OK)\n@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.chained[0].while_codes == ['BUBBLED']
+
+    def test_while_multiple_codes(self):
+        """while() deve aceitar múltiplos códigos separados por vírgula (B-024)."""
+        src = _inline_src('@f() while(ERR, OK) when(OK)\n@f() >> s')
+        ast = make_ast(src)
+        assert ast.block.chained[0].while_codes == ['ERR', 'OK']
+
+    def test_while_bubbled_and_multiple_terminal(self):
+        """Átomo terminal com while de múltiplos códigos, incluindo borbulhado."""
+        src = _inline_src('@f() while(ERR, BUBBLED)')
+        ast = make_ast(src)
+        assert ast.block.terminal.while_codes == ['ERR', 'BUBBLED']
 
 
 # ---------------------------------------------------------------------------

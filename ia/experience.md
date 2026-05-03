@@ -70,3 +70,22 @@ Registrar problemas observados no processo de desenvolvimento, suas causas e com
   `ia/code.md` os valores válidos de `ArgNode.evaluation`.
 - **Status:** resolvido
 - **Owner:** agente
+
+---
+
+- **ID:** EXP-003
+- **Data:** 2026-05-03
+- **Contexto:** SPR-2026-14, B-024 — extensão de `while` inline para múltiplos códigos.
+- **Problema:** `_skip_inline_seq` no parser só avançava 1 IDENT dentro de `while(CODE)`.
+  Com `while(ERR, OK)`, o skip ficava com o cursor mal posicionado, fazendo o `_parse_program`
+  registrar a inline seq duas vezes e falhar com "bloco 'exec' raiz declarado mais de uma vez".
+- **Impacto:** 5 novos testes falhando após implementação da feature.
+- **Causa raiz:** `_skip_inline_seq` foi criado quando `while` só tinha 1 código. Não foi
+  atualizado junto com a gramática ao ampliar para múltiplos.
+- **Ação corretiva:** Substituir avanço fixo (`advance × 3`) por loop `while not RPAREN` dentro
+  de `_skip_inline_seq`.
+- **Ação preventiva:** Sempre que alterar a gramática de um construto (ex.: permitir lista onde
+  havia escalar), buscar e atualizar todos os métodos `_skip_*` correspondentes.
+- **Status:** resolvido
+- **Owner:** agente
+

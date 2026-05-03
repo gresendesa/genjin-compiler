@@ -401,7 +401,7 @@ exec verificar_rede() >> status_var {
 | `param=valor` | Argumento literal | `EVALUATION.LITERAL` |
 | `param=&var` | Argumento por referência | `EVALUATION.REFERENCE` |
 | `case NOME : exec ...` | Ramificação por código | `ATTRIBUTE.CASES` + `ATTRIBUTE.OUTPUT_CODE` |
-| `while(CODIGO)` | Repetição condicional | `ATTRIBUTE.LOOP_WHILE` |
+| `while(CODIGO)` ou `while(A, B, ...)` | Repetição condicional | `ATTRIBUTE.LOOP_WHILE` |
 | `pass CODIGO, ...` | Delegação de códigos | `ATTRIBUTE.PASS_CODES` |
 
 ---
@@ -413,9 +413,9 @@ A notação inline é um **açúcar sintático** que permite expressar um bloco 
 ### Gramática
 
 ```
-inline_seq ::= inline_atom+ terminal
-inline_atom ::= '@' IDENT '(' [arg_list] ')' ['>>' IDENT] ['while' '(' IDENT ')'] 'when' '(' IDENT ')'
-terminal    ::= '@' IDENT '(' [arg_list] ')' ['>>' IDENT] ['while' '(' IDENT ')']
+inline_seq  ::= inline_atom+ terminal
+inline_atom ::= '@' IDENT '(' [arg_list] ')' ['>>' IDENT] ['while' '(' IDENT {',' IDENT}* ')'] 'when' '(' IDENT ')'
+terminal    ::= '@' IDENT '(' [arg_list] ')' ['>>' IDENT] ['while' '(' IDENT {',' IDENT}* ')']
              |  exec_block
 ```
 
@@ -432,6 +432,7 @@ Um único átomo sem `when` é expandido para um `exec` canônico sem cases:
 ```gnj
 @proc() >> var
 @proc() >> var while(ERR)
+@proc() >> var while(ERR, TIMEOUT)
 ```
 
 Equivalências:
@@ -440,6 +441,7 @@ Equivalências:
 |---|---|
 | `@proc() >> var` | `exec proc() >> var { pass <todos os códigos> }` |
 | `@proc() >> var while(ERR)` | `exec proc() >> var { pass <todos exceto ERR> } while(ERR)` |
+| `@proc() >> var while(ERR, TIMEOUT)` | `exec proc() >> var { pass <todos exceto ERR e TIMEOUT> } while(ERR, TIMEOUT)` |
 
 ### Tipo 2 — encadeamento com `when`
 
@@ -510,6 +512,8 @@ exec verificar_rede() >> s {
 - O átomo terminal não pode ter `when`.
 - A ordem dos modificadores é obrigatória: `[>>] [while] [when]`.
 - O `CODE` em `when(CODE)` deve ser um código de saída válido do proc daquele átomo.
+- O `while` aceita **um ou mais códigos** separados por vírgula: `while(A)`, `while(A, B)`, etc.
+- Os códigos em `while` **não** precisam ser declarados no proc — códigos borbulhados de procs filhos são permitidos.
 
 ---
 

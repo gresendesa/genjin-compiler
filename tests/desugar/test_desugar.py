@@ -486,3 +486,54 @@ exec Proc(msg="x") >> s {
         assert case_a.proc_name == 'Proc'
         assert case_a.kwargs['msg'].value == 'hello'
 
+
+# ---------------------------------------------------------------------------
+# B-024: while inline — múltiplos códigos e códigos borbulhados
+# ---------------------------------------------------------------------------
+
+_B024_BASE = '''\
+program "T"
+vars {{ s: Number }}
+procs {{
+    f() from "A.b" {{
+        codes OK<0>, ERR<1>
+    }}
+}}
+{body}
+'''
+
+
+def _b024_src(body: str) -> str:
+    return _B024_BASE.format(body=body)
+
+
+class TestWhileMultipleCodes:
+    """Testes de while inline com múltiplos códigos e borbulhamento — B-024."""
+
+    def test_while_two_codes_loop_while(self):
+        """while(ERR, OK) no átomo terminal → loop_while = ['ERR', 'OK']."""
+        src = _b024_src('@f() while(ERR, OK)')
+        ast = desugar(parse(src))
+        assert set(ast.block.loop_while) == {'ERR', 'OK'}
+
+    def test_while_two_codes_pass_codes_empty(self):
+        """Com while(ERR, OK) cobrindo todos os códigos → pass_codes vazio."""
+        src = _b024_src('@f() while(ERR, OK)')
+        ast = desugar(parse(src))
+        assert ast.block.pass_codes == []
+
+    def test_while_bubbled_code_no_error(self):
+        """Código não declarado no proc (borbulhado) não deve levantar erro no desugar."""
+        src = _b024_src('@f() while(BUBBLED) when(OK)\n@f() >> s')
+        ast = desugar(parse(src))
+        assert 'BUBBLED' in ast.block.loop_while
+
+    def test_while_two_codes_chained_pass_set(self):
+        """while(ERR, BUBBLED) when(OK): pass deve excluir ERR, BUBBLED e OK."""
+        src = _b024_src('@f() while(ERR, BUBBLED) when(OK)\n@f() >> s')
+        ast = desugar(parse(src))
+        # all codes de f() = {OK, ERR}; while_set = {ERR, BUBBLED}; when = OK
+        # pass = {OK, ERR} - {OK} - {ERR, BUBBLED} = {} (BUBBLED não estava em all_codes)
+        assert 'OK' not in ast.block.pass_codes
+        assert 'ERR' not in ast.block.pass_codes
+

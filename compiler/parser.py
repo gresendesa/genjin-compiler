@@ -86,8 +86,8 @@ class InlineAtomNode:
     kwargs: dict[str, ArgNode]
     variable: str | None        # de >>
     variable_explicit: bool
-    while_code: str | None      # de while(CODE)
-    when_code: str | None       # de when(CODE) — None no átomo terminal
+    while_codes: list[str]        # de while(CODE, CODE, ...)
+    when_code: str | None        # de when(CODE) — None no átomo terminal
 
 
 @dataclass
@@ -304,11 +304,12 @@ class Parser:
             if self._check(TokenType.ARROW):
                 self._advance()  # >>
                 self._advance()  # IDENT
-            # Opcional: while(IDENT)
+            # Opcional: while(IDENT, IDENT, ...)
             if self._check(TokenType.KW_WHILE):
                 self._advance()  # while
                 self._advance()  # (
-                self._advance()  # IDENT
+                while not self._check(TokenType.RPAREN, TokenType.EOF):
+                    self._advance()  # IDENT ou COMMA
                 self._advance()  # )
             # Opcional: when(IDENT)
             if self._check(TokenType.KW_WHEN):
@@ -400,19 +401,16 @@ class Parser:
             variable = var_tok.value
             variable_explicit = True
 
-        # Opcional: while(CODE)
-        while_code: str | None = None
+        # Opcional: while(CODE, CODE, ...) — aceita múltiplos e borbulhados
+        while_codes: list[str] = []
         if self._check(TokenType.KW_WHILE):
             self._advance()  # while
             self._expect(TokenType.LPAREN, "esperado '(' após 'while'")
-            code_tok = self._expect(TokenType.IDENT, "esperado código no while")
-            if code_tok.value not in valid_codes:
-                raise ParseError(
-                    f"código '{code_tok.value}' em 'while' não declarado no proc '{proc_name}'",
-                    code_tok.line,
-                )
-            self._expect(TokenType.RPAREN, "esperado ')' após código do while")
-            while_code = code_tok.value
+            while not self._check(TokenType.RPAREN, TokenType.EOF):
+                if while_codes:
+                    self._expect(TokenType.COMMA, "esperado ',' entre códigos do while")
+                while_codes.append(self._expect(TokenType.IDENT, "esperado código no while").value)
+            self._expect(TokenType.RPAREN, "esperado ')' após códigos do while")
 
         # Opcional: when(CODE) — indica átomo encadeado
         when_code: str | None = None
@@ -433,7 +431,7 @@ class Parser:
             kwargs=kwargs,
             variable=variable,
             variable_explicit=variable_explicit,
-            while_code=while_code,
+            while_codes=while_codes,
             when_code=when_code,
         )
 
@@ -608,7 +606,7 @@ class Parser:
         program_vars: set[str],
         declared_procs: dict[str, ProcDeclNode | ProcBlockNode],
     ) -> ProcBlockNode:
-        """Parseia o corpo { exec ... } de um proc-bloco."""
+        """Parseia o corpo { exec ... | @inline... } de um proc-bloco."""
         # Parâmetros ref funcionam como pseudo-variáveis dentro do corpo
         # Parâmetros lit também entram em body_vars para permitir uso como =nome_param
         body_vars = set(program_vars)
@@ -616,19 +614,23 @@ class Parser:
             body_vars.add(p.name)
         self._pb_param_names = frozenset(p.name for p in params)
         self._expect(TokenType.LBRACE, "esperado '{' no corpo do proc-bloco")
-        exec_block = self._parse_exec(
+        block = self._parse_exec_or_inline(
             declared_vars=body_vars,
             declared_procs=declared_procs,
             inherited_var=None,
-            allow_arrow=False,
         )
         self._expect(TokenType.RBRACE, "esperado '}' para fechar proc-bloco")
         self._pb_param_names = frozenset()
-        inferred_codes = list(exec_block.pass_codes)
+        # inferred_codes só é conhecido com certeza para corpo canônico;
+        # para inline seq, será recalculado no desugar.
+        if isinstance(block, ExecBlockNode):
+            inferred_codes = list(block.pass_codes)
+        else:
+            inferred_codes = []
         return ProcBlockNode(
             name=name,
             parameters=params,
-            block=exec_block,
+            block=block,
             inferred_codes=inferred_codes,
         )
 

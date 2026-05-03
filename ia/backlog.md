@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-14 planejada — B-024 + B-023)
+Ultima atualizacao: 2026-05-03 (SPR-2026-14 concluída)
 
 ## Objetivo
 
@@ -44,17 +44,16 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | 1 (crítica) | alto | [B-019.md](backlog-items/B-019.md) |
 | B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | 2 (alta) | médio | [B-020.md](backlog-items/B-020.md) |
 | B-022 | Atualizar README.md com as últimas atualizações do projeto | 3 (média) | baixo | [B-022.md](backlog-items/B-022.md) |
+| B-024 | Inline `while`: aceitar múltiplos códigos e códigos borbulhados | 1 (crítica) | médio | [B-024.md](backlog-items/B-024.md) |
+| B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | 1 (crítica) | baixo | [B-023.md](backlog-items/B-023.md) |
 
 ### Pendentes
 
 (nenhum)
 
-### Planejados (SPR-2026-14)
+### Planejados
 
-| ID | Titulo | Prioridade PO | Risco | Arquivo |
-|---|---|---|---|---|
-| B-024 | Inline `while`: aceitar múltiplos códigos e códigos borbulhados | 1 (crítica) | médio | [B-024.md](backlog-items/B-024.md) |
-| B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | 1 (crítica) | baixo | [B-023.md](backlog-items/B-023.md) |
+(nenhum)
 
 ### Em andamento
 

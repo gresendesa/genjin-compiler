@@ -53,12 +53,12 @@ def desugar(ast: ProgramNode) -> ProgramNode:
     # S12-T11: expandir proc-blocos em ordem topológica
     for pb_name in topo_order:
         pb = block_map[pb_name]
-        expanded_body = _desugar_exec(pb.block, proc_map)
+        expanded_body = _desugar_block(pb.block, proc_map, pass_context=None, inherited_var=None)
         expanded_pb = ProcBlockNode(
             name=pb.name,
             parameters=pb.parameters,
             block=expanded_body,
-            inferred_codes=pb.inferred_codes,
+            inferred_codes=list(expanded_body.pass_codes),
         )
         proc_map[pb_name] = expanded_pb
         block_map[pb_name] = expanded_pb
@@ -206,7 +206,7 @@ def _build_terminal(
             pass_codes=cloned.pass_codes,
         )
 
-    while_set = {atom.while_code} if atom.while_code else set()
+    while_set = set(atom.while_codes)
     all_codes = {oc.name for oc in proc.output_codes}
     pass_set = all_codes - while_set
 
@@ -257,7 +257,7 @@ def _build_chained(
             pass_codes=new_pass,
         )
 
-    while_set = {atom.while_code} if atom.while_code else set()
+    while_set = set(atom.while_codes)
     when_code = atom.when_code
 
     all_codes = {oc.name for oc in proc.output_codes}
