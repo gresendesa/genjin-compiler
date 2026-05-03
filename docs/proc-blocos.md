@@ -1,9 +1,9 @@
 # Proc-Blocos — Especificação Preliminar
 
-Versão: 0.1 (proposta — não implementada)
-Status: rascunho
-Sprint: SPR-2026-10 (B-017)
-Data: 2026-05-02
+Versão: 0.2 (proposta — aguardando implementação)
+Status: rascunho ativo
+Sprint de especificação: SPR-2026-10 (B-017)
+Última atualização: 2026-05-03 (B-018 concluído — gap Object resolvido; B-019/B-020 criados)
 
 ---
 
@@ -279,12 +279,16 @@ Duas cópias autônomas, sem dicionário intermediário no Jinja2 gerado.
 
 ---
 
-## Gap: tipo `Object` e literais estruturados
+## Tipo `Object` em proc-blocos
 
-O exemplo acima usa `itens=["diamond_axe"]` — uma lista literal. Esse tipo de argumento não está
-suportado na linguagem atual. O B-018 cobre este gap com o novo tipo `Object`.
+O exemplo acima usa `itens=["diamond_axe"]` — uma lista literal. O tipo `Object` foi
+implementado no compilador e no motor `code/genjin.jinja2` (B-018, concluído em 2026-05-03).
 
-Enquanto B-018 não for implementado, proc-blocos com listas literais em argumentos são inválidos.
+Regras de uso de `Object` em proc-blocos:
+- Permitido como tipo de parâmetro lit: `gaveta_guardar: Object`
+- Proibido como tipo de parâmetro ref: `~~gaveta_guardar: &Object~~`
+- Proibido em `vars` do programa
+- O valor é emitido pelo transpiler como literal Jinja2 opaco, sem transformação
 
 ---
 
@@ -305,7 +309,7 @@ completo. Resumo:
 
 ## Pendências e questões abertas
 
-1. **B-018 (tipo `Object`)** — pré-requisito para o exemplo completo ser válido
+1. **Implementação no compilador** — B-019 (parser) e B-020 (desugar): ver itens de backlog
 2. **Highlight VS Code** — `ProcBlockNode` precisará de regra no `genjin.tmLanguage.json` (sprint separada)
 3. **CLI `--desugar`** — avaliar se a expansão de proc-blocos deve ser inspecionável via CLI
 4. **Proc-blocos sem parâmetros** — caso degenerado válido (bloco fixo sem customização)?

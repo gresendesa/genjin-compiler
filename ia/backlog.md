@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-02 (B-017 concluído, B-018 pendente)
+Ultima atualizacao: 2026-05-03 (B-018 concluído pelo PO; B-019 e B-020 criados)
 
 ## Objetivo
 
@@ -39,12 +39,14 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-015 | Compilador: suporte à notação inline `@proc()` (açúcar sintático) | 1 (crítica) | alto | [B-015.md](backlog-items/B-015.md) |
 | B-016 | Extensão VS Code: suporte à sintaxe inline `@proc()` e keyword `when` | 1 (crítica) | baixo | [B-016.md](backlog-items/B-016.md) |
 | B-017 | Proc-blocos: blocos reutilizáveis com parâmetros de transpilação | 1 (crítica) | médio-alto | [B-017.md](backlog-items/B-017.md) |
+| B-018 | Tipo `Object`: literais estruturados em parâmetros de procedimento | 1 (crítica) | médio | [B-018.md](backlog-items/B-018.md) |
 
 ### Pendentes
 
 | ID | Titulo | Prioridade PO | Risco | Arquivo |
 |---|---|---|---|---|
-| B-018 | Tipo `Object`: literais estruturados em parâmetros de procedimento | (a definir) | médio | [B-018.md](backlog-items/B-018.md) |
+| B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | (a definir) | alto | [B-019.md](backlog-items/B-019.md) |
+| B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | (a definir) | médio | [B-020.md](backlog-items/B-020.md) |
 
 ### Em andamento
 
