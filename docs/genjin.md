@@ -241,18 +241,22 @@ Estas são as implementações finais do seu fluxo. Cada `procedure` que você d
 | `CARDINALITY.SINGULAR` | Valor singular |
 | `CARDINALITY.PLURAL` | Arrays |
 
-##### Tipo do Parâmetro
-| Tipo | Descrição |
-|--|--|
-| `TYPE.TEXT` | Texto |
-| `TYPE.NUMBER` | Número |
-| `TYPE.LOGIC` | Booleano (verdadeiro e falso) |
-
 ##### Tipo da Avaliação do Parâmetro
 | Tipo | Descrição |
 |--|--|
 | `EVALUATION.LITERAL` | O valor literal |
 | `EVALUATION.REFERENCE` | Referência a uma variável |
+
+##### Tipo do Parâmetro
+| Tipo | Descrição | Exemplos de Argumentos |
+|--|--|
+| `TYPE.TEXT` | Texto | `'uma string qualquer'` |
+| `TYPE.NUMBER` | Número | `1`, `2`, `3`, ...|
+| `TYPE.LOGIC` | Booleano | `True` ou `False` |
+| `TYPE.OBJECT` | Lista ou Dicionário Jinja2. | `{'chave': 'valor'}`, `['item1', 'item2']` |
+
+> `TYPE.OBJECT` é usado em conjunto apenas com `EVALUATION.LITERAL` e `CARDINALITY.SINGULAR`.
+{.is-info}
 
 #### Declaração do Código de Saída
 ```js

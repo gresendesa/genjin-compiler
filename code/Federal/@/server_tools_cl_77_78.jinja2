@@ -1,0 +1,711 @@
+{* import 'Federal.INTEL.COLLECT' as COLLECT *}
+{* import 'Federal.INTEL.QUEUE' as QUEUE *}
+{* import 'Federal.text.chat' as CHAT *}
+{* import 'Macrosoft.TASK.extension' as EXTENSION *}
+{* import 'Macrosoft.TASK.prototype' as PROTOTYPE *}
+{* import 'Federal.INTEL.array' as ARRAY *}
+{* import 'Macrosoft.TAXON.mkb' as MKB *}
+{* from "Federal.sketch.genjin" import MACROMOD, ATTRIBUTE, CARDINALITY, TYPE, EVALUATION, STAGE *}
+/**
+	* Esta ferramenta de servidor se comunica nas portas:
+	* 77: recebe mensagens do cliente nessa porta
+	* 78: envia mensagems para o cliente nessa porta
+*/
+
+{*
+	set port = {
+		'read': 77,
+		'write': 78
+	}
+*}
+
+{*
+	set RESULTADOS = {
+		'SUCESSO': 0,
+		'DEMORA': 99,
+		'NAO_EXISTE': 404,
+		'PROIBIDO': 1,
+		'CANCELADO': 3,
+		'LIMITE_ALCANCADO': 4,
+	}
+*}
+
+{*
+	set VARIÁVEIS = {
+		'baú': '@#bau_cl_',
+		'usar_home_temp': '@usar_home_temp_'
+	}
+*}
+
+{* set MACROS = {} *}
+
+{* macro setup(CORTEX) *}
+	//Desregistra a leitura de eventos antes de a macro ligar ou desligar
+	{{ COLLECT.unbind([COLLECT.EVENT.on_chat]) }}
+	WAIT(1t); //Dá um tempo entre um comando e outro
+	//Diz que a macro deve ouvir por mensagens no onchat
+	{{ QUEUE.purge(port=port.read) }}
+	{{ QUEUE.purge(port=port.write) }}
+	{{ COLLECT.bind([COLLECT.EVENT.on_chat]) }}
+{* endmacro *}
+
+{* macro desliga_tudo(CORTEX) *}
+	{{ COLLECT.unbind([COLLECT.EVENT.on_chat]) }}
+{* endmacro *}
+
+{* macro em_loop(CORTEX) *}
+	DO;
+		{{ QUEUE.poll('&acao', '&detalhes', '&time', port=port.read) }}
+		{{ COLLECT.purge([COLLECT.EVENT.on_chat]) }}
+		{{ CORTEX.loop() }}
+	WHILE(!&acao);
+	IF(&acao);
+		IF(&acao=="ping");
+			{{ CHAT.print('Recebi sei ping aqui', type='info', label=this.csid) }}
+			{{ QUEUE.add(subject="pong", content=RESULTADOS.SUCESSO, port=port.write) }}
+		ELSEIF(&acao=="tp");
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'home', '&home') }}
+			{{ CHAT.print('Solicitação para teleportar para /home %&home%', type='info', label='TP') }}
+			{{ MACROS.teleportar(outvar='#res', home='%&home%') }}
+			{{ QUEUE.add(subject="tp", content="%#res%", port=port.write) }}
+			IF(#res=={{ RESULTADOS.SUCESSO }});
+				{{ CHAT.print('Teleportado com sucesso', type='success', label='TP') }}
+			ELSE;
+				{{ CHAT.print('Código de erro %#res%', type='error', label='TP') }}
+			ENDIF;
+		ELSEIF(&acao=="sethome");
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'home', '&home') }}
+			{{ CHAT.print('Solicitação para /sethome %&home%', type='info', label='SETHOME') }}
+			{{ MACROS.setar_home(outvar='#res', home='%&home%') }}
+			{{ QUEUE.add(subject="sethome", content="%#res%", port=port.write) }}
+			IF(#res=={{ RESULTADOS.SUCESSO }});
+				{{ CHAT.print('Sucesso', type='success', label='SETHOME') }}
+			ELSE;
+				{{ CHAT.print('Código de erro %#res%', type='error', label='SETHOME') }}
+			ENDIF;
+		ELSEIF(&acao=="resetar_mkb");
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'gaveta', '&gaveta') }}
+			{{ CHAT.print('Solicitação para resetar mkb %&gaveta%', type='info', label='RESETAR MKB') }}
+			{{ MACROS.resetar_mkb(outvar='#res', nome='%&gaveta%') }}
+			{{ QUEUE.add(subject="resetar_mkb", content="%#res%", port=port.write) }}
+			IF(#res=={{ RESULTADOS.SUCESSO }});
+				{{ CHAT.print('Sucesso', type='success', label='RESETAR MKB') }}
+			ELSE;
+				{{ CHAT.print('Código de erro %#res%', type='error', label='RESETAR MKB') }}
+			ENDIF;
+		ELSEIF(&acao=="pode_usar_home_temp?");
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'gaveta', '&gaveta') }}
+			{{ CHAT.print('Posso usar home temporária? [em %&gaveta%]', type='info', label='MKB') }}
+			{{ MACROS.pode_usar_home_temporaria(outvar='#res', nome='%&gaveta%') }}
+			IF(#res);
+				{{ CHAT.print('Sim. Pode usar home temporária.', type='success', label='MKB') }}
+				{{ QUEUE.add(subject="pode_usar_home_temp?", content=RESULTADOS.SUCESSO, port=port.write) }}
+			ELSE;
+				{{ CHAT.print('Não. Não tem home temporária disponível!', type='warning', label='MKB') }}
+				{{ QUEUE.add(subject="pode_usar_home_temp?", content=RESULTADOS.NAO_EXISTE, port=port.write) }}
+			ENDIF;
+		ELSEIF(&acao=="pegar_itens_mkb");
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'gaveta', '&nome') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'quantidade', '#quantidade') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'home_temp', '&home_temp') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'limite_baús', '#limite_baus') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'itens', '&itens_json') }}
+			{{ QUEUE.JSON.parse_array('%&itens_json%', '&itens[]') }}
+			{{ CHAT.print('Solicitação para pegar itens na MKB', type='info', label='MKB-PEGAR') }}
+			{{ ARRAY.join(array='&itens[]', outvar='&regex_id', glue='$|^') }}
+			{{ ARRAY.join(array='&itens[]', outvar='&string_itens', glue='\',\'') }}
+			{{ CHAT.print('Gaveta: §7{} Quantidade: §7{} Limite Baús: §7{} Itens: §7{} Home Temp: §7{}'.format('%&nome%', '%#quantidade%', '%#limite_baus%', '[\'%&string_itens%\']', '%&home_temp%'), type='tip', label='MKB-PEGAR') }}
+			{{ MACROS.pegar_itens_mkb(outvar='#quantidade_itens_movidos', nome='%&nome%', regex_id='^%&regex_id%$', quantidade='%#quantidade%', limite_baús='%#limite_baus%', home_temp='%&home_temp%') }}
+			{{ QUEUE.add(subject="pegar_itens_mkb", content={'resultado': 0, 'quantidade_itens_movidos': '%#quantidade_itens_movidos%'}, port=port.write) }}
+			{{ CHAT.print('%#quantidade_itens_movidos% itens movidos', type='success', label='MKB-PEGAR') }}
+		ELSEIF(&acao=="deixar_itens_mkb");
+			{{ CHAT.print('Solicitação para guardar itens na MKB', type='info', label='MKB-GUARDAR') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'gaveta', '&nome') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'quantidade', '#quantidade') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'home_temp', '&home_temp') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'limite_baús', '#limite_baus') }}
+			{{ QUEUE.JSON.get_key('%&detalhes%', 'itens', '&itens_json') }}
+			{{ QUEUE.JSON.parse_array('%&itens_json%', '&itens[]') }}
+			{{ ARRAY.join(array='&itens[]', outvar='&string_itens', glue='\',\'') }}
+			{{ CHAT.print('Gaveta: §7{} Quantidade: §7{} Limite Baús: §7{} Itens: §7{} Home Temp: §7{}'.format('%&nome%', '%#quantidade%', '%#limite_baus%', '[\'%&string_itens%\']', '%&home_temp%'), type='tip', label='MKB-GUARDAR') }}
+			{{ ARRAY.join(array='&itens[]', outvar='&regex_id', glue='$|^') }}
+			{{ MACROS.deixar_itens_mkb(outvar='#quantidade_itens_movidos', nome='%&nome%', regex_id='^%&regex_id%$', quantidade='%#quantidade%', limite_baús='%#limite_baus%', home_temp='%&home_temp%') }}
+			{{ QUEUE.add(subject="deixar_itens_mkb", content={'resultado': 0, 'quantidade_itens_movidos': '%#quantidade_itens_movidos%'}, port=port.write) }}
+			{{ CHAT.print('%#quantidade_itens_movidos% itens movidos', type='success', label='MKB-GUARDAR') }}
+		ENDIF;
+	ENDIF;
+	{{ COLLECT.purge([COLLECT.EVENT.on_chat]) }}
+{* endmacro *}
+
+{* macro teleportar(outvar, home) *}
+	WAIT(1t);
+	ECHO("/home {{ home }}");
+	SET({{ outvar }},{{ RESULTADOS.DEMORA }});
+	DO(500);
+		{{ COLLECT.chat('&chat', '&timestamp') }}
+		IF(&chat);
+			STRIP(&chat,%&chat%);
+			{{ CHAT.print('%&chat%', type='default', label='AGUARDANDO CHAT...') }}
+			IFMATCHES("%&chat%","^Teleportado\(a\)!$");
+				SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+				BREAK;
+			ENDIF;
+			IFMATCHES("%&chat%","^. Essa home não existe\.");
+				SET({{ outvar }},{{ RESULTADOS.NAO_EXISTE }});
+				BREAK;
+			ENDIF;
+			IFMATCHES("%&chat%","^. Comando cancelado porquê você foi atacado!");
+				SET({{ outvar }},{{ RESULTADOS.CANCELADO }});
+				BREAK;
+			ENDIF;
+		ENDIF;
+	LOOP;
+{* endmacro *}
+
+{* macro setar_home(outvar, home) *}
+	ECHO("/sethome {{ home }}");
+	SET({{ outvar }},{{ RESULTADOS.DEMORA }});
+	DO(500);
+		{{ COLLECT.chat('&chat', '&timestamp') }}
+		IF(&chat);
+			STRIP(&chat,%&chat%);
+			{{ CHAT.print('%&chat%', type='default', label='AGUARDANDO CHAT...') }}
+			IFMATCHES("%&chat%","^. Você atingiu o limite de 15 homes\.");
+				SET({{ outvar }},{{ RESULTADOS.LIMITE_ALCANCADO }});
+				BREAK;
+			ENDIF;
+			IFMATCHES("%&chat%","^. Este comando foi desativado pelo\(a\) dono\(a\) do terreno!|^. Não é possível salvar homes neste mundo\.");
+				SET({{ outvar }},{{ RESULTADOS.PROIBIDO }});
+				BREAK;
+			ENDIF;
+			IFMATCHES("%&chat%","^. Já existe uma home com esse nome|^. Aguarde para utilizar esse comando novamente!");
+				WAIT(2);
+				ECHO("/sethome {{ home }}");
+			ENDIF;
+			IFMATCHES("%&chat%","^Você criou a home.*");
+				SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+				BREAK;
+			ENDIF;
+		ENDIF;
+	LOOP;
+	
+{* endmacro *}
+
+{* macro obter_coordenadas_ao_iniciar(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, delay, informação_útil) *}
+	SET(#coordenada_x_inicial,%XPOS%);
+	SET(#coordenada_z_inicial,%ZPOS%);
+{* endmacro *}
+
+{* macro atualizar_home_temp(baú, coluna, direção, sentido, regex_id, variável_resposta, variável_baú, variável_coluna, quantidade, limite_baús, baús_verificados, delay, informação_útil) *}
+	SET(#coordenada_x_final,%XPOS%);
+	SET(#coordenada_z_final,%ZPOS%);
+	IF("{{ informação_útil.home_temp }}"!="None");
+		IF((#coordenada_x_inicial!=#coordenada_x_final)||(#coordenada_z_inicial!=#coordenada_z_final));
+			{{ setar_home(outvar='#res_home_temp', home=informação_útil.home_temp) }}
+			IF(#res_home_temp=={{ RESULTADOS.SUCESSO }});
+				{{ CHAT.print('Home temporária /sethome '~informação_útil.home_temp~' marcada com sucesso', type='success', label='MKB') }}
+				SET({{ VARIÁVEIS.usar_home_temp }}{{ informação_útil.nome }});//Informa que pode usar a home temporária
+			ELSE;
+				{{ CHAT.print('Home temporária retornou código de erro %#res_home_temp%', type='error', label='MKB') }}
+			ENDIF;
+		ELSE;
+			{{ CHAT.print('Como não andamos pela trap de baús, a home temporária será mantida!', type='info', label='MKB') }}
+		ENDIF;
+	ENDIF;
+{* endmacro *}
+
+{* macro resetar_mkb(outvar, nome) *}
+	UNSET({{ VARIÁVEIS.baú }}{{ nome }});
+	UNSET({{ VARIÁVEIS.usar_home_temp }}{{ nome }});
+	SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+{* endmacro *}
+
+{* macro pode_usar_home_temporaria(outvar, nome) *}
+	&nome_variavel="{{ VARIÁVEIS.usar_home_temp }}{{ nome }}";
+	SET({{ outvar }},%%&nome_variavel%%);
+{* endmacro *}
+
+{* macro deixar_itens_mkb(outvar, nome, regex_id, quantidade, limite_baús, home_temp) *}
+	/**
+		No outvar retorna a quantidade de itens movidos
+	**/
+	WAIT(1t);
+	{* set r = nid() *}
+	{{
+		MKB.itera(
+			operação=MKB.op_deixar,
+			baú='%'~VARIÁVEIS.baú~nome~'%',
+			coluna=0,
+			variável_baú=VARIÁVEIS.baú~nome,
+			regex_id=regex_id,
+			quantidade=quantidade,
+			limite_baús=limite_baús,
+			variável_resposta='#quantidade_movidos'~r,
+			hook_executar_ao_iniciar=obter_coordenadas_ao_iniciar,
+			hook_executar_ao_finalizar=atualizar_home_temp,
+			informação_útil={'home_temp': home_temp, 'nome': nome},
+			delay=1
+		)
+	}}
+	SET({{ outvar }},%#quantidade_movidos{{ r }}%);
+{* endmacro *}
+
+
+{* macro pegar_itens_mkb(outvar, nome, regex_id, quantidade, limite_baús, home_temp) *}
+	/**
+		No outvar retorna a quantidade de itens movidos
+	**/
+	WAIT(1t);
+	{* set r = nid() *}
+	{{
+		MKB.itera(
+			operação=MKB.op_pegar,
+			baú='%'~VARIÁVEIS.baú~nome~'%',
+			coluna=0,
+			variável_baú=VARIÁVEIS.baú~nome,
+			regex_id=regex_id,
+			quantidade=quantidade,
+			limite_baús=limite_baús,
+			variável_resposta='#quantidade_movidos'~r,
+			hook_executar_ao_iniciar=obter_coordenadas_ao_iniciar,
+			hook_executar_ao_finalizar=atualizar_home_temp,
+			informação_útil={'home_temp': home_temp, 'nome': nome},
+			delay=1
+		)
+	}}
+	SET({{ outvar }},%#quantidade_movidos{{ r }}%);
+{* endmacro *}
+
+{*
+	set _ = MACROS.update({
+		'pode_usar_home_temporaria': pode_usar_home_temporaria,
+		'resetar_mkb': resetar_mkb,
+		'pegar_itens_mkb': pegar_itens_mkb,
+		'deixar_itens_mkb': deixar_itens_mkb,
+		'setar_home': setar_home,
+		'teleportar': teleportar
+	})
+*}
+
+
+{{
+	PROTOTYPE.create(
+		before=setup,
+		loop=em_loop,
+		after=desliga_tudo,
+		task='main',
+		details=[
+			'Serviços para a macro',
+			'de lenhador inteligente',
+			'do Federal'
+		]
+	)
+}}
+
+
+/**
+	* =======================================================================
+	* || PROCEDIMENTOS GENJIN EXPOSTOS
+	* =======================================================================
+*/
+
+{*
+	set CLIENT = {
+		'PORT': {
+			'read': port.write,
+			'write': port.read
+		}
+	}
+*}
+
+{* macro wait_response(outvar, port, subject_target, contentvar, timevar, max_loops=None) *}
+	{* set r = nid() *}
+	SET({{ outvar }},{{ RESULTADOS.DEMORA }});
+	{* if max_loops is not none *}
+		{{ 'DO(' ~ max_loops ~ ');' }}
+	{* else *}
+		{{ 'DO();' }}
+	{* endif *}
+	{{ QUEUE.poll(subjectvar='&subject'~r, contentvar=contentvar, timevar=timevar, port=port) }}
+	IF(&subject{{ r }});
+		IF(&subject{{ r }}=="{{ subject_target }}");
+			SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+			BREAK;
+		ENDIF;
+	ENDIF;
+	{{ 'LOOP;' }}
+{* endmacro *}
+
+{* macro serviço_teleportar(outvar, home) *}
+	{* set r = nid() *}
+	{{ QUEUE.add(subject="tp", content={'home': home}, port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='tp', contentvar='&res'~r, timevar='&t'~r, max_loops=500) }}
+	IF(#res{{ r }}=={{ RESULTADOS.SUCESSO }});
+		SET({{ outvar }},%&res{{ r }}%);//Resultado vindo da porta
+	ELSE;
+		SET({{ outvar }},%#res{{ r }}%);//Resultado vindo do mecanismo de leitura interno
+	ENDIF;
+{* endmacro *}
+
+{* macro serviço_definir_home(outvar, home) *}
+	{* set r = nid() *}
+	{{ QUEUE.add(subject="sethome", content={'home': home}, port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='sethome', contentvar='&res'~r, timevar='&t'~r, max_loops=500) }}
+	IF(#res{{ r }}=={{ RESULTADOS.SUCESSO }});
+		SET({{ outvar }},%&res{{ r }}%);//Resultado vindo da porta
+	ELSE;
+		SET({{ outvar }},%#res{{ r }}%);//Resultado vindo do mecanismo de leitura interno
+	ENDIF;
+{* endmacro *}
+
+{* macro serviço_testar_conectividade(outvar) *}
+	{* set r = nid() *}
+	{{ QUEUE.add(subject="ping", content="pega meu ping", port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='pong', contentvar='&res'~r, timevar='&t'~r, max_loops=50) }}
+	IF(#res{{ r }}=={{ RESULTADOS.SUCESSO }});
+		SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+	ELSE;
+		SET({{ outvar }},%#res{{ r }}%);
+	ENDIF;
+{* endmacro *}
+
+{* macro serviço_pegar_itens_mkb(outvar, gaveta, itens, quantidade, limite_baús, home_temp, quantidade_movidos_var) *}
+	{* set r = nid() *}
+	{*
+		set guardar = {
+			'gaveta': gaveta,
+			'quantidade': quantidade,
+			'limite_baús': limite_baús,
+			'home_temp': home_temp,
+			'itens': itens
+		}
+	*}
+	{{ QUEUE.add(subject="pegar_itens_mkb", content=guardar, port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='pegar_itens_mkb', contentvar='&res'~r, timevar='&t'~r) }}
+	{{ QUEUE.JSON.get_key('%&res'~r~'%', 'quantidade_itens_movidos', '#quantidade_itens_movidos'~r) }}
+	SET({{ quantidade_movidos_var }},%#quantidade_itens_movidos{{ r }}%);
+	SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+{* endmacro *}
+
+{* macro serviço_guardar_itens_mkb(outvar, gaveta, itens, quantidade, limite_baús, home_temp, quantidade_movidos_var) *}
+	{* set r = nid() *}
+	{*
+		set guardar = {
+			'gaveta': gaveta,
+			'quantidade': quantidade,
+			'limite_baús': limite_baús,
+			'home_temp': home_temp,
+			'itens': itens
+		}
+	*}
+
+	{{ QUEUE.add(subject="deixar_itens_mkb", content=guardar, port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='deixar_itens_mkb', contentvar='&res'~r, timevar='&t'~r) }}
+	{{ QUEUE.JSON.get_key('%&res'~r~'%', 'quantidade_itens_movidos', '#quantidade_itens_movidos'~r) }}
+	SET({{ quantidade_movidos_var }},%#quantidade_itens_movidos{{ r }}%);
+	SET({{ outvar }},{{ RESULTADOS.SUCESSO }});
+{* endmacro *}
+
+{* macro serviço_resetar_mkb(outvar, gaveta) *}
+	{* set r = nid() *}
+	{{ QUEUE.add(subject="resetar_mkb", content={'gaveta': gaveta}, port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='resetar_mkb', contentvar='&res'~r, timevar='&t'~r, max_loops=50) }}
+	IF(#res{{ r }}=={{ RESULTADOS.SUCESSO }});
+		SET({{ outvar }},%&res{{ r }}%);//Resultado vindo da porta
+	ELSE;
+		SET({{ outvar }},%#res{{ r }}%);//Resultado vindo do mecanismo de leitura interno
+	ENDIF;
+{* endmacro *}
+
+{* macro serviço_pergunta_pode_usar_home_temp(outvar, gaveta) *}
+	{* set r = nid() *}
+	{{ QUEUE.add(subject="pode_usar_home_temp?", content={'gaveta': gaveta}, port=CLIENT.PORT.write) }}
+	{{ wait_response(outvar='#res'~r, port=CLIENT.PORT.read, subject_target='pode_usar_home_temp?', contentvar='&res'~r, timevar='&t'~r, max_loops=50) }}
+	IF(#res{{ r }}=={{ RESULTADOS.SUCESSO }});
+		SET({{ outvar }},%&res{{ r }}%);//Resultado vindo da porta
+	ELSE;
+		SET({{ outvar }},%#res{{ r }}%);//Resultado vindo do mecanismo de leitura interno
+	ENDIF;
+{* endmacro *}
+
+{*
+	set PROCEDURE = {
+		'Teleportar': {
+			ATTRIBUTE.NAME:  'Teleportar',
+			ATTRIBUTE.MACRO: serviço_teleportar,
+			ATTRIBUTE.DESCRIPTION:  'Consome o serviço de teleportar-se para uma home. ',
+			ATTRIBUTE.PARAMETERS: [
+				{
+					ATTRIBUTE.NAME: 'home',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O nome da home. '
+				}
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'OK. Teleportado com sucesso. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Demorou demais. Desistimos. '
+				},
+				{
+					ATTRIBUTE.NAME: 'NÃO_EXISTE',
+					ATTRIBUTE.CODE: RESULTADOS.NAO_EXISTE,
+					ATTRIBUTE.DESCRIPTION: 'A home informada não existe. '
+				},
+				{
+					ATTRIBUTE.NAME: 'CANCELADO',
+					ATTRIBUTE.CODE: RESULTADOS.CANCELADO,
+					ATTRIBUTE.DESCRIPTION: 'O teletransporte foi cancelado. Você recebeu dano. '
+				}
+			]
+		},
+		'Definir_Home': {
+			ATTRIBUTE.NAME:  'Definir_Home',
+			ATTRIBUTE.MACRO: serviço_definir_home,
+			ATTRIBUTE.DESCRIPTION:  'Consome o serviço de definir uma home. ',
+			ATTRIBUTE.PARAMETERS: [
+				{
+					ATTRIBUTE.NAME: 'home',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O nome da home. '
+				}
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'OK. Home marcada com sucesso. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Demorou demais. Desistimos. '
+				},
+				{
+					ATTRIBUTE.NAME: 'LIMITE_ALCANCADO',
+					ATTRIBUTE.CODE: RESULTADOS.LIMITE_ALCANCADO,
+					ATTRIBUTE.DESCRIPTION: 'O máximo de homes permitido foi alcançado. '
+				},
+				{
+					ATTRIBUTE.NAME: 'PROIBIDO',
+					ATTRIBUTE.CODE: RESULTADOS.PROIBIDO,
+					ATTRIBUTE.DESCRIPTION: 'O servidor não nos deixou definir uma home aqui. '
+				}
+			]
+		},
+		'Ping': {
+			ATTRIBUTE.NAME: 'Ping',
+			ATTRIBUTE.MACRO: serviço_testar_conectividade,
+			ATTRIBUTE.DESCRIPTION:  'Envia um ping para o serviço e espera um pong. ',
+			ATTRIBUTE.PARAMETERS: [
+				
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'OK. Serviço respondeu pong. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Serviço não respondeu. '
+				}
+			]
+		},
+		'Pegar_Itens_MKB': {
+			ATTRIBUTE.NAME: 'Pegar_Itens_MKB',
+			ATTRIBUTE.MACRO: serviço_pegar_itens_mkb,
+			ATTRIBUTE.DESCRIPTION:  'Pega itens de de uma MKB à frente do player. ',
+			ATTRIBUTE.PARAMETERS: [
+				{
+					ATTRIBUTE.NAME: 'gaveta',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O identificador único da MKB. '
+				},
+				{
+					ATTRIBUTE.NAME: 'itens',
+					ATTRIBUTE.TYPE: TYPE.OBJECT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'Uma lista em JSON com os ids dos itens. '
+				},
+				{
+					ATTRIBUTE.NAME: 'quantidade',
+					ATTRIBUTE.TYPE: TYPE.NUMBER,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'A quantidade de slots a serem movidos na operação. ',
+					ATTRIBUTE.DEFAULT: 0,
+				},
+				{
+					ATTRIBUTE.NAME: 'limite_baús',
+					ATTRIBUTE.TYPE: TYPE.NUMBER,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'A quantidade máxima de baús com os quais se interage. ',
+					ATTRIBUTE.DEFAULT: 0,
+				},
+				{
+					ATTRIBUTE.NAME: 'home_temp',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O nome da home temporária que a macro vai setar se trocar de coluna. ',
+					ATTRIBUTE.DEFAULT: 'None',
+				},
+				{
+					ATTRIBUTE.NAME: 'quantidade_movidos_var',
+					ATTRIBUTE.TYPE: TYPE.NUMBER,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.REFERENCE,
+					ATTRIBUTE.DESCRIPTION: 'A variável que armazena a quantidade de slots movidos na operação. '
+				}
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'OK. A operação foi concluída. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Demorou demais. Desistimos. '
+				},
+			]
+		},
+		'Guardar_Itens_MKB': {
+			ATTRIBUTE.NAME: 'Guardar_Itens_MKB',
+			ATTRIBUTE.MACRO: serviço_guardar_itens_mkb,
+			ATTRIBUTE.DESCRIPTION:  'Guarda itens de de uma MKB à frente do player. ',
+			ATTRIBUTE.PARAMETERS: [
+				{
+					ATTRIBUTE.NAME: 'gaveta',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O identificador único da MKB. '
+				},
+				{
+					ATTRIBUTE.NAME: 'itens',
+					ATTRIBUTE.TYPE: TYPE.OBJECT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'Uma lista em JSON com os ids dos itens. '
+				},
+				{
+					ATTRIBUTE.NAME: 'quantidade',
+					ATTRIBUTE.TYPE: TYPE.NUMBER,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'A quantidade de slots a serem movidos na operação. ',
+					ATTRIBUTE.DEFAULT: 0,
+				},
+				{
+					ATTRIBUTE.NAME: 'limite_baús',
+					ATTRIBUTE.TYPE: TYPE.NUMBER,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'A quantidade máxima de baús com os quais se interage. ',
+					ATTRIBUTE.DEFAULT: 0,
+				},
+				{
+					ATTRIBUTE.NAME: 'home_temp',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O nome da home temporária que a macro vai setar se trocar de coluna. ',
+					ATTRIBUTE.DEFAULT: 'None',
+				},
+				{
+					ATTRIBUTE.NAME: 'quantidade_movidos_var',
+					ATTRIBUTE.TYPE: TYPE.NUMBER,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.REFERENCE,
+					ATTRIBUTE.DESCRIPTION: 'A variável que armazena a quantidade de slots movidos na operação. '
+				}
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'OK. A operação foi concluída. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Demorou demais. Desistimos. '
+				},
+			]
+		},
+		'Resetar_MKB': {
+			ATTRIBUTE.NAME:  'Resetar_MKB',
+			ATTRIBUTE.MACRO: serviço_resetar_mkb,
+			ATTRIBUTE.DESCRIPTION:  'Redefine os baús e ignora a home temporária salva. ',
+			ATTRIBUTE.PARAMETERS: [
+				{
+					ATTRIBUTE.NAME: 'gaveta',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O identificador único da MKB. '
+				}
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'OK. Dados redefinidos com sucesso. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Demorou demais. Desistimos. '
+				},
+			]
+		},
+		'Pode_Usar_Home_Temp': {
+			ATTRIBUTE.NAME:  'Pode_Usar_Home_Temp',
+			ATTRIBUTE.MACRO: serviço_pergunta_pode_usar_home_temp,
+			ATTRIBUTE.DESCRIPTION:  'Pergunta se a home temporária está disponível em uma gaveta MKB. ',
+			ATTRIBUTE.PARAMETERS: [
+				{
+					ATTRIBUTE.NAME: 'gaveta',
+					ATTRIBUTE.TYPE: TYPE.TEXT,
+					ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+					ATTRIBUTE.EVALUATION: EVALUATION.LITERAL,
+					ATTRIBUTE.DESCRIPTION: 'O identificador único da MKB. '
+				}
+			],
+			ATTRIBUTE.OUTPUT_CODES: [
+				{
+					ATTRIBUTE.NAME: 'SUCESSO',
+					ATTRIBUTE.CODE: RESULTADOS.SUCESSO,
+					ATTRIBUTE.DESCRIPTION: 'Sim. Pode usar a home temporária. '
+				},
+				{
+					ATTRIBUTE.NAME: 'NAO_EXISTE',
+					ATTRIBUTE.CODE: RESULTADOS.NAO_EXISTE,
+					ATTRIBUTE.DESCRIPTION: 'Não. A home temporária não está disponível. '
+				},
+				{
+					ATTRIBUTE.NAME: 'DEMORA',
+					ATTRIBUTE.CODE: RESULTADOS.DEMORA,
+					ATTRIBUTE.DESCRIPTION: 'Demorou demais. Desistimos. '
+				},
+			]
+		},
+	}
+*}
