@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-021 concluído — SPR-2026-11)
+Ultima atualizacao: 2026-05-03 (B-022 criado — pendente)
 
 ## Objetivo
 
@@ -48,6 +48,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 |---|---|---|---|---|
 | B-019 | Proc-blocos: extensão do parser (`ProcBlockNode`, dois passos, inferência) | (a definir) | alto | [B-019.md](backlog-items/B-019.md) |
 | B-020 | Proc-blocos: expansão no desugar (DFS, clone, visitor, filtro) | (a definir) | médio | [B-020.md](backlog-items/B-020.md) |
+| B-022 | Atualizar README.md com as últimas atualizações do projeto | (a definir) | baixo | [B-022.md](backlog-items/B-022.md) |
 
 ### Em andamento
 
