@@ -82,7 +82,8 @@
 	set TYPE = {
 		'LOGIC': 'logic',
 		'NUMBER': 'number',
-		'TEXT': 'text'
+		'TEXT': 'text',
+		'OBJECT': 'object'
 	}
 *}
 
@@ -138,6 +139,10 @@
 	LOG("----> Rodando o exit aqui <---- {{ outvar }}");
 {* endmacro *}
 
+{* macro proc_object(outvar, obj) *}
+	LOG("----> OBJ: {{ obj }} <---- {{ outvar }}");
+{* endmacro *}
+
 //===== ARGUMENTS ============
 
 {* macro macromod_variable_renderer(CORE, variable, jinja_out_var) *}
@@ -147,6 +152,8 @@
 		{* set prefix = '#' *}
 	{* elif variable[ATTRIBUTE.TYPE] == TYPE.TEXT *}
 		{* set prefix = '&' *}
+	{* else *}
+		{{ raise("Variable '"~variable[ATTRIBUTE.NAME]~"' has type '"~variable[ATTRIBUTE.TYPE]~"' which is not allowed! Use just LOGIC, NUMBER or TEXT") }}
 	{* endif *}
 	{* set _ = jinja_out_var.update({ATTRIBUTE.NAME: prefix~variable[ATTRIBUTE.NAME]~variable[ATTRIBUTE.ID]}) *}
 {* endmacro *}
@@ -343,6 +350,24 @@
 				]
 			},
 			{
+				ATTRIBUTE.NAME: 'proc_object',
+				ATTRIBUTE.MACRO: 'proc_object',
+				ATTRIBUTE.DESCRIPTION: 'Faz xpto com object',
+				ATTRIBUTE.PARAMETERS: [
+					{
+						ATTRIBUTE.NAME: 'obj',
+						ATTRIBUTE.DEFAULT: {'teste': 'aboa'},
+						ATTRIBUTE.TYPE: TYPE.OBJECT,
+						ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR,
+						ATTRIBUTE.EVALUATION: EVALUATION.LITERAL
+					}
+				],
+				ATTRIBUTE.OUTPUT_CODES: [
+					output_code.SUCCESS,
+					output_code.BIGBANG
+				]
+			},
+			{
 				ATTRIBUTE.NAME: 'proc_b',
 				ATTRIBUTE.MACRO: 'proc_b',
 				ATTRIBUTE.DESCRIPTION: 'Faz xpto b',
@@ -512,7 +537,7 @@
 															ATTRIBUTE.NAME: 'Trata erro desconhecido 3',
 															ATTRIBUTE.DESCRIPTION: 'Dá um jeito para consertar o problema',
 															ATTRIBUTE.PROCEDURE: {
-																ATTRIBUTE.NAME: 'proc_x',
+																ATTRIBUTE.NAME: 'proc_object',
 																ATTRIBUTE.KEYWORD_ARGS: {}
 															},
 															ATTRIBUTE.PASS_CODES: ['SUCCESS', 'BIGBANG'],
@@ -596,6 +621,36 @@
 			
 			{* set value_to_pass = None *}
 			{* set variable = None *}
+			
+			//Avalia se o argumento passado é uma lista ou dicicionário
+			{* set results_value_is_list = [] *}
+			{{ is_list(argument[ATTRIBUTE.VALUE], results_value_is_list) }}
+			{* set results_value_is_dict = [] *}
+			{{ is_dict(argument[ATTRIBUTE.VALUE], results_value_is_dict) }}
+			
+			/**
+				* Aqui o renderizador garante que todas as condições para parâmetros do tipo OBJECT
+				* sejam satisfeitas. Isto é, avaliação=LITERAL, cardinalidade=SINGULAR
+			**/
+			{* if parameter[ATTRIBUTE.TYPE] == TYPE.OBJECT *}
+				{* if parameter[ATTRIBUTE.EVALUATION] != EVALUATION.LITERAL *}
+					{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' has evaluation as '"~parameter[ATTRIBUTE.EVALUATION]~"'. But transpiler expects evaluation as 'literal' because parameter type is '"~parameter[ATTRIBUTE.TYPE]~"'") }}
+				{* endif *}
+				{* if parameter[ATTRIBUTE.CARDINALITY] != CARDINALITY.SINGULAR *}
+					{{ raise("In block '"~block_name~"', parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' has cardinality as '"~parameter[ATTRIBUTE.CARDINALITY]~"'. But transpiler expects cardinality as 'singular' because parameter type is '"~parameter[ATTRIBUTE.TYPE]~"'") }}
+				{* endif *}
+				
+				//Avalia se o argumento tipo é lista ou dicionário
+				{* if not results_value_is_list[0] and not results_value_is_dict[0] *}
+					{{ raise("In block '"~block_name~"', value passed to parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' must be list or dictionary bacause parameter type is '"~parameter[ATTRIBUTE.TYPE]~"'. Current value is '"~argument[ATTRIBUTE.VALUE]~"'") }}
+				{* endif *}
+				
+			{* else *}
+				//Avalia se o argumento NÃO é nem lista nem dicionário
+				{* if results_value_is_list[0] or results_value_is_dict[0] *}
+					{{ raise("In block '"~block_name~"', value passed to parameter '"~parameter[ATTRIBUTE.NAME]~"' of '"~procedure[ATTRIBUTE.NAME]~"' must be string or number, not list or dicionary because type is '"~parameter[ATTRIBUTE.TYPE]~"'. Current value is '"~argument[ATTRIBUTE.VALUE]~"'") }}
+				{* endif *}
+			{* endif *}
 			
 			{* if argument[ATTRIBUTE.EVALUATION] == EVALUATION.REFERENCE *}
 				//Obtém uma instância da variável
