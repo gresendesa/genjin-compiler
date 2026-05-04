@@ -844,6 +844,16 @@ class Parser:
                     self._advance()
                     raw = param.type == 'object'
                     kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation='literal', raw=raw)
+                elif val_tok.type == TokenType.OBJECT_LITERAL:
+                    if param.type != 'object':
+                        raise ParseError(
+                            f"argumento '{name_tok.value}': literal de coleção '[...]' ou '{{...}}' "
+                            f"só é permitido para parâmetros Object; "
+                            f"'{param.name}' é do tipo '{param.type}'",
+                            val_tok.line,
+                        )
+                    self._advance()
+                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation='literal', raw=True)
                 elif val_tok.type == TokenType.NUMBER:
                     self._advance()
                     kwargs[name_tok.value] = ArgNode(value=int(val_tok.value), evaluation='literal')

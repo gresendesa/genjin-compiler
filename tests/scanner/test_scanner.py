@@ -430,3 +430,103 @@ exec verificar_rede() >> status_var {
             TokenType.KW_CODES,
         ]:
             assert kw in result, f'{kw} não encontrado nos tokens de basic.gnj'
+
+
+# ---------------------------------------------------------------------------
+# OBJECT_LITERAL — literais de coleção em lista de argumentos
+# ---------------------------------------------------------------------------
+
+class TestObjectLiteral:
+    """Testes para o token OBJECT_LITERAL emitido dentro de listas de argumentos."""
+
+    def _obj_tokens(self, source: str) -> list[Token]:
+        return [t for t in scan(source) if t.type == TokenType.OBJECT_LITERAL]
+
+    # --- lista simples ---
+
+    def test_list_literal_simple(self):
+        """['diamond_axe'] deve gerar um OBJECT_LITERAL."""
+        src = "exec P(itens=['diamond_axe'])"
+        toks = self._obj_tokens(src)
+        assert len(toks) == 1
+        assert toks[0].value == "['diamond_axe']"
+
+    def test_list_literal_multiple_elements(self):
+        """['diamond_axe', 'iron_axe'] gera OBJECT_LITERAL com valor completo."""
+        src = "exec P(itens=['diamond_axe', 'iron_axe'])"
+        toks = self._obj_tokens(src)
+        assert toks[0].value == "['diamond_axe', 'iron_axe']"
+
+    def test_list_literal_nested(self):
+        """Lista aninhada [['a'], ['b']] gera um único OBJECT_LITERAL."""
+        src = "exec P(x=[['a'], ['b']])"
+        toks = self._obj_tokens(src)
+        assert len(toks) == 1
+        assert toks[0].value == "[['a'], ['b']]"
+
+    # --- dicionário simples ---
+
+    def test_dict_literal_simple(self):
+        """{'chave': 'valor'} deve gerar um OBJECT_LITERAL."""
+        src = "exec P(config={'chave': 'valor'})"
+        toks = self._obj_tokens(src)
+        assert len(toks) == 1
+        assert toks[0].value == "{'chave': 'valor'}"
+
+    def test_dict_literal_nested(self):
+        """Dicionário com lista aninhada gera OBJECT_LITERAL correto."""
+        src = "exec P(cfg={'a': [1, 2]})"
+        toks = self._obj_tokens(src)
+        assert toks[0].value == "{'a': [1, 2]}"
+
+    # --- múltiplos argumentos ---
+
+    def test_multiple_object_args(self):
+        """Dois parâmetros Object geram dois OBJECT_LITERAL distintos."""
+        src = "exec P(itens=['x'], cfg={'k': 'v'})"
+        toks = self._obj_tokens(src)
+        assert len(toks) == 2
+        assert toks[0].value == "['x']"
+        assert toks[1].value == "{'k': 'v'}"
+
+    # --- Type[] NÃO deve gerar OBJECT_LITERAL ---
+
+    def test_type_plural_not_object_literal_outside_paren(self):
+        """Text[] fora de parênteses emite LBRACKET + RBRACKET, não OBJECT_LITERAL."""
+        result = types("param: Text[]")
+        assert TokenType.OBJECT_LITERAL not in result
+        assert TokenType.LBRACKET in result
+        assert TokenType.RBRACKET in result
+
+    def test_type_plural_not_object_literal_inside_paren(self):
+        """Type[] como argumento NÃO deve gerar OBJECT_LITERAL — é uma edge case
+        da regra peek==']: Text[] dentro de parênteses ainda emite LBRACKET."""
+        src = "exec P(type=Text[])"
+        result = types(src)
+        # Sem OBJECT_LITERAL: o [ seguido de ] → LBRACKET pelo peek
+        assert TokenType.OBJECT_LITERAL not in result
+
+    # --- lista vazia fora de arg list ---
+
+    def test_empty_list_outside_paren(self):
+        """[] fora de arglist (paren_depth==0) → LBRACKET + RBRACKET."""
+        result = types("[]")
+        assert result == [TokenType.LBRACKET, TokenType.RBRACKET]
+
+    # --- erro: literal não fechado ---
+
+    def test_unclosed_list_literal_raises(self):
+        with pytest.raises(ScannerError):
+            scan("exec P(x=['sem_fechar')")
+
+    def test_unclosed_dict_literal_raises(self):
+        with pytest.raises(ScannerError):
+            scan("exec P(x={'sem_fechar')")
+
+    # --- linha rastreada ---
+
+    def test_line_tracking_preserved(self):
+        src = "exec P(\n    itens=['x']\n)"
+        toks = self._obj_tokens(src)
+        assert len(toks) == 1
+        assert toks[0].line == 2

@@ -1086,3 +1086,78 @@ exec ProcDepois(msg="x") >> s {
         assert isinstance(pb, ProcBlockNode)
         assert pb.block.loop_while == ['ERRO']
 
+
+# ---------------------------------------------------------------------------
+# OBJECT_LITERAL — parâmetros Object com literais de coleção
+# ---------------------------------------------------------------------------
+
+class TestObjectLiteralArg:
+    """Testa que OBJECT_LITERAL é aceito em parâmetros Object e recusado nos demais."""
+
+    _PROG_TMPL = '''\
+program "T"
+vars {{ s: Number }}
+procs {{
+    P({param_decl}) from "A.b" {{
+        codes OK<0>
+    }}
+}}
+exec P({arg}) >> s {{
+    pass OK
+}}
+'''
+
+    def _make(self, param_decl: str, arg: str) -> object:
+        src = self._PROG_TMPL.format(param_decl=param_decl, arg=arg)
+        return make_ast(src).block
+
+    # --- aceito ---
+
+    def test_list_literal_accepted_for_object_param(self):
+        block = self._make("itens: Object", "itens=['diamond_axe']")
+        assert block.kwargs['itens'] == ArgNode(
+            value="['diamond_axe']", evaluation='literal', raw=True
+        )
+
+    def test_dict_literal_accepted_for_object_param(self):
+        block = self._make("cfg: Object", "cfg={'chave': 'valor'}")
+        assert block.kwargs['cfg'] == ArgNode(
+            value="{'chave': 'valor'}", evaluation='literal', raw=True
+        )
+
+    def test_nested_list_accepted(self):
+        block = self._make("matrix: Object", "matrix=[['a', 'b'], ['c']]")
+        assert block.kwargs['matrix'].value == "[['a', 'b'], ['c']]"
+        assert block.kwargs['matrix'].raw is True
+
+    def test_multiple_object_args(self):
+        src = '''\
+program "T"
+vars { s: Number }
+procs {
+    P(itens: Object, cfg: Object) from "A.b" {
+        codes OK<0>
+    }
+}
+exec P(itens=['x'], cfg={'k': 'v'}) >> s {
+    pass OK
+}
+'''
+        block = make_ast(src).block
+        assert block.kwargs['itens'].value == "['x']"
+        assert block.kwargs['cfg'].value == "{'k': 'v'}"
+
+    # --- recusado ---
+
+    def test_list_literal_rejected_for_text_param(self):
+        """Literal de coleção em parâmetro Text deve lançar ParseError."""
+        from compiler.parser import ParseError
+        with pytest.raises(ParseError, match="literal de coleção"):
+            self._make("msg: Text", "msg=['oops']")
+
+    def test_list_literal_rejected_for_number_param(self):
+        """Literal de coleção em parâmetro Number deve lançar ParseError."""
+        from compiler.parser import ParseError
+        with pytest.raises(ParseError, match="literal de coleção"):
+            self._make("n: Number", "n=[1, 2, 3]")
+

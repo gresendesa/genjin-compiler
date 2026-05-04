@@ -139,11 +139,11 @@ exec Reseta_Variáveis(var_posicao_lista=&cursor_array_arvores) as "Reseta vari�
                     case SUCESSO:
                         exec Teleportar(home=&home_mkb_machados_gastos) as "FERRAMENTA_GASTA:TP_BAUS_ITENS_RED" {
                             case SUCESSO:
-                                exec Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens="['diamond_axe']", quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "FERRAMENTA_GASTA:MKB_GUARDAR_ITENS_RED" {
+                                exec Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "FERRAMENTA_GASTA:MKB_GUARDAR_ITENS_RED" {
                                     case SUCESSO:
                                         exec Teleportar(home=&home_mkb_machados_novos) as "FERRAMENTA_GASTA:TP_BAUS_ITENS_GREEN" {
                                             case SUCESSO:
-                                                exec Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens="['diamond_axe']", quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "FERRAMENTA_GASTA:MKB_PEGAR_ITENS_GREEN" {
+                                                exec Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) as "FERRAMENTA_GASTA:MKB_PEGAR_ITENS_GREEN" {
                                                     case SUCESSO:
                                                         exec Teleportar(home=&home_checkpoint) as "FERRAMENTA_GASTA:VOLTAR_CHECKPOINT" {
                                                             pass SUCESSO, NÃO_EXISTE, CANCELADO, DEMORA

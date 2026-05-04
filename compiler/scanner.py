@@ -43,11 +43,12 @@ class TokenType(Enum):
     ARROW       = auto()   # >>
     AT          = auto()   # @
     # Literais e identificadores
-    STRING      = auto()   # "valor"
-    NUMBER      = auto()   # inteiro
-    IDENT       = auto()   # identificador
+    STRING         = auto()   # "valor"
+    NUMBER         = auto()   # inteiro
+    IDENT          = auto()   # identificador
+    OBJECT_LITERAL = auto()   # literal de coleção: [...] ou {...} em lista de argumentos
     # Especial
-    EOF         = auto()
+    EOF            = auto()
 
 
 _KEYWORDS: dict[str, TokenType] = {
@@ -91,6 +92,7 @@ class Scanner:
         self._src = source
         self._pos = 0
         self._line = 1
+        self._paren_depth = 0  # rastreia profundidade de parênteses para distinguir literais de coleção
 
     # ------------------------------------------------------------------
     # Interface pública
@@ -139,6 +141,58 @@ class Scanner:
                 return
             self._advance()
         raise ScannerError("Comentário de bloco não fechado", start_line)
+
+    def _read_collection_literal(self, open_char: str, close_char: str) -> str:
+        """Captura um literal de coleção balanceado (já consumiu o delimitador de abertura).
+
+        Rastreia profundidade de delimitadores, respeitando strings com aspas simples e duplas.
+        Retorna a string completa incluindo os delimitadores de abertura e fechamento.
+        Atualiza self._line para newlines encontrados.
+        """
+        result = [open_char]
+        depth = 1
+        start_line = self._line
+
+        while self._pos < len(self._src):
+            ch = self._src[self._pos]
+            self._pos += 1
+
+            if ch == '\n':
+                self._line += 1
+                result.append(ch)
+            elif ch == open_char:
+                depth += 1
+                result.append(ch)
+            elif ch == close_char:
+                depth -= 1
+                result.append(ch)
+                if depth == 0:
+                    return ''.join(result)
+            elif ch in ('"', "'"):
+                # Consome a string completa, sem contar delimitadores internos
+                quote = ch
+                result.append(ch)
+                while self._pos < len(self._src):
+                    inner = self._src[self._pos]
+                    self._pos += 1
+                    result.append(inner)
+                    if inner == '\n':
+                        self._line += 1
+                    elif inner == '\\':
+                        # escape: consome o próximo char sem interpretação
+                        if self._pos < len(self._src):
+                            escaped = self._src[self._pos]
+                            self._pos += 1
+                            result.append(escaped)
+                    elif inner == quote:
+                        break
+            else:
+                result.append(ch)
+
+        raise ScannerError(
+            f"Literal de coleção '{open_char}...{close_char}' não fechado",
+            start_line,
+        )
 
     def _read_string(self) -> str:
         # Já consumiu '"'
@@ -197,13 +251,36 @@ class Scanner:
                     return Token(TokenType.ARROW, '>>', line)
                 return Token(TokenType.RANGLE, '>', line)
 
+            # Parênteses: rastreiam profundidade para distinguir literais de coleção
+            if ch == '(':
+                self._paren_depth += 1
+                return Token(TokenType.LPAREN, ch, line)
+            if ch == ')':
+                self._paren_depth -= 1
+                return Token(TokenType.RPAREN, ch, line)
+
+            # Colchete: plural Type[] vs. literal de lista [...]
+            if ch == '[':
+                if self._peek() == ']':
+                    # Type[] — emite apenas o LBRACKET; o RBRACKET virá no próximo token
+                    return Token(TokenType.LBRACKET, ch, line)
+                if self._paren_depth > 0:
+                    # Dentro de lista de args: captura literal de lista
+                    value = self._read_collection_literal('[', ']')
+                    return Token(TokenType.OBJECT_LITERAL, value, line)
+                return Token(TokenType.LBRACKET, ch, line)
+
+            # Chave: bloco de corpo vs. literal de dicionário {...}
+            if ch == '{':
+                if self._paren_depth > 0:
+                    # Dentro de lista de args: captura literal de dicionário
+                    value = self._read_collection_literal('{', '}')
+                    return Token(TokenType.OBJECT_LITERAL, value, line)
+                return Token(TokenType.LBRACE, ch, line)
+
             _SINGLE: dict[str, TokenType] = {
-                '{': TokenType.LBRACE,
                 '}': TokenType.RBRACE,
-                '(': TokenType.LPAREN,
-                ')': TokenType.RPAREN,
                 '<': TokenType.LANGLE,
-                '[': TokenType.LBRACKET,
                 ']': TokenType.RBRACKET,
                 ':': TokenType.COLON,
                 ',': TokenType.COMMA,

@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-026 Fatia A concluída, SPR-2026-16 encerrada)
+Ultima atualizacao: 2026-05-04 (SPR-2026-17 concluída, B-027 concluído)
 
 ## Objetivo
 
@@ -48,6 +48,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | 1 (crítica) | baixo | [B-023.md](backlog-items/B-023.md) |
 | B-025 | Investigação: `get_unhandled_codes` borbulha código já consumido por `LOOP_WHILE` de bloco filho | 1 (crítica) | médio | [B-025.md](backlog-items/B-025.md) |
 | B-026 | Suite de testes para `genjin.jinja2`: unitários por macro + integração (Fatia A) | 1 (crítica) | médio-alto | [B-026.md](backlog-items/B-026.md) |
+| B-027 | Parser: literais de coleção `[...]`/`{...}` como argumentos `Object` | 1 (crítica) | médio | [B-027.md](backlog-items/B-027.md) |
 
 ### Pendentes
 

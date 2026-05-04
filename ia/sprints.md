@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-16 concluída)
+Ultima atualizacao: 2026-05-04 (SPR-2026-17 concluída)
 
 ## Objetivo
 
@@ -210,6 +210,19 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Prioridade PO dos itens: 1 (crítica)
 - Risco da sprint: médio (2.0)
 - Arquivo detalhado: [ia/sprints/SPR-2026-16.md](sprints/SPR-2026-16.md)
+
+### SPR-2026-17
+
+- Status: concluída
+- Data de planejamento: 2026-05-04
+- Data de início: 2026-05-04
+- Data de encerramento: 2026-05-04
+- Foco: B-027 — Literais de coleção `[...]`/`{...}` como argumentos `Object`
+- Itens: B-027
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (2.0)
+- Testes: 417 passando, 0 falhas (+18 testes novos)
+- Arquivo detalhado: [ia/sprints/SPR-2026-17.md](sprints/SPR-2026-17.md)
 
 ### SPR-YYYY-NN
 
