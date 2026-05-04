@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (EXP-002 adicionado — SPR-2026-12)
+Ultima atualizacao: 2026-05-03 (EXP-005 adicionado — SPR-2026-15)
 
 ## Objetivo
 
@@ -103,13 +103,37 @@ Registrar problemas observados no processo de desenvolvimento, suas causas e com
   que não o declara, causando erro de motor Genjin em runtime.
 - **Impacto:** Pipeline `compiler | assembler | indenter` falhava com
   `The codes ['DEMORA'] passed to the block 'Reseta variáveis' must be handled locally`.
-- **Causa raiz:** Tradução incorreta do canônico para inline — o canônico tinha
-  `} while(DEMORA)` no terminal `Teleportar`; a versão inline omitiu esse `while`.
-- **Ação corretiva:** Adicionar `while(DEMORA)` ao átomo terminal:
-  `@Teleportar(home=&home_voltar) while(DEMORA)`
-- **Ação preventiva:** Ao converter bloco canônico para inline, o átomo terminal **deve**
-  replicar todos os `while` do bloco canônico mais interno. O LOOP_WHILE de um bloco
-  absorve APENAS o código do próprio proc — nunca o de filhos borbulhados.
 - **Status:** resolvido
 - **Owner:** agente
 
+---
+
+### EXP-005 — `get_unhandled_codes_recursively` não filtra LOOP_WHILE ao subir a recursão
+
+- **ID:** EXP-005
+- **Data:** 2026-05-03
+- **Contexto:** SPR-2026-15, B-025 — bug reproduzido com `examples/test.gnj`.
+- **Problema:** A macro `get_unhandled_codes_recursively` em `code/genjin.jinja2` acumula
+  códigos não tratados dos blocos filhos no `collection_dict` compartilhado, mas **não remove**
+  os códigos absorvidos pelo `LOOP_WHILE` do bloco intermediário após iterar seus cases.
+  Resultado: `DEMORA` de `bar` (passado via `PASS_CODES`) entrava em `collection_dict['status_var']`,
+  atravessava `baz` (que tem `LOOP_WHILE=['ERROR', 'DEMORA']`) sem ser filtrado, e chegava a
+  `doe` como código não tratado — causando a exceção do motor.
+- **Impacto:** Pipeline `compiler | assembler | indenter` falhava com
+  `The codes ['DEMORA'] passed to the block 'doe' must be handled locally in loop_while or explicitly passed up using 'pass_codes'.`
+- **Causa raiz:** Ausência de pós-processamento em `get_unhandled_codes_recursively` após iterar
+  os cases filhos. O filtro `reject('in', while_loop_codes)` em `checks_code_handling` só opera
+  sobre o `collection_dict` final entregue ao bloco raiz — não corrige o dict em níveis intermediários.
+- **Ação corretiva:** Em `code/genjin_fixed.jinja2` (cópia de trabalho), adicionado bloco logo
+  após o `for case in block[ATTRIBUTE.CASES]`:
+  1. Snapshot dos códigos em `collection_dict[variable_name]` antes da iteração dos cases.
+  2. Após a iteração, identificar os códigos novos vindos dos filhos (`from_children`).
+  3. Remover de `from_children` os que estão em `LOOP_WHILE` do bloco atual (`surviving`).
+  4. Substituir o valor em `collection_dict` por `snapshot_before + surviving`.
+- **Ação preventiva:** Ao adicionar lógica de absorção (`LOOP_WHILE`) em qualquer nível da
+  recursão de `get_unhandled_codes_recursively`, aplicar o filtro imediatamente após a recursão
+  dos filhos — não apenas no nível folha. O `collection_dict` é compartilhado e mutável; lógica
+  de absorção deve ser local a cada bloco que a possui.
+- **Artefato do fix:** `code/genjin_fixed.jinja2` + aplicado ao `genjin.jinja2` oficial com aceite do PO.
+- **Status:** resolvido
+- **Owner:** agente

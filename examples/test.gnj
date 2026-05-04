@@ -5,17 +5,26 @@ vars {
 }
 
 procs {
-    inicia_processo() from "tests.default.xpto" {
+    doe() from "tests.default.doe" {
         codes OK<0>, ERROR<1>
+    }
+    xpto() from "tests.default.xpto" {
+        codes OK<0>, ERROR<1>
+    }
+    baz() from "tests.default.baz" {
+        codes OK<0>, ERROR<1>
+    }
+    bar() from "tests.default.bar" {
+        codes OK<0>, ERROR<1>, DEMORA<99>
     }
 }
 
 
-exec inicia_processo() >> status_var {
+exec doe() >> status_var {
     case OK: 
-        @inicia_processo() while (OK)
-        when(ERROR) @inicia_processo()
-        when(OK) @inicia_processo()
-    pass OK
-} while(ERROR)
+        @xpto() when(OK)
+        @baz() while(ERROR, DEMORA) when(OK)
+        @bar()
+    pass ERROR, OK
+}
 

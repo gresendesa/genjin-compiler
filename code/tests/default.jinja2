@@ -11,3 +11,25 @@
         SET({{ outvar }},{{ codes.ERROR }});
     ENDIF;
 {* endmacro *}
+
+{* macro baz(outvar) *}
+    SET({{ outvar }},{{ codes.OK }});
+    IF(HITID!="NONE");
+        SET({{ outvar }},{{ codes.ERROR }});
+    ENDIF;
+{* endmacro *}
+
+{* macro bar(outvar) *}
+    SET({{ outvar }},{{ codes.OK }});
+    IF(HITID!="NONE");
+        SET({{ outvar }},{{ codes.ERROR }});
+    ENDIF;
+{* endmacro *}
+
+
+{* macro doe(outvar) *}
+    SET({{ outvar }},{{ codes.OK }});
+    IF(HITID!="NONE");
+        SET({{ outvar }},{{ codes.ERROR }});
+    ENDIF;
+{* endmacro *}

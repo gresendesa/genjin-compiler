@@ -1,0 +1,122 @@
+
+{* from "genjin_fixed" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}
+
+{*
+    set program = {
+        ATTRIBUTE.NAME: 'Fluxo Genérico de Testes',
+        ATTRIBUTE.VARIABLES: [
+            {
+                ATTRIBUTE.NAME: 'status_var',
+                ATTRIBUTE.TYPE: TYPE.NUMBER,
+                ATTRIBUTE.CARDINALITY: CARDINALITY.SINGULAR
+            },
+        ],
+        ATTRIBUTE.PROCEDURES: [
+            {
+                ATTRIBUTE.NAME: 'doe',
+                ATTRIBUTE.MACRO: ['tests.default', 'doe'],
+                ATTRIBUTE.PARAMETERS: [
+                ],
+                ATTRIBUTE.OUTPUT_CODES: [
+                    {ATTRIBUTE.NAME: 'OK', ATTRIBUTE.CODE: 0},
+                    {ATTRIBUTE.NAME: 'ERROR', ATTRIBUTE.CODE: 1},
+                ]
+            },
+            {
+                ATTRIBUTE.NAME: 'xpto',
+                ATTRIBUTE.MACRO: ['tests.default', 'xpto'],
+                ATTRIBUTE.PARAMETERS: [
+                ],
+                ATTRIBUTE.OUTPUT_CODES: [
+                    {ATTRIBUTE.NAME: 'OK', ATTRIBUTE.CODE: 0},
+                    {ATTRIBUTE.NAME: 'ERROR', ATTRIBUTE.CODE: 1},
+                ]
+            },
+            {
+                ATTRIBUTE.NAME: 'baz',
+                ATTRIBUTE.MACRO: ['tests.default', 'baz'],
+                ATTRIBUTE.PARAMETERS: [
+                ],
+                ATTRIBUTE.OUTPUT_CODES: [
+                    {ATTRIBUTE.NAME: 'OK', ATTRIBUTE.CODE: 0},
+                    {ATTRIBUTE.NAME: 'ERROR', ATTRIBUTE.CODE: 1},
+                ]
+            },
+            {
+                ATTRIBUTE.NAME: 'bar',
+                ATTRIBUTE.MACRO: ['tests.default', 'bar'],
+                ATTRIBUTE.PARAMETERS: [
+                ],
+                ATTRIBUTE.OUTPUT_CODES: [
+                    {ATTRIBUTE.NAME: 'OK', ATTRIBUTE.CODE: 0},
+                    {ATTRIBUTE.NAME: 'ERROR', ATTRIBUTE.CODE: 1},
+                    {ATTRIBUTE.NAME: 'DEMORA', ATTRIBUTE.CODE: 99},
+                ]
+            },
+        ],
+        ATTRIBUTE.BLOCK:
+        {
+            ATTRIBUTE.VARIABLE: 'status_var',
+            ATTRIBUTE.NAME: 'doe',
+            ATTRIBUTE.PROCEDURE: {
+                ATTRIBUTE.NAME: 'doe',
+                ATTRIBUTE.KEYWORD_ARGS: {
+                }
+            },
+            ATTRIBUTE.CASES: [
+                {
+                    ATTRIBUTE.OUTPUT_CODE: 'OK',
+                    ATTRIBUTE.BLOCK:
+                    {
+                        ATTRIBUTE.NAME: 'xpto',
+                        ATTRIBUTE.PROCEDURE: {
+                            ATTRIBUTE.NAME: 'xpto',
+                            ATTRIBUTE.KEYWORD_ARGS: {
+                            }
+                        },
+                        ATTRIBUTE.CASES: [
+                            {
+                                ATTRIBUTE.OUTPUT_CODE: 'OK',
+                                ATTRIBUTE.BLOCK:
+                                {
+                                    ATTRIBUTE.NAME: 'baz',
+                                    ATTRIBUTE.PROCEDURE: {
+                                        ATTRIBUTE.NAME: 'baz',
+                                        ATTRIBUTE.KEYWORD_ARGS: {
+                                        }
+                                    },
+                                    ATTRIBUTE.CASES: [
+                                        {
+                                            ATTRIBUTE.OUTPUT_CODE: 'OK',
+                                            ATTRIBUTE.BLOCK:
+                                            {
+                                                ATTRIBUTE.NAME: 'bar',
+                                                ATTRIBUTE.PROCEDURE: {
+                                                    ATTRIBUTE.NAME: 'bar',
+                                                    ATTRIBUTE.KEYWORD_ARGS: {
+                                                    }
+                                                },
+                                                ATTRIBUTE.CASES: [
+                                                ],
+                                                ATTRIBUTE.LOOP_WHILE: [],
+                                                ATTRIBUTE.PASS_CODES: ['DEMORA', 'ERROR', 'OK']
+                                            }
+                                        },
+                                    ],
+                                    ATTRIBUTE.LOOP_WHILE: ['DEMORA', 'ERROR'],
+                                    ATTRIBUTE.PASS_CODES: []
+                                }
+                            },
+                        ],
+                        ATTRIBUTE.LOOP_WHILE: [],
+                        ATTRIBUTE.PASS_CODES: ['ERROR']
+                    }
+                },
+            ],
+            ATTRIBUTE.LOOP_WHILE: [],
+            ATTRIBUTE.PASS_CODES: ['ERROR', 'OK']
+        }
+    }
+*}
+
+{{ build(prog=program, language_renderer=MACROMOD) }}

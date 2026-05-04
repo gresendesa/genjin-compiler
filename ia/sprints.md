@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-14 concluída)
+Ultima atualizacao: 2026-05-03 (SPR-2026-15 concluída)
 
 ## Objetivo
 
@@ -184,6 +184,20 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: médio (1.5)
 - Resultado: 366 testes (0 falhas); +6 novos testes; proc-block com corpo inline suportado
 - Arquivo detalhado: [ia/sprints/SPR-2026-14.md](sprints/SPR-2026-14.md)
+
+
+### SPR-2026-15
+
+- Status: concluída
+- Data de planejamento: 2026-05-03
+- Data de início: 2026-05-03
+- Data de encerramento: 2026-05-03
+- Foco: B-025 — Fix `get_unhandled_codes_recursively` (código borbulhando além do LOOP_WHILE)
+- Itens: B-025
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (1.5)
+- Resultado: fix aplicado ao `genjin.jinja2` oficial; `test.gnj` e `lenhador-sintetico.gnj` compilando sem erro.
+- Arquivo detalhado: [ia/sprints/SPR-2026-15.md](sprints/SPR-2026-15.md)
 
 
 ## Template sintetico para novas sprints
