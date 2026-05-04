@@ -47,12 +47,11 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-024 | Inline `while`: aceitar múltiplos códigos e códigos borbulhados | 1 (crítica) | médio | [B-024.md](backlog-items/B-024.md) |
 | B-023 | Refatorar `Troca_Ferramenta` em `lenhador-sintetico.gnj` com notação inline | 1 (crítica) | baixo | [B-023.md](backlog-items/B-023.md) |
 | B-025 | Investigação: `get_unhandled_codes` borbulha código já consumido por `LOOP_WHILE` de bloco filho | 1 (crítica) | médio | [B-025.md](backlog-items/B-025.md) |
+| B-026 | Suite de testes para `genjin.jinja2`: unitários por macro + integração (Fatia A) | 1 (crítica) | médio-alto | [B-026.md](backlog-items/B-026.md) |
 
 ### Pendentes
 
-| ID | Titulo | Prioridade PO | Risco | Arquivo |
-|---|---|---|---|---|
-| B-026 | Suite de testes para `genjin.jinja2`: unitários por macro + integração | (a definir) | médio-alto | [B-026.md](backlog-items/B-026.md) |
+(nenhum)
 
 ### Planejados
 
