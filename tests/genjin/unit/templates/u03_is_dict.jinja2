@@ -1,0 +1,21 @@
+{* from "genjin" import is_dict *}
+
+{# dicionário #}
+{* set r1 = [] *}
+{* set _ = is_dict({'a': 1}, r1) *}
+DICT:{{ r1[0] }}
+
+{# lista #}
+{* set r2 = [] *}
+{* set _ = is_dict([1, 2], r2) *}
+LIST:{{ r2[0] }}
+
+{# string #}
+{* set r3 = [] *}
+{* set _ = is_dict("hello", r3) *}
+STRING:{{ r3[0] }}
+
+{# dicionário vazio #}
+{* set r4 = [] *}
+{* set _ = is_dict({}, r4) *}
+EMPTY_DICT:{{ r4[0] }}

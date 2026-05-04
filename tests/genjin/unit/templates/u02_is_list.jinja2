@@ -1,0 +1,26 @@
+{* from "genjin" import is_list *}
+
+{# lista #}
+{* set r1 = [] *}
+{* set _ = is_list([1, 2, 3], r1) *}
+LIST:{{ r1[0] }}
+
+{# string #}
+{* set r2 = [] *}
+{* set _ = is_list("hello", r2) *}
+STRING:{{ r2[0] }}
+
+{# dicionário #}
+{* set r3 = [] *}
+{* set _ = is_list({'a': 1}, r3) *}
+DICT:{{ r3[0] }}
+
+{# número #}
+{* set r4 = [] *}
+{* set _ = is_list(42, r4) *}
+NUMBER:{{ r4[0] }}
+
+{# lista vazia #}
+{* set r5 = [] *}
+{* set _ = is_list([], r5) *}
+EMPTY_LIST:{{ r5[0] }}

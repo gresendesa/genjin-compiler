@@ -1,0 +1,39 @@
+{* from "genjin" import ATTRIBUTE, TYPE, CARDINALITY, MACROMOD, build *}
+
+{# Proc que retorna OK ou RETRY — usada para forçar um LOOP_WHILE #}
+{* macro fetch_proc(outvar) *}FETCH({{ outvar }});{* endmacro *}
+
+{* set proc_entry = {
+    'name': 'fetch',
+    'parameters': [],
+    'output_codes': [
+        {'name': 'OK',    'code': 0},
+        {'name': 'RETRY', 'code': 1}
+    ]
+} *}
+{* set _ = proc_entry.update({'macro': fetch_proc}) *}
+
+{# Programa: bloco principal com LOOP_WHILE=['RETRY'] e PASS_CODES=['OK']
+   Esperado: DO; FETCH(#statusXXXXXX); WHILE(#statusXXXXXX==1);
+#}
+{* set program = {
+    'name': 'i05_loop_while',
+    'variables': [
+        {
+            'name': 'status',
+            'cardinality': CARDINALITY.SINGULAR,
+            'type': TYPE.NUMBER
+        }
+    ],
+    'procedures': [proc_entry],
+    'block': {
+        'variable': 'status',
+        'name': 'main',
+        'procedure': {'name': 'fetch', 'kwargs': {}},
+        'cases': [],
+        'loop_while': ['RETRY'],
+        'pass_codes': ['OK']
+    }
+} *}
+
+{{ build(prog=program, language_renderer=MACROMOD) }}

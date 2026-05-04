@@ -1,0 +1,31 @@
+{* from "genjin" import filter_list_objects *}
+{* set my_list = [
+    {'name': 'foo', 'type': 'number'},
+    {'name': 'bar', 'type': 'text'},
+    {'name': 'foo', 'type': 'logic'}
+] *}
+
+{# Caso 1: lista vazia #}
+{* set r1 = [] *}
+{* set _ = filter_list_objects([], 'name', 'foo', r1) *}
+EMPTY_LIST:{{ r1 | length }}
+
+{# Caso 2: item encontrado (2 correspondências) #}
+{* set r2 = [] *}
+{* set _ = filter_list_objects(my_list, 'name', 'foo', r2) *}
+FOUND:{{ r2 | length }}
+
+{# Caso 3: item não encontrado #}
+{* set r3 = [] *}
+{* set _ = filter_list_objects(my_list, 'name', 'baz', r3) *}
+NOT_FOUND:{{ r3 | length }}
+
+{# Caso 4: attribute_of_attribute — busca nested obj[attribute][attribute_of_attribute] #}
+{* set nested_list = [
+    {'code': {'name': 'OK'}},
+    {'code': {'name': 'ERROR'}},
+    {'code': {'name': 'OK'}}
+] *}
+{* set r4 = [] *}
+{* set _ = filter_list_objects(nested_list, 'code', 'OK', r4, attribute_of_attribute='name') *}
+NESTED_FOUND:{{ r4 | length }}

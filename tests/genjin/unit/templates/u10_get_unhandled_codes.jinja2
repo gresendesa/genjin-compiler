@@ -1,0 +1,65 @@
+{* from "genjin" import get_unhandled_codes, ATTRIBUTE *}
+
+{# ─── CORE mock ─────────────────────────────────────────────────────────── #}
+{* macro mock_find_procedure(name, jinja_collection_var) *}
+    {* if name == 'proc_abc' *}
+        {* set _ = jinja_collection_var.append({
+            ATTRIBUTE.NAME: 'proc_abc',
+            ATTRIBUTE.OUTPUT_CODES: [
+                {ATTRIBUTE.NAME: 'OK',    ATTRIBUTE.CODE: 0},
+                {ATTRIBUTE.NAME: 'ERROR', ATTRIBUTE.CODE: 1},
+                {ATTRIBUTE.NAME: 'DEMORA',ATTRIBUTE.CODE: 99}
+            ],
+            ATTRIBUTE.PARAMETERS: [],
+            ATTRIBUTE.MACRO: 'noop'
+        }) *}
+    {* endif *}
+{* endmacro *}
+
+{* set MOCK_CORE = {
+    'procedure': {'find': {'by_name': mock_find_procedure}}
+} *}
+
+{# ─── Caso 1: sem CASES, sem LOOP_WHILE → todos os 3 códigos não tratados ─ #}
+{* set block_none = {
+    ATTRIBUTE.NAME: 'bloco',
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'proc_abc'},
+    ATTRIBUTE.CASES: [],
+    ATTRIBUTE.LOOP_WHILE: []
+} *}
+{* set result1 = [] *}
+{* set _ = get_unhandled_codes(CORE=MOCK_CORE, block=block_none, unhandled_codes_var=result1) *}
+NO_HANDLING:{{ result1 | sort | join(',') }}
+
+{# ─── Caso 2: CASE cobre OK → apenas ERROR e DEMORA não tratados ─────────── #}
+{* set block_case = {
+    ATTRIBUTE.NAME: 'bloco',
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'proc_abc'},
+    ATTRIBUTE.CASES: [{ATTRIBUTE.OUTPUT_CODE: 'OK', ATTRIBUTE.BLOCK: {}}],
+    ATTRIBUTE.LOOP_WHILE: []
+} *}
+{* set result2 = [] *}
+{* set _ = get_unhandled_codes(CORE=MOCK_CORE, block=block_case, unhandled_codes_var=result2) *}
+CASE_COVERS_OK:{{ result2 | sort | join(',') }}
+
+{# ─── Caso 3: LOOP_WHILE cobre ERROR e DEMORA → apenas OK não tratado ────── #}
+{* set block_while = {
+    ATTRIBUTE.NAME: 'bloco',
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'proc_abc'},
+    ATTRIBUTE.CASES: [],
+    ATTRIBUTE.LOOP_WHILE: ['ERROR', 'DEMORA']
+} *}
+{* set result3 = [] *}
+{* set _ = get_unhandled_codes(CORE=MOCK_CORE, block=block_while, unhandled_codes_var=result3) *}
+WHILE_COVERS_ERROR_DEMORA:{{ result3 | sort | join(',') }}
+
+{# ─── Caso 4: CASE + LOOP_WHILE cobrem tudo → nenhum não tratado ─────────── #}
+{* set block_full = {
+    ATTRIBUTE.NAME: 'bloco',
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'proc_abc'},
+    ATTRIBUTE.CASES: [{ATTRIBUTE.OUTPUT_CODE: 'OK', ATTRIBUTE.BLOCK: {}}],
+    ATTRIBUTE.LOOP_WHILE: ['ERROR', 'DEMORA']
+} *}
+{* set result4 = [] *}
+{* set _ = get_unhandled_codes(CORE=MOCK_CORE, block=block_full, unhandled_codes_var=result4) *}
+ALL_COVERED:{{ result4 | length }}

@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (SPR-2026-15 concluída)
+Ultima atualizacao: 2026-05-03 (SPR-2026-16 concluída)
 
 ## Objetivo
 
@@ -200,7 +200,16 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Arquivo detalhado: [ia/sprints/SPR-2026-15.md](sprints/SPR-2026-15.md)
 
 
-## Template sintetico para novas sprints
+### SPR-2026-16
+
+- Status: concluída
+- Data de planejamento: 2026-05-03
+- Data de início: 2026-05-03
+- Foco: B-026 Fatia A — suite de testes `genjin.jinja2`: fundação + sentinels EXP-005
+- Itens: B-026 (Fatia A)
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (2.0)
+- Arquivo detalhado: [ia/sprints/SPR-2026-16.md](sprints/SPR-2026-16.md)
 
 ### SPR-YYYY-NN
 

@@ -1,0 +1,94 @@
+{* from "genjin" import get_unhandled_codes_recursively, ATTRIBUTE *}
+
+{# ─── CORE mock com dois procs (baz_proc e bar_proc) ─────────────────────── #}
+{* macro mock_find_procedure(name, jinja_collection_var) *}
+    {* if name == 'baz_proc' or name == 'bar_proc' *}
+        {* set _ = jinja_collection_var.append({
+            ATTRIBUTE.NAME: name,
+            ATTRIBUTE.OUTPUT_CODES: [
+                {ATTRIBUTE.NAME: 'OK',    ATTRIBUTE.CODE: 0},
+                {ATTRIBUTE.NAME: 'ERROR', ATTRIBUTE.CODE: 1},
+                {ATTRIBUTE.NAME: 'DEMORA',ATTRIBUTE.CODE: 99}
+            ],
+            ATTRIBUTE.PARAMETERS: [],
+            ATTRIBUTE.MACRO: 'noop'
+        }) *}
+    {* endif *}
+{* endmacro *}
+
+{* set MOCK_CORE = {
+    'procedure': {'find': {'by_name': mock_find_procedure}}
+} *}
+
+{# ─── Estrutura espelhada do examples/test.gnj (cenário EXP-005) ──────────
+   bar:  LOOP_WHILE=[], PASS_CODES=['OK','ERROR','DEMORA'] → borbulha tudo
+   baz:  LOOP_WHILE=['ERROR','DEMORA'], CASE OK→bar
+         Com o fix: DEMORA e ERROR NÃO devem chegar ao coletor de baz
+#}
+{* set bar_block = {
+    ATTRIBUTE.NAME: 'bar',
+    ATTRIBUTE.VARIABLE: none,
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'bar_proc', ATTRIBUTE.KEYWORD_ARGS: {}},
+    ATTRIBUTE.LOOP_WHILE: [],
+    ATTRIBUTE.CASES: [],
+    ATTRIBUTE.PASS_CODES: ['OK', 'ERROR', 'DEMORA']
+} *}
+
+{* set baz_block = {
+    ATTRIBUTE.NAME: 'baz',
+    ATTRIBUTE.VARIABLE: 'status_var',
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'baz_proc', ATTRIBUTE.KEYWORD_ARGS: {}},
+    ATTRIBUTE.LOOP_WHILE: ['ERROR', 'DEMORA'],
+    ATTRIBUTE.CASES: [
+        {ATTRIBUTE.OUTPUT_CODE: 'OK', ATTRIBUTE.BLOCK: bar_block}
+    ],
+    ATTRIBUTE.PASS_CODES: []
+} *}
+
+{* set collection_exp005 = {} *}
+{* set _ = get_unhandled_codes_recursively(
+    CORE=MOCK_CORE,
+    block=baz_block,
+    inherited_variable_name='status_var',
+    collection_dict=collection_exp005
+) *}
+
+EXP005_DEMORA_IN_DICT:{{ 'DEMORA' in collection_exp005.get('status_var', []) }}
+EXP005_ERROR_IN_DICT:{{ 'ERROR' in collection_exp005.get('status_var', []) }}
+EXP005_OK_IN_DICT:{{ 'OK' in collection_exp005.get('status_var', []) }}
+
+{# ─── Caso simples: bloco folha sem CASES, sem LOOP_WHILE ────────────────── #}
+{* macro mock_find_simple(name, jinja_collection_var) *}
+    {* set _ = jinja_collection_var.append({
+        ATTRIBUTE.NAME: name,
+        ATTRIBUTE.OUTPUT_CODES: [
+            {ATTRIBUTE.NAME: 'OK', ATTRIBUTE.CODE: 0},
+            {ATTRIBUTE.NAME: 'FAIL', ATTRIBUTE.CODE: 1}
+        ],
+        ATTRIBUTE.PARAMETERS: [],
+        ATTRIBUTE.MACRO: 'noop'
+    }) *}
+{* endmacro *}
+
+{* set MOCK_CORE_SIMPLE = {
+    'procedure': {'find': {'by_name': mock_find_simple}}
+} *}
+
+{* set leaf_block = {
+    ATTRIBUTE.NAME: 'leaf',
+    ATTRIBUTE.VARIABLE: 'v',
+    ATTRIBUTE.PROCEDURE: {ATTRIBUTE.NAME: 'simple_proc'},
+    ATTRIBUTE.LOOP_WHILE: [],
+    ATTRIBUTE.CASES: [],
+    ATTRIBUTE.PASS_CODES: []
+} *}
+
+{* set collection_leaf = {} *}
+{* set _ = get_unhandled_codes_recursively(
+    CORE=MOCK_CORE_SIMPLE,
+    block=leaf_block,
+    inherited_variable_name='v',
+    collection_dict=collection_leaf
+) *}
+
+LEAF_UNHANDLED:{{ collection_leaf.get('v', []) | sort | join(',') }}

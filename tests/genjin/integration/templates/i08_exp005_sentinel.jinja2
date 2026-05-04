@@ -1,0 +1,99 @@
+{* from "genjin" import ATTRIBUTE, TYPE, CARDINALITY, MACROMOD, build *}
+
+{# ─── Sentinel EXP-005 como teste de integração ────────────────────────────
+   Espelha o cenário mínimo do bug reportado em EXP-005:
+
+     doe(status_var):
+       CASE OK → baz(status_var):
+                   LOOP_WHILE=[ERROR, DEMORA]
+                   CASE OK → bar(status_var):
+                               PASS_CODES=[OK, ERROR, DEMORA]
+       PASS_CODES=[ERROR, OK]
+
+   Sem o fix de SPR-2026-15: DEMORA borbulha até doe e causa exceção.
+   Com o fix: DEMORA é absorvido pelo LOOP_WHILE de baz. Deve compilar sem erro.
+#}
+
+{* macro doe_proc(outvar) *}DOE({{ outvar }});{* endmacro *}
+{* macro baz_proc(outvar) *}BAZ({{ outvar }});{* endmacro *}
+{* macro bar_proc(outvar) *}BAR({{ outvar }});{* endmacro *}
+
+{# Definição dos procs #}
+{* set proc_doe = {
+    'name': 'doe',
+    'parameters': [],
+    'output_codes': [
+        {'name': 'OK',    'code': 0},
+        {'name': 'ERROR', 'code': 1}
+    ]
+} *}
+{* set _ = proc_doe.update({'macro': doe_proc}) *}
+
+{* set proc_baz = {
+    'name': 'baz',
+    'parameters': [],
+    'output_codes': [
+        {'name': 'OK',    'code': 0},
+        {'name': 'ERROR', 'code': 1},
+        {'name': 'DEMORA','code': 99}
+    ]
+} *}
+{* set _ = proc_baz.update({'macro': baz_proc}) *}
+
+{* set proc_bar = {
+    'name': 'bar',
+    'parameters': [],
+    'output_codes': [
+        {'name': 'OK',    'code': 0},
+        {'name': 'ERROR', 'code': 1},
+        {'name': 'DEMORA','code': 99}
+    ]
+} *}
+{* set _ = proc_bar.update({'macro': bar_proc}) *}
+
+{# Blocos aninhados: doe → baz → bar #}
+{* set block_bar = {
+    'name': 'bar_block',
+    'variable': 'status_var',
+    'procedure': {'name': 'bar', 'kwargs': {}},
+    'loop_while': [],
+    'cases': [],
+    'pass_codes': ['OK', 'ERROR', 'DEMORA']
+} *}
+
+{* set block_baz = {
+    'name': 'baz_block',
+    'variable': 'status_var',
+    'procedure': {'name': 'baz', 'kwargs': {}},
+    'loop_while': ['ERROR', 'DEMORA'],
+    'cases': [
+        {'output_code': 'OK', 'block': block_bar}
+    ],
+    'pass_codes': []
+} *}
+
+{* set block_doe = {
+    'name': 'doe_block',
+    'variable': 'status_var',
+    'procedure': {'name': 'doe', 'kwargs': {}},
+    'loop_while': [],
+    'cases': [
+        {'output_code': 'OK', 'block': block_baz}
+    ],
+    'pass_codes': ['ERROR', 'OK']
+} *}
+
+{* set program = {
+    'name': 'i08_exp005_sentinel',
+    'variables': [
+        {
+            'name': 'status_var',
+            'cardinality': CARDINALITY.SINGULAR,
+            'type': TYPE.NUMBER
+        }
+    ],
+    'procedures': [proc_doe, proc_baz, proc_bar],
+    'block': block_doe
+} *}
+
+{{ build(prog=program, language_renderer=MACROMOD) }}

@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-03 (B-026 adicionado)
+Ultima atualizacao: 2026-05-03 (B-026 Fatia A concluída, SPR-2026-16 encerrada)
 
 ## Objetivo
 

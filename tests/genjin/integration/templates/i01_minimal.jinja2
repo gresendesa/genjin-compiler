@@ -1,0 +1,36 @@
+{* from "genjin" import ATTRIBUTE, TYPE, CARDINALITY, MACROMOD, build *}
+
+{# Macro do procedimento — callable passado diretamente como ATTRIBUTE.MACRO #}
+{* macro noop_proc(outvar) *}CALL_NOOP({{ outvar }});{* endmacro *}
+
+{# Definição do programa mínimo: 1 variável, 1 proc sem params, 1 bloco, PASS_CODES=[OK] #}
+{* set proc_entry = {
+    'name': 'noop',
+    'parameters': [],
+    'output_codes': [
+        {'name': 'OK', 'code': 0}
+    ]
+} *}
+{* set _ = proc_entry.update({'macro': noop_proc}) *}
+
+{* set program = {
+    'name': 'i01_minimal',
+    'variables': [
+        {
+            'name': 'result',
+            'cardinality': CARDINALITY.SINGULAR,
+            'type': TYPE.NUMBER
+        }
+    ],
+    'procedures': [proc_entry],
+    'block': {
+        'variable': 'result',
+        'name': 'main',
+        'procedure': {'name': 'noop', 'kwargs': {}},
+        'cases': [],
+        'loop_while': [],
+        'pass_codes': ['OK']
+    }
+} *}
+
+{{ build(prog=program, language_renderer=MACROMOD) }}
