@@ -227,6 +227,110 @@ procs {
 }
 ```
 
+### Importação de proc-blocos externos (`from ... import`)
+
+Além de declarar proc-blocos localmente, é possível importá-los de outros arquivos `.gnj`. Isso permite reutilizar lógica entre programas distintos.
+
+```gnj
+procs {
+    // Procs normais declarados localmente...
+
+    from "caminho.dotted.modulo" import
+        NomeBloco1,
+        NomeBloco2
+}
+```
+
+A instrução `from ... import` pode aparecer em **qualquer posição dentro de `procs {}`**, intercalada com declarações locais.
+
+#### Sintaxe
+
+```
+from "caminho.dotted" import Nome1 [, Nome2 [, ...]] [,]
+```
+
+- O caminho é uma **string com segmentos separados por pontos**.
+- Os nomes são identificadores de proc-blocos definidos no arquivo externo.
+- A vírgula final é opcional.
+- Apenas **proc-blocos** (com corpo `{ ... }`) são importáveis. Procs normais (com `from "..."`) existem no domínio de templates e não são importáveis via `from ... import`.
+
+#### Resolução de path
+
+O caminho dotted `"a.b.c"` é convertido para `a/b/c.gnj` e resolvido **em relação ao diretório do arquivo `.gnj` que está sendo compilado**.
+
+Exemplo: se o arquivo compilado é `/projetos/lenhador/main.gnj` e contém:
+
+```gnj
+from "Federal.common.utils" import Avisa, TrocaFerramenta
+```
+
+O compilador procura o arquivo em:
+
+```
+/projetos/lenhador/Federal/common/utils.gnj
+```
+
+#### Diretório base alternativo
+
+Para usar uma raiz diferente do diretório do arquivo fonte, passe `--import-base` na CLI:
+
+```bash
+python compiler.py main.gnj --import-base /projetos/biblioteca
+```
+
+Nesse caso, `"Federal.common.utils"` seria resolvido como `/projetos/biblioteca/Federal/common/utils.gnj`.
+
+Quando a entrada vem de **stdin** (sem arquivo de origem), o diretório de trabalho atual (`cwd`) é usado como base padrão.
+
+#### Regras e erros
+
+| Situação | Comportamento |
+|---|---|
+| Arquivo externo não encontrado | Erro: `ResolveImportError` com o path tentado |
+| Nome solicitado não existe no externo | Erro: `ResolveImportError` com o nome e o arquivo |
+| Nome conflita com proc já declarado localmente | Erro: `ResolveImportError` com o nome em conflito |
+| Importação circular (A importa B que importa A) | Erro: `ResolveImportError` indicando o ciclo |
+| Arquivo externo também usa `from ... import` | Resolvido recursivamente (importação em cadeia) |
+
+#### Exemplo
+
+Arquivo `Federal/common/lenhador_utils.gnj`:
+```gnj
+program "lenhador-utils"
+
+vars {}
+
+procs {
+    NotificaErro(mensagem: Text) from "Federal.@.Lenhador.notificar_exceção" {
+        codes REINICIAR_CICLO<99>
+    }
+
+    Exceção_e_Reinicia(mensagem: Text) {
+        exec NotificaErro(mensagem=mensagem) as "Notifica e reinicia" {
+            pass REINICIAR_CICLO
+        }
+    }
+}
+
+exec NotificaErro(mensagem="boot") as "Boot" {
+    pass REINICIAR_CICLO
+}
+```
+
+Arquivo `main.gnj`:
+```gnj
+procs {
+    NotificaErro(mensagem: Text) from "Federal.@.Lenhador.notificar_exceção" {
+        codes REINICIAR_CICLO<99>
+    }
+
+    from "Federal.common.lenhador_utils" import
+        Exceção_e_Reinicia
+}
+```
+
+O proc-bloco `Exceção_e_Reinicia` fica disponível em `main.gnj` exatamente como se fosse declarado localmente.
+
 ---
 
 ## Bloco de execução (`exec`)

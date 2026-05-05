@@ -15,6 +15,7 @@ class TokenType(Enum):
     KW_PROCS    = auto()
     KW_PROC     = auto()   # deprecado: 'proc' não é mais keyword ativa
     KW_FROM     = auto()
+    KW_IMPORT   = auto()
     KW_EXEC     = auto()
     KW_CASE     = auto()
     KW_PASS     = auto()
@@ -57,6 +58,7 @@ _KEYWORDS: dict[str, TokenType] = {
     'procs':   TokenType.KW_PROCS,
     # 'proc' foi removido das keywords; agora é reconhecido como IDENT
     'from':    TokenType.KW_FROM,
+    'import':  TokenType.KW_IMPORT,
     'exec':    TokenType.KW_EXEC,
     'case':    TokenType.KW_CASE,
     'pass':    TokenType.KW_PASS,

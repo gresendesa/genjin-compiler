@@ -1161,3 +1161,81 @@ exec P(itens=['x'], cfg={'k': 'v'}) >> s {
         with pytest.raises(ParseError, match="literal de coleção"):
             self._make("n: Number", "n=[1, 2, 3]")
 
+
+# ---------------------------------------------------------------------------
+# Import de proc-blocos (B-029 / SPR-2026-18)
+# ---------------------------------------------------------------------------
+
+class TestProcImport:
+    """Testa que `from "mod" import Name1, Name2` é parseado como ProcImportNode."""
+
+    from compiler.parser import ProcImportNode
+
+    _PROG_TMPL = '''\
+program "T"
+vars {{ s: Number }}
+procs {{
+    Foo() from "A.b" {{
+        codes OK<0>
+    }}
+    {import_stmt}
+}}
+exec Foo() >> s {{
+    pass OK
+}}
+'''
+
+    def _make(self, import_stmt: str):
+        from compiler.parser import parse
+        src = self._PROG_TMPL.format(import_stmt=import_stmt)
+        return parse(src)
+
+    def test_single_import_produces_proc_import_node(self):
+        from compiler.parser import ProcImportNode
+        ast = self._make('from "utils" import\n    Avisa')
+        imports = [p for p in ast.procedures if isinstance(p, ProcImportNode)]
+        assert len(imports) == 1
+        assert imports[0].source_path == 'utils'
+        assert imports[0].names == ['Avisa']
+
+    def test_multiple_names(self):
+        from compiler.parser import ProcImportNode
+        ast = self._make('from "utils" import\n    Avisa,\n    TrocaFerramenta')
+        imports = [p for p in ast.procedures if isinstance(p, ProcImportNode)]
+        assert imports[0].names == ['Avisa', 'TrocaFerramenta']
+
+    def test_inline_single_line(self):
+        from compiler.parser import ProcImportNode
+        ast = self._make('from "mod.sub" import Alpha, Beta')
+        imp = [p for p in ast.procedures if isinstance(p, ProcImportNode)][0]
+        assert imp.source_path == 'mod.sub'
+        assert imp.names == ['Alpha', 'Beta']
+
+    def test_trailing_comma_ok(self):
+        from compiler.parser import ProcImportNode
+        ast = self._make('from "utils" import\n    Avisa,')
+        imp = [p for p in ast.procedures if isinstance(p, ProcImportNode)][0]
+        assert imp.names == ['Avisa']
+
+    def test_import_order_preserved(self):
+        """ProcImportNode mantém posição relativa na lista de procedures."""
+        from compiler.parser import ProcImportNode, ProcDeclNode
+        ast = self._make('from "utils" import Avisa')
+        types_ = [type(p).__name__ for p in ast.procedures]
+        assert types_ == ['ProcDeclNode', 'ProcImportNode']
+
+    def test_missing_import_keyword_raises(self):
+        """from "mod" sem import deve lançar ParseError."""
+        from compiler.parser import ParseError
+        with pytest.raises(ParseError, match="import"):
+            self._make('from "utils"')
+
+    def test_empty_import_list_raises(self):
+        """from "mod" import sem nenhum nome deve lançar ParseError."""
+        from compiler.parser import ParseError
+        with pytest.raises(ParseError):
+            # O '}' fecha o bloco procs prematuramente no skip-pass,
+            # resultando em ParseError (mensagem pode variar por fase)
+            self._make('from "utils" import\n    ')
+            self._make('from "utils" import')
+

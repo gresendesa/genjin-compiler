@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-04 (SPR-2026-17 concluída)
+Ultima atualizacao: 2026-05-04 (SPR-2026-18 aberta — B-029 em andamento)
 
 ## Objetivo
 
@@ -223,6 +223,17 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: médio (2.0)
 - Testes: 417 passando, 0 falhas (+18 testes novos)
 - Arquivo detalhado: [ia/sprints/SPR-2026-17.md](sprints/SPR-2026-17.md)
+
+### SPR-2026-18
+
+- Status: em andamento
+- Data de início: 2026-05-04
+- Foco: B-029 — Importação de proc-blocos de arquivos .gnj externos
+- Itens: B-028 (estudo, concluído), B-029 (implementação)
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (2.0)
+- Testes: 434 passando, 0 falhas (+17 testes novos)
+- Arquivo detalhado: [ia/sprints/SPR-2026-18.md](sprints/SPR-2026-18.md)
 
 ### SPR-YYYY-NN
 

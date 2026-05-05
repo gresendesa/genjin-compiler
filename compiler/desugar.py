@@ -42,7 +42,9 @@ def desugar(ast: ProgramNode) -> ProgramNode:
     Proc-blocos são filtrados de `procedures` no resultado final.
     O ProgramNode original não é modificado.
     """
-    proc_map: dict[str, ProcDeclNode | ProcBlockNode] = {p.name: p for p in ast.procedures}
+    proc_map: dict[str, ProcDeclNode | ProcBlockNode] = {
+        p.name: p for p in ast.procedures if isinstance(p, (ProcDeclNode, ProcBlockNode))
+    }
     block_map: dict[str, ProcBlockNode] = {
         p.name: p for p in ast.procedures if isinstance(p, ProcBlockNode)
     }

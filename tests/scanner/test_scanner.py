@@ -67,11 +67,14 @@ class TestKeywords:
     def test_when(self):
         assert types('when') == [TokenType.KW_WHEN]
 
+    def test_import(self):
+        assert types('import') == [TokenType.KW_IMPORT]
+
     def test_all_keywords_sequence(self):
-        src = 'program vars procs from exec case pass while as codes when'
+        src = 'program vars procs from import exec case pass while as codes when'
         expected = [
             TokenType.KW_PROGRAM, TokenType.KW_VARS, TokenType.KW_PROCS,
-            TokenType.KW_FROM, TokenType.KW_EXEC,
+            TokenType.KW_FROM, TokenType.KW_IMPORT, TokenType.KW_EXEC,
             TokenType.KW_CASE, TokenType.KW_PASS, TokenType.KW_WHILE,
             TokenType.KW_AS, TokenType.KW_CODES, TokenType.KW_WHEN,
         ]

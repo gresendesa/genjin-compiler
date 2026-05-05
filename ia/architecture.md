@@ -84,6 +84,12 @@ Código-fonte DSL
          │
          ▼
 ┌─────────────────┐
+│resolve_imports  │  Etapa 2.7: resolução de importações
+│.py (SPR-2026-18)│  Substitui ProcImportNode por ProcBlockNode concretos
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
 │  transpiler.py  │  Etapa 3: transpilação
 │  (a implementar)│  Saída: template Jinja2 (notação Genjin)
 └────────┬────────┘
@@ -133,3 +139,4 @@ Código-fonte DSL
 | Data | Versão | Descrição |
 |---|---|---|
 | 2026-04-26 | 1.0.0 | Primeira versão. Componentes, fluxo e contratos documentados. |
+| 2026-05-04 | 1.1.0 | SPR-2026-18: nova fase `ResolveImports` inserida entre Parser e Desugar. Pipeline: `Scanner → Parser → ResolveImports → Desugar → Transpiler → Assembler`. Novo arquivo `compiler/resolve_imports.py`. `ProcImportNode` temporário na AST entre Parser e ResolveImports. `--import-base` na CLI. |

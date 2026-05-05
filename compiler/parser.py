@@ -102,10 +102,21 @@ class InlineSeqNode:
 
 
 @dataclass
+class ProcImportNode:
+    """Nó temporário: importação de proc-blocos de arquivo externo.
+
+    Presente na AST apenas entre parser e resolve_imports.
+    Substituído por ProcBlockNode(s) concretos após resolução.
+    """
+    source_path: str        # caminho dotted: "dir1.dir2.dirn"
+    names: list[str]        # nomes dos proc-blocos a importar
+
+
+@dataclass
 class ProgramNode:
     name: str
     variables: list[VarDeclNode]
-    procedures: list[ProcDeclNode | ProcBlockNode]
+    procedures: list[ProcDeclNode | ProcBlockNode | ProcImportNode]
     block: ExecBlockNode | InlineSeqNode  # InlineSeqNode possível antes do desugar
 
 
@@ -229,7 +240,17 @@ class Parser:
 
         # Terceiro passo: parsear exec/inline com vars e procs completos
         self._pos = exec_pos
-        declared_procs = {p.name: p for p in procedures}
+        declared_procs: dict[str, ProcDeclNode | ProcBlockNode] = {}
+        for p in procedures:
+            if isinstance(p, (ProcDeclNode, ProcBlockNode)):
+                declared_procs[p.name] = p
+            elif isinstance(p, ProcImportNode):
+                # Placeholder para nomes importados — validação de codes diferida para resolve_imports
+                for imp_name in p.names:
+                    if imp_name not in declared_procs:
+                        declared_procs[imp_name] = ProcBlockNode(
+                            name=imp_name, parameters=[], block=None, inferred_codes=[]
+                        )
         block = self._parse_exec_or_inline(
             declared_vars={v.name for v in variables},
             declared_procs=declared_procs,
@@ -490,17 +511,24 @@ class Parser:
     # procs
     # ------------------------------------------------------------------
 
-    def _parse_procs(self, declared_vars: set[str] = frozenset()) -> list[ProcDeclNode | ProcBlockNode]:
+    def _parse_procs(self, declared_vars: set[str] = frozenset()) -> list[ProcDeclNode | ProcBlockNode | ProcImportNode]:
         self._expect(TokenType.KW_PROCS, "esperado 'procs'")
         self._expect(TokenType.LBRACE, "esperado '{' após 'procs'")
 
-        # Passo 1: coletar ProcDeclNode completos + stubs de ProcBlockNode
-        ordered: list[ProcDeclNode | tuple] = []
+        # Passo 1: coletar ProcDeclNode completos + stubs de ProcBlockNode + ProcImportNode
+        ordered: list[ProcDeclNode | ProcImportNode | tuple] = []
         stubs: list[tuple[str, list[ParamDeclNode], int]] = []
         proc_decl_nodes: list[ProcDeclNode] = []
+        import_nodes: list[ProcImportNode] = []
 
         while not self._check(TokenType.RBRACE, TokenType.EOF):
             tok = self._peek()
+            if tok.type == TokenType.KW_FROM:
+                # Instrução de importação: from "mod" import Name1, Name2
+                imp = self._parse_import_statement()
+                import_nodes.append(imp)
+                ordered.append(imp)
+                continue
             if tok.type == TokenType.IDENT and tok.value == 'proc':
                 raise ParseError(
                     "keyword 'proc' não é mais necessária; escreva diretamente o nome do procedimento",
@@ -539,8 +567,9 @@ class Parser:
         self._expect(TokenType.RBRACE, "esperado '}' para fechar 'procs'")
         end_pos = self._pos
 
-        # Montar declared_procs_map com todos os ProcDeclNode
-        # e placeholders para ProcBlockNode (suporte a forward references)
+        # Montar declared_procs_map com todos os ProcDeclNode,
+        # placeholders para ProcBlockNode (forward references) e
+        # placeholders para nomes importados (validação de codes diferida para resolve_imports)
         declared_procs_map: dict[str, ProcDeclNode | ProcBlockNode] = {}
         for pd in proc_decl_nodes:
             declared_procs_map[pd.name] = pd
@@ -548,6 +577,12 @@ class Parser:
             declared_procs_map[stub_name] = ProcBlockNode(
                 name=stub_name, parameters=stub_params, block=None, inferred_codes=[]
             )
+        for imp in import_nodes:
+            for imp_name in imp.names:
+                if imp_name not in declared_procs_map:
+                    declared_procs_map[imp_name] = ProcBlockNode(
+                        name=imp_name, parameters=[], block=None, inferred_codes=[]
+                    )
 
         # Passo 2: parsear corpos dos proc-blocos com declared_procs completo
         proc_block_nodes: dict[str, ProcBlockNode] = {}
@@ -562,14 +597,29 @@ class Parser:
         self._pos = end_pos
 
         # Reconstruir lista na ordem original de declaração
-        result: list[ProcDeclNode | ProcBlockNode] = []
+        result: list[ProcDeclNode | ProcBlockNode | ProcImportNode] = []
         for entry in ordered:
-            if isinstance(entry, ProcDeclNode):
+            if isinstance(entry, (ProcDeclNode, ProcImportNode)):
                 result.append(entry)
             else:
                 entry_name, _, _ = entry
                 result.append(proc_block_nodes[entry_name])
         return result
+
+    def _parse_import_statement(self) -> ProcImportNode:
+        """Parseia `from "mod" import Name1, Name2 [,]`."""
+        from_tok = self._advance()  # KW_FROM
+        path_tok = self._expect(TokenType.STRING, "esperado caminho em string após 'from'")
+        self._expect(TokenType.KW_IMPORT, "esperado 'import' após o caminho")
+        names: list[str] = []
+        name_tok = self._expect(TokenType.IDENT, "esperado ao menos um nome após 'import'")
+        names.append(name_tok.value)
+        while self._check(TokenType.COMMA):
+            self._advance()  # consume comma
+            if not self._check(TokenType.IDENT):
+                break  # vírgula final opcional
+            names.append(self._advance().value)
+        return ProcImportNode(source_path=path_tok.value, names=names)
 
     def _parse_proc_decl(self) -> ProcDeclNode:
         tok = self._peek()

@@ -62,7 +62,7 @@
         {
           "comment": "Palavras-chave de declaração",
           "name": "keyword.declaration.genjin",
-          "match": "\\b(proc|from|as|codes)\\b"
+          "match": "\\b(proc|from|import|as|codes)\\b"
         }
       ]
     },

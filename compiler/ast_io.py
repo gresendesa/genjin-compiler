@@ -20,7 +20,7 @@ from typing import Any
 from compiler.scanner import Token, TokenType
 from compiler.parser import (
     ArgNode, OutputCodeNode, ParamDeclNode, ProcDeclNode, ProcBlockNode,
-    VarDeclNode, ExecBlockNode, CaseNode, ProgramNode,
+    ProcImportNode, VarDeclNode, ExecBlockNode, CaseNode, ProgramNode,
     InlineAtomNode, InlineSeqNode,
 )
 
@@ -78,15 +78,16 @@ def ast_from_json(s: str) -> ProgramNode:
 
 
 _NODE_TYPES: dict[str, type] = {
-    "ArgNode":        ArgNode,
-    "OutputCodeNode": OutputCodeNode,
-    "ParamDeclNode":  ParamDeclNode,
-    "ProcDeclNode":   ProcDeclNode,
-    "ProcBlockNode":  ProcBlockNode,
-    "VarDeclNode":    VarDeclNode,
-    "ExecBlockNode":  ExecBlockNode,
-    "CaseNode":       CaseNode,
-    "ProgramNode":    ProgramNode,
+    "ArgNode":          ArgNode,
+    "OutputCodeNode":   OutputCodeNode,
+    "ParamDeclNode":    ParamDeclNode,
+    "ProcDeclNode":     ProcDeclNode,
+    "ProcBlockNode":    ProcBlockNode,
+    "ProcImportNode":   ProcImportNode,
+    "VarDeclNode":      VarDeclNode,
+    "ExecBlockNode":    ExecBlockNode,
+    "CaseNode":         CaseNode,
+    "ProgramNode":      ProgramNode,
 }
 
 
