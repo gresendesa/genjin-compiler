@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from compiler.parser import parse, ProcBlockNode, ProcImportNode
+from compiler.parser import parse, ProcBlockNode, ProcDeclNode, ProcImportNode
 from compiler.resolve_imports import resolve_imports, ResolveImportError
 
 
@@ -260,3 +260,178 @@ exec Foo() as "X" {
         ast_a = parse(a_gnj)
         with pytest.raises(ResolveImportError, match="circular"):
             resolve_imports(ast_a, base_dir=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# Testes de injeção automática de dependências (B-030)
+# ---------------------------------------------------------------------------
+
+class TestDependencyInjection:
+    def test_procdecl_dep_is_injected(self, tmp_path):
+        """Importar proc-bloco injeta automaticamente os ProcDeclNode dos quais depende."""
+        _write(tmp_path, 'utils', UTILS_GNJ)
+        # Avisa depende de NotificaErro (ProcDeclNode) — não declarado localmente
+        src = textwrap.dedent('''\
+program "importador"
+vars {}
+procs {
+    Dummy() from "Lib.dummy" {
+        codes OK<0>
+    }
+    from "utils" import
+        Avisa
+}
+exec Dummy() as "X" {
+    pass OK
+}
+''')
+        ast = parse(src)
+        resolved = resolve_imports(ast, base_dir=tmp_path)
+        names = [p.name for p in resolved.procedures]
+        assert 'Avisa' in names
+        assert 'NotificaErro' in names  # injetado automaticamente
+
+    def test_procdecl_dep_already_local_is_skipped(self, tmp_path):
+        """Dep já declarada localmente (mesma definição) não gera conflito nem duplicata."""
+        _write(tmp_path, 'utils', UTILS_GNJ)
+        src = textwrap.dedent('''\
+program "importador"
+vars {}
+procs {
+    NotificaErro(msg: Text) from "Lib.notif" {
+        codes REINICIAR<99>
+    }
+    from "utils" import
+        Avisa
+}
+exec NotificaErro(msg="x") as "X" {
+    pass REINICIAR
+}
+''')
+        ast = parse(src)
+        resolved = resolve_imports(ast, base_dir=tmp_path)
+        names = [p.name for p in resolved.procedures]
+        assert 'Avisa' in names
+        assert 'NotificaErro' in names
+        # Não duplicado
+        assert names.count('NotificaErro') == 1
+
+    def test_explicit_procdecl_import(self, tmp_path):
+        """Import explícito de ProcDeclNode deve funcionar."""
+        _write(tmp_path, 'utils', UTILS_GNJ)
+        src = textwrap.dedent('''\
+program "importador"
+vars {}
+procs {
+    Dummy() from "Lib.dummy" {
+        codes OK<0>
+    }
+    from "utils" import
+        NotificaErro
+}
+exec Dummy() as "X" {
+    pass OK
+}
+''')
+        ast = parse(src)
+        resolved = resolve_imports(ast, base_dir=tmp_path)
+        names = [p.name for p in resolved.procedures]
+        assert 'NotificaErro' in names
+        assert isinstance(next(p for p in resolved.procedures if p.name == 'NotificaErro'), ProcDeclNode)
+
+    def test_mixed_explicit_import(self, tmp_path):
+        """Import explícito misto: ProcDecl + ProcBlock no mesmo statement."""
+        _write(tmp_path, 'utils', UTILS_GNJ)
+        src = textwrap.dedent('''\
+program "importador"
+vars {}
+procs {
+    Dummy() from "Lib.dummy" {
+        codes OK<0>
+    }
+    from "utils" import
+        NotificaErro,
+        Avisa
+}
+exec Dummy() as "X" {
+    pass OK
+}
+''')
+        ast = parse(src)
+        resolved = resolve_imports(ast, base_dir=tmp_path)
+        names = [p.name for p in resolved.procedures]
+        assert 'NotificaErro' in names
+        assert 'Avisa' in names
+        # NotificaErro não duplicado (importado explicitamente + seria dep de Avisa)
+        assert names.count('NotificaErro') == 1
+
+    def test_transitive_procblock_dep_injected(self, tmp_path):
+        """Proc-bloco que depende de outro proc-bloco: dependência transitiva injetada."""
+        outer_gnj = textwrap.dedent('''\
+program "outer"
+vars {}
+procs {
+    Base() from "Lib.base" {
+        codes OK<0>
+    }
+    Inner() {
+        exec Base() as "Inner" {
+            pass OK
+        }
+    }
+    Outer() {
+        exec Inner() as "Outer" {
+            pass OK
+        }
+    }
+}
+exec Base() as "X" {
+    pass OK
+}
+''')
+        _write(tmp_path, 'outer', outer_gnj)
+        src = textwrap.dedent('''\
+program "importador"
+vars {}
+procs {
+    Dummy() from "Lib.dummy" {
+        codes OK<0>
+    }
+    from "outer" import
+        Outer
+}
+exec Dummy() as "X" {
+    pass OK
+}
+''')
+        ast = parse(src)
+        resolved = resolve_imports(ast, base_dir=tmp_path)
+        names = [p.name for p in resolved.procedures]
+        assert 'Outer' in names
+        assert 'Inner' in names   # dep transitiva de Outer
+        assert 'Base' in names    # dep transitiva de Inner
+
+    def test_dep_conflict_with_local_raises(self, tmp_path):
+        """Dep injetada com definição diferente da local → ResolveImportError (conflito)."""
+        _write(tmp_path, 'utils', UTILS_GNJ)
+        # Declara NotificaErro localmente com lib diferente da versão em utils.gnj
+        src = textwrap.dedent('''\
+program "importador"
+vars {}
+procs {
+    NotificaErro(msg: Text) from "Lib.OUTRA_LIB" {
+        codes REINICIAR<99>
+    }
+    Dummy() from "Lib.dummy" {
+        codes OK<0>
+    }
+    from "utils" import
+        Avisa
+}
+exec Dummy() as "X" {
+    pass OK
+}
+''')
+        ast = parse(src)
+        with pytest.raises(ResolveImportError, match="conflito"):
+            resolve_imports(ast, base_dir=tmp_path)

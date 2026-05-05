@@ -250,9 +250,28 @@ from "caminho.dotted" import Nome1 [, Nome2 [, ...]] [,]
 ```
 
 - O caminho é uma **string com segmentos separados por pontos**.
-- Os nomes são identificadores de proc-blocos definidos no arquivo externo.
+- Os nomes são identificadores de proc-blocos ou procs normais definidos no arquivo externo.
 - A vírgula final é opcional.
-- Apenas **proc-blocos** (com corpo `{ ... }`) são importáveis. Procs normais (com `from "..."`) existem no domínio de templates e não são importáveis via `from ... import`.
+- **Proc-blocos** (com corpo `{ ... }`) e **procs normais** (com `from "..."`) são ambos importáveis.
+
+#### Injeção automática de dependências
+
+Ao importar um proc-bloco, o compilador analisa o corpo deste e injeta automaticamente todos os procs dos quais ele depende — sejam procs normais (`ProcDeclNode`) ou outros proc-blocos (`ProcBlockNode`) — incluindo dependências transitivas.
+
+A injeção é silenciosa: se a dep já está declarada localmente com a mesma definição, ela é ignorada. Se a definição diverge, um erro de conflito é levantado.
+
+Exemplo:
+
+```gnj
+// lenhador.gnj contém:
+//   Teleportar(home: &Text) from "Federal..."  — proc normal
+//   Troca_Ferramenta(...)  { ... Teleportar ... }  — proc-bloco
+
+from "lenhador" import
+    Troca_Ferramenta   // Teleportar é injetado automaticamente
+```
+
+Esse mecanismo evita declarações manuais repetidas de procs já referenciados por proc-blocos importados.
 
 #### Resolução de path
 
@@ -288,7 +307,8 @@ Quando a entrada vem de **stdin** (sem arquivo de origem), o diretório de traba
 |---|---|
 | Arquivo externo não encontrado | Erro: `ResolveImportError` com o path tentado |
 | Nome solicitado não existe no externo | Erro: `ResolveImportError` com o nome e o arquivo |
-| Nome conflita com proc já declarado localmente | Erro: `ResolveImportError` com o nome em conflito |
+| Nome conflita com proc já declarado localmente (definição diferente) | Erro: `ResolveImportError` com o nome em conflito |
+| Dep injetada automaticamente conflita com definição local | Erro: `ResolveImportError` de conflito de definição |
 | Importação circular (A importa B que importa A) | Erro: `ResolveImportError` indicando o ciclo |
 | Arquivo externo também usa `from ... import` | Resolvido recursivamente (importação em cadeia) |
 

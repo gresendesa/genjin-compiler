@@ -21,23 +21,7 @@ vars {
 
 procs {
 
-    Teleportar(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_teleportar" {
-        codes SUCESSO<0>, DEMORA<99>, NÃO_EXISTE<404>, CANCELADO<3>
-    }
-
-    Definir_Home(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_definir_home" {
-        codes SUCESSO<0>, DEMORA<99>, LIMITE_ALCANCADO<4>, PROIBIDO<1>
-    }
-
     Ping() from "Federal.@.server_tools_cl_77_78.serviço_testar_conectividade" {
-        codes SUCESSO<0>, DEMORA<99>
-    }
-
-    Pegar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.serviço_pegar_itens_mkb" {
-        codes SUCESSO<0>, DEMORA<99>
-    }
-
-    Guardar_Itens_MKB(gaveta: Text, itens: Object, quantidade: Number, quantidade_movidos_var: &Number) from "Federal.@.server_tools_cl_77_78.serviço_guardar_itens_mkb" {
         codes SUCESSO<0>, DEMORA<99>
     }
 
@@ -61,10 +45,6 @@ procs {
 
     // --- Federal.@.Lenhador ---
 
-    Notificar_Exceção(mensagem: Text) from "Federal.@.Lenhador.notificar_exceção" {
-        codes REINICIAR_CICLO<99>
-    }
-
     Procura_Árvores(outvar_array_arvores: Text[]) from "Federal.@.Lenhador.procura_árvores" {
         codes SUCESSO<0>, SEM_ÁRVORES_AO_REDOR<1>
     }
@@ -85,22 +65,13 @@ procs {
         codes SUCESSO<0>, CAMINHO_NÃO_ENCONTRADO<13>, SEM_SUPORTE<573>
     }
 
-    // --- Proc-blocos reutilizáveis (B-019/B-020) ---
+    // --- Proc-blocos importados de lenhador.gnj (B-030: injeção automática de deps) ---
+    // Deps injetadas automaticamente: Teleportar, Definir_Home, Guardar_Itens_MKB,
+    //                                  Pegar_Itens_MKB, Notificar_Exceção
 
-    Exceção_e_Reinicia(mensagem: Text) {
-        exec Notificar_Exceção(mensagem=mensagem) as "Notifica e reinicia" {
-            pass REINICIAR_CICLO
-        }
-    }
-
-    Troca_Ferramenta(home_gastos: &Text, home_novos: &Text, home_voltar: &Text) {
-        @Definir_Home(home=&home_voltar) while(DEMORA, CANCELADO) when(SUCESSO)
-        @Teleportar(home=&home_gastos) while(DEMORA) when(SUCESSO)
-        @Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) while(DEMORA) when(SUCESSO)
-        @Teleportar(home=&home_novos) while(DEMORA) when(SUCESSO)
-        @Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) while(DEMORA) when(SUCESSO)
-        @Teleportar(home=&home_voltar)
-    }
+    from "lenhador" import
+        Troca_Ferramenta,
+        Exceção_e_Reinicia
 }
 
 // Bloco raiz: ciclo principal do lenhador.

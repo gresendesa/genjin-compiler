@@ -856,6 +856,11 @@ class Parser:
                       proc_decl: ProcDeclNode | ProcBlockNode,
                       declared_vars: set[str],
                       exec_line: int) -> dict[str, ArgNode]:
+        # Placeholder para proc importado (block=None): skip validação de parâmetros,
+        # inferir tipo de argumento diretamente da sintaxe
+        if isinstance(proc_decl, ProcBlockNode) and proc_decl.block is None:
+            return self._parse_kwargs_unvalidated(declared_vars)
+
         # Índice dos parâmetros por nome
         param_index = {p.name: p for p in proc_decl.parameters}
         kwargs: dict[str, ArgNode] = {}
@@ -917,6 +922,46 @@ class Parser:
 
         return kwargs
 
+    def _parse_kwargs_unvalidated(self, declared_vars: set[str]) -> dict[str, ArgNode]:
+        """Versão sem validação de _parse_kwargs, para proc importado (placeholder).
+        Infere tipo de argumento da sintaxe: &var=referência, literal=string/number/object/var.
+        """
+        kwargs: dict[str, ArgNode] = {}
+        while not self._check(TokenType.RPAREN, TokenType.EOF):
+            if kwargs:
+                self._expect(TokenType.COMMA, "esperado ',' entre argumentos")
+            name_tok = self._expect(TokenType.IDENT, "esperado nome do argumento")
+            self._expect(TokenType.ASSIGN, "esperado '=' após nome do argumento")
+
+            if self._check(TokenType.AMPERSAND):
+                self._advance()
+                var_tok = self._expect(TokenType.IDENT, "esperado nome de variável após '&'")
+                if var_tok.value not in declared_vars:
+                    raise ParseError(
+                        f"variável '{var_tok.value}' não declarada em 'vars'",
+                        var_tok.line,
+                    )
+                kwargs[name_tok.value] = ArgNode(value=var_tok.value, evaluation='reference')
+            else:
+                val_tok = self._peek()
+                if val_tok.type == TokenType.STRING:
+                    self._advance()
+                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation='literal')
+                elif val_tok.type == TokenType.OBJECT_LITERAL:
+                    self._advance()
+                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation='literal', raw=True)
+                elif val_tok.type == TokenType.NUMBER:
+                    self._advance()
+                    kwargs[name_tok.value] = ArgNode(value=int(val_tok.value), evaluation='literal')
+                elif val_tok.type == TokenType.IDENT and val_tok.value in declared_vars:
+                    self._advance()
+                    ev = 'placeholder' if val_tok.value in self._pb_param_names else 'literal'
+                    kwargs[name_tok.value] = ArgNode(value=val_tok.value, evaluation=ev)
+                else:
+                    raise ParseError(f"valor inválido para argumento '{name_tok.value}'", val_tok.line)
+
+        return kwargs
+
     def _parse_exec_body(
         self,
         proc_decl: ProcDeclNode | ProcBlockNode,
@@ -927,7 +972,11 @@ class Parser:
         """Parseia o interior de { } de um exec. Retorna (cases, pass_codes).
         O while(...) fica FORA do corpo, após o }, e é tratado em _parse_exec.
         """
-        valid_codes = {oc.name for oc in proc_decl.output_codes}
+        # ProcBlockNode: códigos são inferidos no desugar — skip validação em parse
+        if isinstance(proc_decl, ProcBlockNode):
+            valid_codes: set[str] = set()
+        else:
+            valid_codes = {oc.name for oc in proc_decl.output_codes}
         cases: list[CaseNode] = []
         pass_codes: list[str] = []
 

@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-05 (SPR-2026-19 aberta — B-030 em andamento)
+Ultima atualizacao: 2026-05-05 (SPR-2026-19 encerrada — B-030 concluído)
 
 ## Objetivo
 
@@ -238,12 +238,14 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 
 ### SPR-2026-19
 
-- Status: em andamento
+- Status: concluída
 - Data de início: 2026-05-05
+- Data de encerramento: 2026-05-05
 - Foco: B-030 — Injeção automática de dependências em `from ... import`
-- Itens: B-030 (Fase 1: estudo, Fase 2: implementação condicional)
+- Itens: B-030 (Fase 1: estudo, Fase 2: implementação)
 - Prioridade PO dos itens: 1 (crítica) Fase 1, 3 (média) Fase 2
 - Risco da sprint: médio (2.0)
+- Testes: 440 passando, 0 falhas (+6 testes novos em TestDependencyInjection)
 - Arquivo detalhado: [ia/sprints/SPR-2026-19.md](sprints/SPR-2026-19.md)
 
 ### SPR-YYYY-NN

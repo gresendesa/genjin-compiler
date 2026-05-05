@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-05 (B-030 em andamento — SPR-2026-19 aberta)
+Ultima atualizacao: 2026-05-05 (B-030 concluído — SPR-2026-19 encerrada)
 
 ## Objetivo
 
@@ -51,12 +51,11 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-027 | Parser: literais de coleção `[...]`/`{...}` como argumentos `Object` | 1 (crítica) | médio | [B-027.md](backlog-items/B-027.md) |
 | B-028 | Estudo de viabilidade: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | [B-028.md](backlog-items/B-028.md) |
 | B-029 | Implementação: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | [B-029.md](backlog-items/B-029.md) |
+| B-030 | Importação com injeção automática de dependências via `from ... import` | 1/3 | médio | [B-030.md](backlog-items/B-030.md) |
 
 ### Pendentes
 
-| ID | Titulo | Prioridade PO | Risco | Arquivo |
-|---|---|---|---|---|
-| B-030 | Importação com injeção automática de dependências via `from ... import` | 1/3 | médio | [B-030.md](backlog-items/B-030.md) |
+(nenhum)
 
 ### Planejados
 
@@ -64,8 +63,6 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
-| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
-|---|---|---|---|---|---|
-| B-030 | Importação com injeção automática de dependências via `from ... import` | 1 (crítica) Fase 1 / 3 (média) Fase 2 | médio | SPR-2026-19 | [B-030.md](backlog-items/B-030.md) |
+(nenhum)
 
 ## Template sintetico para novos itens
