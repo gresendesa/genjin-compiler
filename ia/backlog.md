@@ -50,6 +50,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-026 | Suite de testes para `genjin.jinja2`: unitários por macro + integração (Fatia A) | 1 (crítica) | médio-alto | [B-026.md](backlog-items/B-026.md) |
 | B-027 | Parser: literais de coleção `[...]`/`{...}` como argumentos `Object` | 1 (crítica) | médio | [B-027.md](backlog-items/B-027.md) |
 | B-028 | Estudo de viabilidade: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | [B-028.md](backlog-items/B-028.md) |
+| B-029 | Implementação: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | [B-029.md](backlog-items/B-029.md) |
 
 ### Pendentes
 
@@ -58,12 +59,6 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 ### Planejados
 
 (nenhum)
-
-### Em andamento
-
-| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
-|---|---|---|---|---|---|
-| B-029 | Implementação: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | SPR-2026-18 | [B-029.md](backlog-items/B-029.md) |
 
 ### Em andamento
 
