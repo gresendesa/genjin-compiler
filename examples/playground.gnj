@@ -1,0 +1,12 @@
+program "playground"
+
+vars {
+    resultado: Number
+}
+
+procs {
+    from "lenhador" import Reiniciar_Ciclo
+}
+
+@Reiniciar_Ciclo() >> resultado
+
