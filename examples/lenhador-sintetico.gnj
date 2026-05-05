@@ -20,7 +20,6 @@ vars {
 }
 
 procs {
-    // --- server_tools_cl_77_78 ---
 
     Teleportar(home: &Text) from "Federal.@.server_tools_cl_77_78.serviço_teleportar" {
         codes SUCESSO<0>, DEMORA<99>, NÃO_EXISTE<404>, CANCELADO<3>
@@ -88,26 +87,20 @@ procs {
 
     // --- Proc-blocos reutilizáveis (B-019/B-020) ---
 
-    // Importados de arquivo externo (B-029: sintaxe de importação de proc-blocos):
-    from "dir1.dir2.dirn" import
-        Exceção_e_Reinicia,
-        Troca_Ferramenta
+    Exceção_e_Reinicia(mensagem: Text) {
+        exec Notificar_Exceção(mensagem=mensagem) as "Notifica e reinicia" {
+            pass REINICIAR_CICLO
+        }
+    }
 
-    // Equivalentes locais (usar quando o arquivo externo não estiver disponível):
-    // Exceção_e_Reinicia(mensagem: Text) {
-    //     exec Notificar_Exceção(mensagem=mensagem) as "Notifica e reinicia" {
-    //         pass REINICIAR_CICLO
-    //     }
-    // }
-    //
-    // Troca_Ferramenta(home_gastos: &Text, home_novos: &Text, home_voltar: &Text) {
-    //     @Definir_Home(home=&home_voltar) while(DEMORA, CANCELADO) when(SUCESSO)
-    //     @Teleportar(home=&home_gastos) while(DEMORA) when(SUCESSO)
-    //     @Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) while(DEMORA) when(SUCESSO)
-    //     @Teleportar(home=&home_novos) while(DEMORA) when(SUCESSO)
-    //     @Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) while(DEMORA) when(SUCESSO)
-    //     @Teleportar(home=&home_voltar)
-    // }
+    Troca_Ferramenta(home_gastos: &Text, home_novos: &Text, home_voltar: &Text) {
+        @Definir_Home(home=&home_voltar) while(DEMORA, CANCELADO) when(SUCESSO)
+        @Teleportar(home=&home_gastos) while(DEMORA) when(SUCESSO)
+        @Guardar_Itens_MKB(gaveta="gaveta_mkb_guardar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) while(DEMORA) when(SUCESSO)
+        @Teleportar(home=&home_novos) while(DEMORA) when(SUCESSO)
+        @Pegar_Itens_MKB(gaveta="gaveta_mkb_pegar", itens=['diamond_axe'], quantidade=1, quantidade_movidos_var=&quantidade_movidos) while(DEMORA) when(SUCESSO)
+        @Teleportar(home=&home_voltar)
+    }
 }
 
 // Bloco raiz: ciclo principal do lenhador.

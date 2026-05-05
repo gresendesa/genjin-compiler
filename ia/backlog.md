@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-04 (B-028 concluído — estudo; B-029 em andamento — implementação; SPR-2026-18 aberta)
+Ultima atualizacao: 2026-05-05 (B-030 em andamento — SPR-2026-19 aberta)
 
 ## Objetivo
 
@@ -54,7 +54,9 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Pendentes
 
-(nenhum)
+| ID | Titulo | Prioridade PO | Risco | Arquivo |
+|---|---|---|---|---|
+| B-030 | Importação com injeção automática de dependências via `from ... import` | 1/3 | médio | [B-030.md](backlog-items/B-030.md) |
 
 ### Planejados
 
@@ -62,6 +64,8 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 
 ### Em andamento
 
-(nenhum)
+| ID | Titulo | Prioridade PO | Risco | Sprint | Arquivo |
+|---|---|---|---|---|---|
+| B-030 | Importação com injeção automática de dependências via `from ... import` | 1 (crítica) Fase 1 / 3 (média) Fase 2 | médio | SPR-2026-19 | [B-030.md](backlog-items/B-030.md) |
 
 ## Template sintetico para novos itens
