@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genjin-compiler"
+version = "1.0.0"
+description = "Compilador para a linguagem DSL Genjin com resolvedores customizáveis"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "gresendesa" }]
+dependencies = [
+    "Jinja2>=3.1",
+    "markupsafe>=2.0",
+]
+
+[project.scripts]
+genjin-compile  = "compiler.__main__:main"
+genjin-assemble = "assembler:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["compiler*", "mkb*"]
+
+[tool.setuptools]
+py-modules = ["assembler"]
+
+[tool.setuptools.package-data]
+"*" = ["*.jinja2"]

@@ -220,14 +220,89 @@ def resolve_template_name(template_path: str, templates_dir: str) -> str:
     return dotted
 
 
+def _make_env(loader, delimiters: dict | None = None):
+    """Cria um Environment Jinja2 com os filtros e globals padrão do projeto."""
+    d = delimiters or {}
+    env = Environment(
+        loader=loader,
+        block_start_string=d.get("block_start", "{*"),
+        block_end_string=d.get("block_end", "*}"),
+        variable_start_string=d.get("variable_start", "{{"),
+        variable_end_string=d.get("variable_end", "}}"),
+        comment_start_string=d.get("comment_start", "{!!"),
+        comment_end_string=d.get("comment_end", "!!}"),
+        keep_trailing_newline=True,
+    )
+    env.globals.update({
+        "dev": "Federal",
+        "build": '3E26•E30•Federal',
+        "this": {'code': '...', 'csid': 'csid', 'type': 'Main'},
+        "nid": Cortex.get_next_number,
+        "raise": Cortex.throw,
+    })
+    env.filters.update({
+        "macro": call_macro_by_name,
+        "to_json": to_json,
+        "findall": findall,
+        "place": place,
+        "replace_especial_alphabetic_chars": replace_especial_alphabetic_chars,
+    })
+    return env
+
+
+def render(
+    template_str: str,
+    loader=None,
+    context: dict | None = None,
+    delimiters: dict | None = None,
+) -> str:
+    """Renderiza um template Jinja2 e retorna o resultado como string.
+
+    API programática do assembler — permite uso como biblioteca sem CLI.
+
+    Parâmetros:
+        template_str — conteúdo do template a renderizar (ex: saída do compilador Genjin).
+        loader       — Jinja2 BaseLoader para resolução de templates referenciados
+                       (ex: genjin.jinja2 e templates do projeto). Padrão: DottedLoader(cwd).
+        context      — dicionário de variáveis passadas ao template. Padrão: {}.
+        delimiters   — dict com chaves opcionais: block_start, block_end, variable_start,
+                       variable_end, comment_start, comment_end. Padrão: delimitadores do projeto.
+
+    Retorna a string renderizada.
+    Levanta TemplateSyntaxError, TemplateNotFound ou Exception em caso de erro.
+
+    Exemplo com loader customizado (templates em memória/banco de dados):
+        from jinja2 import DictLoader
+        from assembler import render
+
+        loader = DictLoader({"genjin": conteudo_genjin_jinja2})
+        resultado = render(template_str=saida_compilador, loader=loader)
+    """
+    _INLINE_KEY = '__inline__'
+    if loader is None:
+        loader = DottedLoader(os.getcwd())
+    combined_loader = ChoiceLoader([DictLoader({_INLINE_KEY: template_str}), loader])
+    env = _make_env(combined_loader, delimiters)
+    template = env.get_template(_INLINE_KEY)
+    return template.render(**(context or {}))
+
+
 def main() -> None:
     args = parse_args()
+
+    delimiters = {
+        "block_start": args.block_start,
+        "block_end": args.block_end,
+        "variable_start": args.variable_start,
+        "variable_end": args.variable_end,
+        "comment_start": args.comment_start,
+        "comment_end": args.comment_end,
+    }
 
     stdin_mode = args.template == '-'
 
     if stdin_mode:
         # --- Modo stdin ---
-        # Resolve o diretório de templates (cwd como fallback)
         if args.templates_dir:
             templates_dir = os.path.abspath(args.templates_dir)
             if not os.path.isdir(templates_dir):
@@ -237,42 +312,12 @@ def main() -> None:
             file_loader = DottedLoader(os.getcwd())
 
         stdin_content = sys.stdin.read()
-        _STDIN_KEY = '__stdin__'
-
-        env = Environment(
-            loader=ChoiceLoader([DictLoader({_STDIN_KEY: stdin_content}), file_loader]),
-            block_start_string=args.block_start,
-            block_end_string=args.block_end,
-            variable_start_string=args.variable_start,
-            variable_end_string=args.variable_end,
-            comment_start_string=args.comment_start,
-            comment_end_string=args.comment_end,
-            keep_trailing_newline=True,
-        )
-        env.globals.update({
-            "dev": "Federal", #Hardcoded para facilitar debug
-            "build": '3E26•E30•Federal', #Hardcoded para facilitar debug
-            "this": {'code': '...', 'csid': 'csid', 'type': 'Main'}, #Hardcoded para facilitar debug
-            "nid": Cortex.get_next_number,
-            "raise": Cortex.throw,
-        })
-        env.filters.update({
-            "macro": call_macro_by_name,
-            "to_json": to_json,
-            "findall": findall,
-            "place": place,
-            "replace_especial_alphabetic_chars": replace_especial_alphabetic_chars,
-        })
-
-        try:
-            template = env.get_template(_STDIN_KEY)
-        except TemplateSyntaxError as exc:
-            sys.exit(f"Erro de sintaxe no template stdin (linha {exc.lineno}): {exc.message}")
-
         context = build_context(args.vars, args.vars_file)
 
         try:
-            rendered = template.render(**context)
+            rendered = render(stdin_content, loader=file_loader, context=context, delimiters=delimiters)
+        except TemplateSyntaxError as exc:
+            sys.exit(f"Erro de sintaxe no template stdin (linha {exc.lineno}): {exc.message}")
         except TemplateNotFound as exc:
             msg = f"Erro: template não encontrado: {exc.name!r}."
             if not args.templates_dir:
@@ -293,31 +338,9 @@ def main() -> None:
             sys.exit(f"Erro: diretório de templates não encontrado: {templates_dir!r}")
 
         template_name = resolve_template_name(args.template, templates_dir)
-
-        env = Environment(
-            loader=DottedLoader(templates_dir),
-            block_start_string=args.block_start,
-            block_end_string=args.block_end,
-            variable_start_string=args.variable_start,
-            variable_end_string=args.variable_end,
-            comment_start_string=args.comment_start,
-            comment_end_string=args.comment_end,
-            keep_trailing_newline=True,
-        )
-        env.globals.update({
-            "dev": "Federal", #Hardcoded para facilitar debug
-            "build": '3E26•E30•Federal', #Hardcoded para facilitar debug
-            "this": {'code': '...', 'csid': 'csid', 'type': 'Main'}, #Hardcoded para facilitar debug
-            "nid": Cortex.get_next_number,
-            "raise": Cortex.throw,
-        })
-        env.filters.update({
-            "macro": call_macro_by_name,
-            "to_json": to_json,
-            "findall": findall,
-            "place": place,
-            "replace_especial_alphabetic_chars": replace_especial_alphabetic_chars,
-        })
+        file_loader = DottedLoader(templates_dir)
+        env = _make_env(file_loader, delimiters)
+        context = build_context(args.vars, args.vars_file)
 
         try:
             template = env.get_template(template_name)
@@ -325,8 +348,6 @@ def main() -> None:
             sys.exit(f"Erro: template não encontrado: {template_name!r} em {templates_dir!r}")
         except TemplateSyntaxError as exc:
             sys.exit(f"Erro de sintaxe no template {template_name!r} (linha {exc.lineno}): {exc.message}")
-
-        context = build_context(args.vars, args.vars_file)
 
         try:
             rendered = template.render(**context)

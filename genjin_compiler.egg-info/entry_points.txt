@@ -1,0 +1,3 @@
+[console_scripts]
+genjin-assemble = assembler:main
+genjin-compile = compiler.__main__:main

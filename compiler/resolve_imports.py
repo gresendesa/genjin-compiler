@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from compiler.config import GnjSourceResolver
 from compiler.parser import (
     ExecBlockNode,
     InlineAtomNode,
@@ -29,13 +30,19 @@ class ResolveImportError(Exception):
         super().__init__(message)
 
 
-def resolve_imports(ast: ProgramNode, base_dir: Path | None = None) -> ProgramNode:
+def resolve_imports(
+    ast: ProgramNode,
+    base_dir: Path | None = None,
+    gnj_resolver: GnjSourceResolver | None = None,
+) -> ProgramNode:
     """Resolve todos os ProcImportNode da AST, substituindo-os pelos nós concretos.
 
     Parâmetros:
-        ast      — AST produzida pelo parser (pode conter ProcImportNode).
-        base_dir — diretório base para resolução de paths dotted.
-                   Se None, usa Path.cwd().
+        ast          — AST produzida pelo parser (pode conter ProcImportNode).
+        base_dir     — diretório base para resolução de paths dotted (filesystem padrão).
+                       Se None, usa Path.cwd(). Ignorado quando gnj_resolver é fornecido.
+        gnj_resolver — resolvedor customizado de source .gnj. Quando fornecido,
+                       substitui a resolução via filesystem. base_dir é ignorado.
 
     Retorna um novo ProgramNode sem nenhum ProcImportNode.
     Levanta ResolveImportError em caso de:
@@ -44,6 +51,12 @@ def resolve_imports(ast: ProgramNode, base_dir: Path | None = None) -> ProgramNo
         - conflito de nome com proc já declarado localmente (definição diferente)
         - importação circular (entre arquivos)
     """
+    if gnj_resolver is not None:
+        # Resolvedor customizado: ciclos detectados por dotted_path (string)
+        visiting_str: set[str] = set()
+        return _resolve_ast_custom(ast, gnj_resolver, visiting_str)
+
+    # Resolvedor padrão: filesystem
     if base_dir is None:
         base_dir = Path.cwd()
 
@@ -200,6 +213,93 @@ def _resolve_ast(ast: ProgramNode, base_dir: Path, visiting: set[Path]) -> Progr
             if isinstance(node, ProcBlockNode):
                 visiting_deps: set[str] = set()
                 _inject_deps(node, external_map, local_names, resolved, visiting_deps, entry.source_path)
+
+    return ProgramNode(
+        name=ast.name,
+        variables=ast.variables,
+        procedures=resolved,
+        block=ast.block,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Implementação com resolvedor customizado (GnjSourceResolver)
+# ---------------------------------------------------------------------------
+
+def _resolve_ast_custom(
+    ast: ProgramNode,
+    resolver: GnjSourceResolver,
+    visiting: set[str],
+) -> ProgramNode:
+    """Resolve ProcImportNode usando um GnjSourceResolver customizado.
+
+    Ciclos são detectados por dotted_path (string) em vez de Path.
+    Todos os imports são resolvidos de forma absoluta no namespace do resolver.
+    """
+    local_names: set[str] = {
+        p.name for p in ast.procedures
+        if isinstance(p, (ProcDeclNode, ProcBlockNode))
+    }
+
+    resolved: list[ProcDeclNode | ProcBlockNode] = []
+    for entry in ast.procedures:
+        if not isinstance(entry, ProcImportNode):
+            resolved.append(entry)
+            continue
+
+        dotted = entry.source_path
+
+        # Detecção de ciclo
+        if dotted in visiting:
+            raise ResolveImportError(
+                f"importação circular detectada: '{dotted}' já está sendo processado"
+            )
+
+        # Obter source via resolver customizado
+        try:
+            source = resolver.get_source(dotted)
+        except (FileNotFoundError, OSError, KeyError) as exc:
+            raise ResolveImportError(
+                f"arquivo não encontrado para importação '{dotted}': {exc}"
+            ) from exc
+
+        # Parsear e resolver recursivamente
+        external_ast = parse(source)
+        visiting.add(dotted)
+        try:
+            external_ast = _resolve_ast_custom(external_ast, resolver, visiting)
+        finally:
+            visiting.discard(dotted)
+
+        # Indexar procs disponíveis no externo
+        external_map: dict[str, ProcDeclNode | ProcBlockNode] = {
+            p.name: p
+            for p in external_ast.procedures
+            if isinstance(p, (ProcDeclNode, ProcBlockNode))
+        }
+
+        # Importar os nomes solicitados e injetar dependências
+        for name in entry.names:
+            if name not in external_map:
+                raise ResolveImportError(
+                    f"'{name}' não encontrado em '{dotted}'"
+                )
+            node = external_map[name]
+            if name in local_names:
+                existing = next((p for p in resolved if p.name == name), None)
+                if existing is not None and existing != node:
+                    raise ResolveImportError(
+                        f"conflito de nome: '{name}' já está declarado localmente "
+                        f"com definição diferente da importada de '{dotted}'"
+                    )
+                continue
+
+            resolved.append(node)
+            local_names.add(name)
+
+            if isinstance(node, ProcBlockNode):
+                visiting_deps: set[str] = set()
+                _inject_deps(node, external_map, local_names, resolved, visiting_deps, dotted)
 
     return ProgramNode(
         name=ast.name,

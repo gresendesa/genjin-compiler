@@ -1,0 +1,164 @@
+Metadata-Version: 2.4
+Name: genjin-compiler
+Version: 1.0.0
+Summary: Compilador para a linguagem DSL Genjin com resolvedores customizáveis
+Author: gresendesa
+License: Proprietary
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: Jinja2>=3.1
+Requires-Dist: markupsafe>=2.0
+
+# GenJin Compiler
+
+> **GenJin** é um compilador para a DSL Genjin (`.gnj`) — uma linguagem declarativa de fluxo de controle que valida estaticamente que todos os caminhos de execução são tratados. O compilador transpila `.gnj` para um template Jinja2 estruturado, pronto para renderização via assembler.
+
+## Pipeline
+
+```
+arquivo.gnj
+    │
+    ▼  compiler.py
+  Scanner → Parser → Desugar → Transpiler
+    │
+    ▼  stdout (template Jinja2)
+  assembler.py  ←  code/  (templates)
+    │
+    ▼  stdout (output renderizado)
+  mkb/indenter.py
+    │
+    ▼  stdout (output indentado)
+```
+
+Cada etapa de scanner também é acessível como CLI standalone:
+
+```bash
+python -m compiler.scanner <arquivo.gnj>   # tokens em JSON
+```
+
+## Funcionalidades
+
+- **DSL Genjin (`.gnj`)**: linguagem declarativa com `program`, `vars`, `procs`, `exec`, `case`, `pass`, `while`
+- **Notação inline `@proc()`**: açúcar sintático para encadeamento de chamadas (`when(CODE)`)
+- **Proc-blocos**: blocos reutilizáveis com parâmetros (`Bloco(param: Type) { ... }`) — expansão em tempo de compilação, DFS anti-ciclo
+- **Validação estática**: todos os códigos de saída de cada proc devem aparecer em `case`, `pass` ou `while`
+- **Assembler com pipe**: lê template via stdin (`-`) ou arquivo; integra com `mkb/indenter.py`
+- **Extensão VS Code**: syntax highlighting para `.gnj` (`vscode-genjin/`)
+
+## Instalação
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Uso
+
+### Pipeline completo
+
+```bash
+# Compilar + renderizar + indentar
+python compiler.py examples/lenhador.gnj \
+  | python assembler.py - -d code/ \
+  | python mkb/indenter.py
+```
+
+### Compilar para template Jinja2
+
+```bash
+# Saída no stdout
+python compiler.py examples/lenhador.gnj
+
+# Salvar em arquivo
+python compiler.py examples/lenhador.gnj > output.jinja2
+```
+
+### Usando proc-blocos (versão sintética)
+
+```bash
+python compiler.py examples/lenhador-sintetico.gnj
+```
+
+`examples/lenhador-sintetico.gnj` é semanticamente equivalente a `examples/lenhador.gnj`, mas usa proc-blocos `Exceção_e_Reinicia` e `Troca_Ferramenta` para eliminar repetições.
+
+## Estrutura do repositório
+
+```
+compiler.py              # Pipeline completo: Scanner → Parser → Desugar → Transpiler
+assembler.py             # Renderização Jinja2 (lê template via stdin ou arquivo)
+requirements.txt
+
+compiler/                # Módulos do compilador
+  scanner.py             # Tokenizador da DSL .gnj
+  parser.py              # Parser recursivo-descendente → AST
+  desugar.py             # Expansão de inline e proc-blocos → AST canônica
+  transpiler.py          # AST → template Jinja2
+  ast_io.py              # Serialização/deserialização de AST (JSON)
+
+examples/
+  lenhador.gnj           # Script de referência do LenhadorNEO (canônico)
+  lenhador-sintetico.gnj # Versão com proc-blocos (equivalente ao acima)
+  basic.gnj
+  inline.gnj
+
+code/                    # Templates Jinja2 base e macros do projeto
+  genjin.jinja2          # Template raiz
+  Federal/               # Templates específicos do projeto Federal
+
+mkb/
+  indenter.py            # Indentador de saída
+  coder.py
+
+docs/
+  genjin.md              # Documentação completa da DSL Genjin
+  language.md            # Referência da linguagem
+  proc-blocos.md         # Especificação de proc-blocos
+
+vscode-genjin/           # Extensão VS Code para syntax highlighting de .gnj
+
+tests/                   # Suite de testes (360 testes, pytest)
+  scanner/
+  parser/
+  desugar/
+  transpiler/
+  assembler/
+  ast_io/
+  cli/
+  delimiters/
+
+ia/                      # Memória viva do projeto (backlog, sprints, decisões)
+  backlog.md
+  sprints.md
+  architecture.md
+  decisions.md
+  experience.md
+```
+
+## Testes
+
+```bash
+# Suite completa
+python -m pytest
+
+# Por módulo
+python -m pytest tests/parser/ -v
+python -m pytest tests/desugar/ -v
+```
+
+360 testes, 0 falhas (estado atual após SPR-2026-12).
+
+## Extensão VS Code
+
+```bash
+bash install-extension.sh
+```
+
+Adiciona syntax highlighting para arquivos `.gnj`: keywords, tipos, códigos de saída, notação inline `@proc()`, proc-blocos.
+
+
+## Testes com templates de código Mod Macro
+
+```bash
+python assembler.py code/tests/basic.jinja2 -d code/ | python mkb/indenter.py
+```

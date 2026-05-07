@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-05 (SPR-2026-19 encerrada — B-030 concluído)
+Ultima atualizacao: 2026-05-06 (SPR-2026-20 encerrada — B-031 concluído)
 
 ## Objetivo
 
@@ -247,6 +247,19 @@ Detalhes completos de cada sprint ficam em arquivos dedicados no diretorio ia/sp
 - Risco da sprint: médio (2.0)
 - Testes: 440 passando, 0 falhas (+6 testes novos em TestDependencyInjection)
 - Arquivo detalhado: [ia/sprints/SPR-2026-19.md](sprints/SPR-2026-19.md)
+
+### SPR-2026-20
+
+- Status: concluída
+- Data de planejamento: 2026-05-06
+- Data de início: 2026-05-06
+- Data de encerramento: 2026-05-06
+- Foco: B-031 — Compilador como pacote pip com resolvedores customizáveis
+- Itens: B-031
+- Prioridade PO dos itens: 1 (crítica)
+- Risco da sprint: médio (1.5)
+- Testes: 460 passando, 0 falhas (+20 novos testes)
+- Arquivo detalhado: [ia/sprints/SPR-2026-20.md](sprints/SPR-2026-20.md)
 
 ### SPR-YYYY-NN
 

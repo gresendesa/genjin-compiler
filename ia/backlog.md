@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-05-05 (B-030 concluído — SPR-2026-19 encerrada)
+Ultima atualizacao: 2026-05-06 (B-031 concluído — SPR-2026-20 encerrada)
 
 ## Objetivo
 
@@ -52,6 +52,7 @@ Detalhes completos de cada item ficam em arquivos dedicados no diretorio ia/back
 | B-028 | Estudo de viabilidade: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | [B-028.md](backlog-items/B-028.md) |
 | B-029 | Implementação: importação de proc-blocos de .gnj externos | 1 (crítica) | médio | [B-029.md](backlog-items/B-029.md) |
 | B-030 | Importação com injeção automática de dependências via `from ... import` | 1/3 | médio | [B-030.md](backlog-items/B-030.md) |
+| B-031 | Compilador como pacote pip instalável com resolvedores customizáveis | 1 (crítica) | médio-alto | [B-031.md](backlog-items/B-031.md) |
 
 ### Pendentes
 

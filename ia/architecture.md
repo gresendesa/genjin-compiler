@@ -3,7 +3,7 @@
 Status do documento: ativo
 Owner: gresendesa
 Data de criacao: 2026-04-08
-Ultima atualizacao: 2026-04-26
+Ultima atualizacao: 2026-05-06 (B-031: pyproject.toml, compiler/config.py, API pública, assembler.render())
 
 ## Visão Geral
 
@@ -14,7 +14,7 @@ O projeto implementa um **compilador para a linguagem DSL Genjin**. O objetivo f
 | Componente | Restrição |
 |---|---|
 | `code/genjin.jinja2` | **INTOCÁVEL.** Motor Genjin criado manualmente pelo owner. Nenhuma modificação é permitida. |
-| `assembler.py` | **NÃO ALTERAR.** Motor de execução já pronto e funcional. É o runtime final. |
+| `assembler.py` | **Refatorado em B-031 (SPR-2026-20) com aprovação do PO.** CLI preservada. Núcleo extraído como `render()` pública. Alterar apenas com autorização do PO. |
 
 ---
 
@@ -23,13 +23,13 @@ O projeto implementa um **compilador para a linguagem DSL Genjin**. O objetivo f
 ### 1. assembler.py — Motor de Execução
 
 - **Responsabilidade:** Renderizar templates Jinja2 a partir da linha de comando. É um renderizador Jinja2 genérico.
-- **Status:** Pronto e funcional.
-- **Entrada:** Um arquivo de template Jinja2 (ponto de entrada) + diretório de templates + variáveis de contexto.
-- **Saída:** Arquivo de texto com o output renderizado.
+- **Status:** Pronto e funcional. **Refatorado em B-031**: adicionada função pública `render(template_str, loader, context, delimiters)`. CLI permanece inalterada.
+- **Entrada (CLI):** Um arquivo de template Jinja2 (ponto de entrada) + diretório de templates + variáveis de contexto.
+- **Entrada (API):** `template_str: str`, `loader: BaseLoader | None`, `context: dict`, `delimiters: dict`.
+- **Saída:** Arquivo de texto com o output renderizado (CLI) ou string (API).
 - **Relação com genjin.jinja2:** Nenhuma dependência direta. O template de entrada *pode* importar `code/genjin.jinja2`, mas o assembler não sabe nem se importa com isso. Ele renderiza qualquer template Jinja2 válido.
 - **Delimitadores deste projeto:** `{* *}` para blocos (em vez do padrão `{% %}`). Variáveis mantêm `{{ }}`.
 - **Documentação:** `docs/assembler.md`.
-- **NUNCA alterar este arquivo.**
 
 ### 2. code/genjin.jinja2 — Motor Genjin (INTOCÁVEL)
 
@@ -140,3 +140,4 @@ Código-fonte DSL
 |---|---|---|
 | 2026-04-26 | 1.0.0 | Primeira versão. Componentes, fluxo e contratos documentados. |
 | 2026-05-04 | 1.1.0 | SPR-2026-18: nova fase `ResolveImports` inserida entre Parser e Desugar. Pipeline: `Scanner → Parser → ResolveImports → Desugar → Transpiler → Assembler`. Novo arquivo `compiler/resolve_imports.py`. `ProcImportNode` temporário na AST entre Parser e ResolveImports. `--import-base` na CLI. |
+| 2026-05-06 | 1.2.0 | SPR-2026-20 (B-031): pacote pip `genjin-compiler`. Novos componentes: `compiler/config.py` (`CompilerConfig`, `GnjSourceResolver`, `FilesystemGnjResolver`); `compiler/__init__.py` expõe `compile_gnj()`. `assembler.py` refatorado: `render()` pública + `_make_env()` interna; CLI preservada. `compiler/resolve_imports.py`: novo parâmetro `gnj_resolver`. `compiler/transpiler.py`: `Transpiler(ast, template_name)`. Restrição `assembler.py NÃO ALTERAR` revogada com aprovação do PO. |

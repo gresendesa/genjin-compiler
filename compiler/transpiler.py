@@ -80,12 +80,13 @@ def _jlist(items: list[str]) -> str:
 class Transpiler:
     """Gera um template Jinja2 a partir do AST de um programa .gnj."""
 
-    def __init__(self, ast: ProgramNode):
+    def __init__(self, ast: ProgramNode, template_name: str = "genjin"):
         self._ast = ast
+        self._template_name = template_name
 
     def transpile(self) -> str:
         w = _Writer()
-        w.line('{* from "genjin" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}')
+        w.line(f'{{* from "{self._template_name}" import ATTRIBUTE, TYPE, CARDINALITY, EVALUATION, MACROMOD, build *}}')
         w.line()
         w.line('{*')
         w.indent()
